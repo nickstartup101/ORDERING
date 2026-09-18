@@ -1,10 +1,171 @@
 // ==========================================
-// CART & PAYMENT ENGINE
+// CART, MODAL SELECTION & CHECKOUT ENGINE
 // ==========================================
 
-let selectedBankMethodId = null; // ບັງຄັບໃຫ້ເລີ່ມຕົ້ນເປັນ null ເພື່ອໃຫ້ລູກຄ້າກົດເລືອກກ່ອນ
+let selectedBankMethodId = null;
 let uploadedSlipDataUrl = null;
 
+// 1. ຟັງຊັນຢືນຢັນເພີ່ມສິນຄ້າເຂົ້າກະຕ່າ (Null-Safe 100%)
+function confirmAddToCart() {
+  if (!activeCustomizingItem) {
+    if (typeof showAtelierAlert === 'function') {
+      showAtelierAlert({ title: "ແຈ້ງເຕືອນ", message: "ບໍ່ພົບຂໍ້ມູນສິນຄ້າທີ່ກຳລັງເລືອກ", type: "error" });
+    }
+    return;
+  }
+
+  // ອ່ານຄ່ານົມຢ່າງປອດໄພ
+  const milkRadio = document.querySelector('input[name="milkOption"]:checked');
+  const milkVal = milkRadio ? milkRadio.value : 'Standard';
+
+  // ອ່ານຄ່າ Toppings ຢ່າງປອດໄພ
+  const extraShotEl = document.getElementById('addonExtraShot');
+  const extraShot = extraShotEl ? extraShotEl.checked : false;
+
+  // ຄິດໄລ່ລາຄາຕໍ່ໜ່ວຍ
+  let unitPrice = 4.50;
+  if (activeCustomizingItem.variants && activeCustomizingItem.variants[selectedVariant]) {
+    unitPrice = parseFloat(activeCustomizingItem.variants[selectedVariant]) || 4.50;
+  } else if (activeCustomizingItem.variants) {
+    const prices = Object.values(activeCustomizingItem.variants).filter(p => typeof p === 'number' && p > 0);
+    if (prices.length > 0) unitPrice = prices[0];
+  }
+
+  if (milkVal.includes('Oat') || milkVal.includes('Almond')) {
+    unitPrice += 0.75;
+  }
+  if (extraShot) {
+    unitPrice += 1.20;
+  }
+
+  const qty = parseInt(modalQuantity) || 1;
+
+  const cartItem = {
+    cartId: 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+    itemId: activeCustomizingItem.id,
+    name: activeCustomizingItem.name,
+    type: activeCustomizingItem.type || 'drink',
+    variant: selectedVariant,
+    milk: milkVal,
+    sweetness: selectedSweetnessLevel || '100%',
+    extraShot: extraShot,
+    unitPrice: unitPrice,
+    quantity: qty,
+    total: unitPrice * qty,
+    image: activeCustomizingItem.image || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80'
+  };
+
+  // ເພີ່ມເຂົ້າກະຕ່າ
+  cart.push(cartItem);
+  localStorage.setItem('ladolce_cart', JSON.stringify(cart));
+
+  // ອັບເດດຕົວເລກ Badge ຢູ່ກະຕ່າ
+  updateCartBadges();
+
+  // ປິດ Modal
+  closeCustomizeModal();
+
+  // ແຈ້ງເຕືອນສຳເລັດ
+  if (typeof showAtelierAlert === 'function') {
+    showAtelierAlert({
+      title: "ເພີ່ມເຂົ້າກະຕ່າແລ້ວ!",
+      message: `ເພີ່ມ "${cartItem.name}" ຈຳນວນ ${cartItem.quantity} ລາຍການ ເຂົ້າໃນກະຕ່າຮຽບຮ້ອຍແລ້ວ.`,
+      type: "success"
+    });
+  } else {
+    alert(`ເພີ່ມ ${cartItem.name} ເຂົ້າກະຕ່າແລ້ວ!`);
+  }
+}
+
+// 2. ອັບເດດຕົວເລກ Badge ຢູ່ປຸ່ມກະຕ່າ
+function updateCartBadges() {
+  const totalCount = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  
+  const badge = document.getElementById('cartBadgeCount');
+  if (badge) badge.textContent = totalCount;
+
+  const dot = document.getElementById('bottomNavCartDot');
+  if (dot) {
+    if (totalCount > 0) {
+      dot.classList.remove('hidden');
+    } else {
+      dot.classList.add('hidden');
+    }
+  }
+
+  // ຖ້າກຳລັງເປີດໜ້າກະຕ່າຢູ່ ໃຫ້ render ໃໝ່
+  renderCartList();
+}
+
+// 3. ສະແດງລາຍການໃນກະຕ່າ
+function renderCartList() {
+  const container = document.getElementById('cartListContainer');
+  const subtotalEl = document.getElementById('summarySubtotal');
+  const taxEl = document.getElementById('summaryTax');
+  const totalEl = document.getElementById('summaryTotal');
+
+  if (!container) return;
+
+  if (cart.length === 0) {
+    container.innerHTML = `
+      <div class="p-8 rounded-2xl bg-surface-pure border border-hairline text-center space-y-3 shadow-xs">
+        <span class="material-symbols-outlined text-[42px] text-forest-leaf/60">shopping_bag</span>
+        <h3 class="font-serif-title text-[18px] text-primary font-medium">ບໍ່ມີລາຍການໃນກະຕ່າ</h3>
+        <p class="text-[12px] text-taupe font-lao">ກະລຸນາເລືອກເຄື່ອງດື່ມ ຫຼື ເບເກີຣີ່ທີ່ທ່ານມັກ</p>
+        <button onclick="switchCustomerTab('menu')" class="px-5 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-semibold hover:bg-forest-leaf transition-all">
+          ໄປທີ່ເມນູສິນຄ້າ
+        </button>
+      </div>
+    `;
+    if (subtotalEl) subtotalEl.textContent = "$0.00";
+    if (taxEl) taxEl.textContent = "$0.00";
+    if (totalEl) totalEl.textContent = "$0.00";
+    return;
+  }
+
+  container.innerHTML = '';
+  let subtotal = 0;
+
+  cart.forEach((cItem, index) => {
+    subtotal += cItem.total;
+    const row = document.createElement('div');
+    row.className = 'p-4 rounded-xl bg-surface-pure border border-hairline flex items-center justify-between gap-3 shadow-xs';
+    row.innerHTML = `
+      <div class="flex items-center gap-3 min-w-0">
+        <img src="${cItem.image}" class="w-14 h-14 rounded-lg object-cover border border-hairline shrink-0"/>
+        <div class="min-w-0">
+          <h4 class="font-serif-title text-[14px] text-primary font-medium truncate">${cItem.name}</h4>
+          <p class="text-[11px] text-taupe font-lao truncate">
+            [${cItem.variant.toUpperCase()}] • ${cItem.milk} • ຫວານ ${cItem.sweetness} ${cItem.extraShot ? '• +Shot' : ''}
+          </p>
+          <span class="font-mono text-[12px] text-charcoal font-semibold">$${cItem.unitPrice.toFixed(2)} × ${cItem.quantity}</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 shrink-0">
+        <span class="font-serif-title text-[15px] font-bold text-forest-emerald">$${cItem.total.toFixed(2)}</span>
+        <button onclick="removeCartItem(${index})" class="w-8 h-8 rounded-lg border border-hairline hover:bg-red-50 text-red-600 flex items-center justify-center transition-colors">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+        </button>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+
+  const tax = subtotal * 0.08;
+  const grandTotal = subtotal + tax;
+
+  if (subtotalEl) subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
+  if (taxEl) taxEl.textContent = `$${tax.toFixed(2)}`;
+  if (totalEl) totalEl.textContent = `$${grandTotal.toFixed(2)}`;
+}
+
+function removeCartItem(idx) {
+  cart.splice(idx, 1);
+  localStorage.setItem('ladolce_cart', JSON.stringify(cart));
+  updateCartBadges();
+}
+
+// 4. ລະບົບສະແດງທະນາຄານ ແລະ QR
 function renderCustomerPaymentOptions() {
   const container = document.getElementById('customerBankSelectorGrid');
   const displayBox = document.getElementById('activeBankQRDisplay');
@@ -16,7 +177,6 @@ function renderCustomerPaymentOptions() {
     return;
   }
 
-  // 1. ສະແດງປຸ່ມທະນາຄານໃຫ້ເລືອກ
   container.innerHTML = paymentMethods.map(p => {
     const isSelected = p.id === selectedBankMethodId;
     return `
@@ -32,7 +192,6 @@ function renderCustomerPaymentOptions() {
     `;
   }).join('');
 
-  // 2. ຖ້າຍັງບໍ່ເລືອກທະນາຄານ ໃຫ້ເຊື່ອງ QR ແລະ ສະແດງຄຳແນະນຳ
   if (!selectedBankMethodId) {
     displayBox.classList.remove('hidden');
     displayBox.style.borderColor = "#E7E4DD";
@@ -46,13 +205,12 @@ function renderCustomerPaymentOptions() {
     return;
   }
 
-  // 3. ເມື່ອເລືອກແລ້ວ ສະແດງ QR ພ້ອມກອບສີຕາມທະນາຄານນັ້ນ
   const activeBank = paymentMethods.find(p => p.id === selectedBankMethodId);
   if (activeBank) {
     displayBox.classList.remove('hidden');
     displayBox.style.borderColor = activeBank.borderColor;
     displayBox.innerHTML = `
-      <div class="p-4 bg-surface-pure rounded-xl text-center space-y-3 animate-scale-up">
+      <div class="p-4 bg-surface-pure rounded-xl text-center space-y-3">
         <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold" style="background-color: ${activeBank.borderColor}15; color: ${activeBank.borderColor}">
           <span class="w-2 h-2 rounded-full" style="background-color: ${activeBank.borderColor}"></span>
           <span>ສະແກນ QR ໂອນເຂົ້າ ${activeBank.bankName}</span>
@@ -75,51 +233,83 @@ function selectCustomerBank(bankId) {
   renderCustomerPaymentOptions();
 }
 
-// 4. ອັບໂຫຼດສະລິບ ແລະ ບີບອັດເປັນ Base64 ອັດຕະໂນມັດ
+// 5. ອັບໂຫຼດ Slip ເປັນ Base64
 async function handleSlipSelected(e) {
   const file = e.target.files[0];
   if (!file) return;
 
   try {
-    // ບີບອັດຮູບສະລິບໃຫ້ເຫຼືອ ~100KB ເພື່ອໃຫ້ບັນທຶກລົງຖານຂໍ້ມູນໄດ້ໄວ
-    uploadedSlipDataUrl = await compressImage(file, 800, 800, 0.75);
-    document.getElementById('slipImagePreview').src = uploadedSlipDataUrl;
-    document.getElementById('slipPreviewContainer').classList.remove('hidden');
-    document.getElementById('slipStatusText').textContent = "✓ ແນບໃບໂອນເງິນແລ້ວ (ກົດເພື່ອປ່ຽນ)";
-    showAtelierAlert({ title: "ອັບໂຫຼດສຳເລັດ", message: "ໃບໂອນເງິນ (Slip) ຖືກແນບເຂົ້າສູ່ອໍເດີ້ແລ້ວ!", type: "success" });
+    if (typeof compressImage === 'function') {
+      uploadedSlipDataUrl = await compressImage(file, 800, 800, 0.75);
+    } else {
+      const reader = new FileReader();
+      uploadedSlipDataUrl = await new Promise((res) => {
+        reader.onload = () => res(reader.result);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    const preview = document.getElementById('slipImagePreview');
+    const container = document.getElementById('slipPreviewContainer');
+    const statusText = document.getElementById('slipStatusText');
+
+    if (preview) preview.src = uploadedSlipDataUrl;
+    if (container) container.classList.remove('hidden');
+    if (statusText) statusText.textContent = "✓ ແນບໃບໂອນເງິນແລ້ວ (ກົດເພື່ອປ່ຽນ)";
+
+    if (typeof showAtelierAlert === 'function') {
+      showAtelierAlert({ title: "ອັບໂຫຼດສຳເລັດ", message: "ໃບໂອນເງິນ (Slip) ຖືກແນບເຂົ້າສູ່ອໍເດີ້ແລ້ວ!", type: "success" });
+    }
   } catch (err) {
-    showAtelierAlert({ title: "ຜິດພາດ", message: "ບໍ່ສາມາດປະມວນຜົນຮູບສະລິບນີ້ໄດ້", type: "error" });
+    alert("ບໍ່ສາມາດອັບໂຫຼດຮູບສະລິບໄດ້");
   }
 }
 
 function removeSlip() {
   uploadedSlipDataUrl = null;
-  document.getElementById('slipFileInput').value = '';
-  document.getElementById('slipPreviewContainer').classList.add('hidden');
-  document.getElementById('slipStatusText').textContent = "ອັບໂຫຼດຮູບໃບໂອນເງິນ (Slip ບໍ່ເກີນ 1MB)";
+  const input = document.getElementById('slipFileInput');
+  const container = document.getElementById('slipPreviewContainer');
+  const statusText = document.getElementById('slipStatusText');
+
+  if (input) input.value = '';
+  if (container) container.classList.add('hidden');
+  if (statusText) statusText.textContent = "ອັບໂຫຼດຮູບໃບໂອນເງິນ (Slip ບໍ່ເກີນ 1MB)";
 }
 
-// 5. ຢືນຢັນການສັ່ງຊື້
+// 6. ຢືນຢັນສັ່ງຊື້
 async function submitOrder() {
   if (cart.length === 0) {
-    showAtelierAlert({ title: "ກະຕ່າຫວ່າງເປົ່າ", message: "ກະລຸນາເລືອກເມນູໃສ່ກະຕ່າກ່ອນຢືນຢັນການສັ່ງ!", type: "info" });
+    if (typeof showAtelierAlert === 'function') {
+      showAtelierAlert({ title: "ກະຕ່າຫວ່າງເປົ່າ", message: "ກະລຸນາເລືອກເມນູໃສ່ກະຕ່າກ່ອນຢືນຢັນການສັ່ງ!", type: "info" });
+    } else {
+      alert("ກະລຸນາເລືອກເມນູໃສ່ກະຕ່າກ່ອນ!");
+    }
     return;
   }
 
   if (!selectedBankMethodId) {
-    showAtelierAlert({ title: "ກະລຸນາເລືອກທະນາຄານ", message: "ກະລຸນາກົດເລືອກທະນາຄານທີ່ທ່ານຕ້ອງການໂອນຊຳລະກ່ອນ!", type: "info" });
+    if (typeof showAtelierAlert === 'function') {
+      showAtelierAlert({ title: "ກະລຸນາເລືອກທະນາຄານ", message: "ກະລຸນາກົດເລືອກທະນາຄານທີ່ທ່ານຕ້ອງການໂອນຊຳລະກ່ອນ!", type: "info" });
+    } else {
+      alert("ກະລຸນາເລືອກທະນາຄານກ່ອນ!");
+    }
     return;
   }
 
   if (!uploadedSlipDataUrl) {
-    const proceedWithoutSlip = await showAtelierConfirm({
-      title: "ຍັງບໍ່ໄດ້ແນບໃບໂອນ (Slip)",
-      message: "ທ່ານຍັງບໍ່ໄດ້ອັບໂຫຼດຮູບສະລິບໂອນເງິນ. ຕ້ອງການສັ່ງຊື້ ແລະ ຊຳລະເງິນສົດທີ່ໜ້າຮ້ານແທນບໍ່?",
-      confirmText: "ສັ່ງຊື້ເລີຍ",
-      cancelText: "ແນບສະລິບກ່ອນ",
-      isDanger: false
-    });
-    if (!proceedWithoutSlip) return;
+    let proceed = true;
+    if (typeof showAtelierConfirm === 'function') {
+      proceed = await showAtelierConfirm({
+        title: "ຍັງບໍ່ໄດ້ແນບໃບໂອນ (Slip)",
+        message: "ທ່ານຍັງບໍ່ໄດ້ອັບໂຫຼດຮູບສະລິບໂອນເງິນ. ຕ້ອງການສັ່ງຊື້ ແລະ ຊຳລະເງິນສົດທີ່ໜ້າຮ້ານແທນບໍ່?",
+        confirmText: "ສັ່ງຊື້ເລີຍ",
+        cancelText: "ແນບສະລິບກ່ອນ",
+        isDanger: false
+      });
+    } else {
+      proceed = confirm("ທ່ານຍັງບໍ່ໄດ້ແນບສະລິບ, ຕ້ອງການຊຳລະເງິນສົດໜ້າຮ້ານແທນບໍ່?");
+    }
+    if (!proceed) return;
   }
 
   const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
@@ -142,31 +332,34 @@ async function submitOrder() {
     delayNotice: null
   };
 
-  // ເພີ່ມລົງ Local orders
   orders.unshift(newOrder);
   localStorage.setItem('ladolce_orders', JSON.stringify(orders));
 
   currentActiveOrder = newOrder;
   localStorage.setItem('ladolce_active_order', JSON.stringify(currentActiveOrder));
 
-  // Sync to Firestore
+  // Sync ຂຶ້ນ Firestore
   if (isFirebaseReady && db) {
     db.collection("orders").doc(newOrder.id).set(newOrder).catch(e => console.warn(e));
   }
 
-  // ລ້າງກະຕ່າ
   cart = [];
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
   removeSlip();
   updateCartBadges();
 
-  startStaffAlarm();
+  if (typeof startStaffAlarm === 'function') startStaffAlarm();
 
-  showAtelierAlert({
-    title: "ສັ່ງຊື້ສຳເລັດແລ້ວ! 🎉",
-    message: `ອໍເດີ້ເລກທີ ${newOrder.id} ຖືກສົ່ງໄປຍັງບາຣິສຕ້າຮຽບຮ້ອຍແລ້ວ. ທ່ານສາມາດຕິດຕາມສະຖານະການຊົງໄດ້ທີ່ໜ້າ "ປີ້ຮັບເຄື່ອງ".`,
-    type: "success"
-  }).then(() => {
+  if (typeof showAtelierAlert === 'function') {
+    showAtelierAlert({
+      title: "ສັ່ງຊື້ສຳເລັດແລ້ວ! 🎉",
+      message: `ອໍເດີ້ ${newOrder.id} ຖືກສົ່ງໄປຫາບາຣິສຕ້າແລ້ວ. ທ່ານສາມາດຕິດຕາມສະຖານະໄດ້ທີ່ "ປີ້ຮັບເຄື່ອງ".`,
+      type: "success"
+    }).then(() => {
+      switchCustomerTab('ticket');
+    });
+  } else {
+    alert("ສັ່ງຊື້ສຳເລັດແລ້ວ!");
     switchCustomerTab('ticket');
-  });
+  }
 }
