@@ -65,6 +65,13 @@
     .bg-forest-gradient {
       background: linear-gradient(135deg, #11241C 0%, #0D2E22 50%, #06402B 100%);
     }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-slide-down {
+      animation: slideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
   </style>
 
   <!-- Firebase Web SDK (Compat) -->
@@ -93,17 +100,42 @@
         <button onclick="stopStaffAlarm()" class="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded uppercase font-bold">ປິດສຽງ</button>
       </div>
 
-      <!-- Right Auth Area (ມີທັງ Sign In ແລະ Sign Out ສຳລັບລູກຄ້າ) -->
-      <div class="flex items-center gap-2.5">
+      <!-- Right Auth Area ພ້ອມ Slide-Down Profile Dropdown -->
+      <div class="flex items-center gap-2.5 relative">
         <button onclick="openAuthModal()" id="btnLoginHeader" class="text-[11px] uppercase tracking-wider font-semibold border-2 border-forest-emerald text-forest-emerald px-3 py-1.5 rounded-lg hover:bg-forest-emerald hover:text-white transition-all shadow-2xs">
           Sign In
         </button>
 
-        <div id="userProfileChip" class="hidden items-center gap-2">
-          <div class="w-8 h-8 rounded-full bg-forest-emerald text-white flex items-center justify-center font-serif text-[13px] shadow-2xs" id="avatarText">E</div>
-          <button onclick="logoutUser()" class="text-[11px] text-red-700 hover:text-red-800 border border-red-200 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg font-medium transition-colors">
-            Sign Out
+        <!-- Profile Button Trigger -->
+        <div id="userProfileChip" class="hidden relative">
+          <button onclick="toggleProfileDropdown(event)" class="flex items-center gap-1.5 p-1 rounded-full border border-hairline hover:border-forest-emerald transition-all bg-surface-pure shadow-xs">
+            <div class="w-8 h-8 rounded-full bg-forest-emerald text-white flex items-center justify-center font-serif text-[13px] font-bold" id="avatarText">E</div>
+            <span class="material-symbols-outlined text-[16px] text-taupe pr-1">expand_more</span>
           </button>
+
+          <!-- Slide-Down Menu Content -->
+          <div id="profileDropdownMenu" class="hidden absolute right-0 top-12 w-56 bg-surface-pure rounded-2xl border border-hairline shadow-2xl p-2 z-50 animate-slide-down">
+            <div class="p-3 border-b border-hairline">
+              <span class="font-serif-title font-bold text-[14px] text-primary block truncate" id="dropdownUserName">Elena</span>
+              <span class="text-[10px] text-taupe font-mono block truncate" id="dropdownUserEmail">customer@ladolce.com</span>
+            </div>
+            <div class="py-1">
+              <button onclick="switchCustomerTab('profile'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors">
+                <span class="material-symbols-outlined text-[17px] text-forest-emerald">account_circle</span>
+                <span>ໂປຣໄຟລ໌ຂອງຂ້ອຍ (My Profile)</span>
+              </button>
+              <button onclick="switchCustomerTab('ticket'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors">
+                <span class="material-symbols-outlined text-[17px] text-forest-emerald">receipt_long</span>
+                <span>ປີ້ຮັບເຄື່ອງ (My Ticket)</span>
+              </button>
+            </div>
+            <div class="pt-1 border-t border-hairline">
+              <button onclick="logoutUser(); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-red-700 hover:bg-red-50 flex items-center gap-2 transition-colors">
+                <span class="material-symbols-outlined text-[17px]">logout</span>
+                <span>ອອກຈາກລະບົບ (Sign Out)</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -220,13 +252,13 @@
           </span>
           <div>
             <h2 class="font-serif-title text-[18px]">Barista Kitchen Display</h2>
-            <p class="text-[11px] opacity-80">ຄິວອໍເດີ້ສົດຈາກລູກຄ້າ • ກວດສະລິບກ່ອນກົດຮັບ</p>
+            <p class="text-[11px] opacity-80">ຄິວອໍເດີ້ສົດຈາກລູກຄ້າ • ມີສຽງເຕືອນອັດຕະໂນມັດ</p>
           </div>
         </div>
         <button onclick="logoutUser()" class="text-[11px] px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white uppercase tracking-wider">Sign Out</button>
       </div>
 
-      <!-- Staff Tab Selector (Active Orders vs Completed History) -->
+      <!-- Staff Tab Selector -->
       <div class="flex gap-2 border-b border-hairline pb-2">
         <button onclick="switchStaffSubTab('active')" id="staff-tab-active" class="px-4 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold">
           ຄິວທີ່ກຳລັງດຳເນີນການ (Active Queue)
@@ -357,7 +389,7 @@
     </div>
   </div>
 
-  <!-- 2. GUEST CONTACT POP-UP (ແທນ prompt ຂອງ Browser) -->
+  <!-- 2. GUEST CONTACT POP-UP -->
   <div id="guestContactModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-6 shadow-2xl space-y-4">
       <div class="text-center space-y-1">
@@ -384,7 +416,7 @@
     </div>
   </div>
 
-  <!-- 3. STAFF REJECT ORDER MODAL (ແທນ prompt ຂອງ Browser) -->
+  <!-- 3. STAFF REJECT ORDER MODAL -->
   <div id="staffRejectModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-6 shadow-2xl space-y-4">
       <div class="text-center space-y-1">
@@ -411,7 +443,7 @@
   <div id="slipAuditModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline overflow-hidden shadow-2xl flex flex-col">
       <div class="p-4 border-b border-hairline flex items-center justify-between">
-        <h4 class="font-serif-title text-[16px] text-primary font-medium">Transfer Slip Verification</h4>
+        <h4 class="font-serif-title text-[16px] text-primary">Transfer Slip Verification</h4>
         <button onclick="closeSlipAuditModal()" class="w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-taupe">
           <span class="material-symbols-outlined text-[16px]">close</span>
         </button>
@@ -507,7 +539,7 @@
     </div>
   </div>
 
-  <!-- 7. FAST BOUTIQUE TOAST (ແຈ້ງເຕືອນເພີ່ມສຳເລັດໄວ 0.1s ຈາກແອັບເອງ) -->
+  <!-- 7. FAST BOUTIQUE TOAST -->
   <div id="atelierToast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-2 px-4 py-2.5 rounded-full bg-forest-gradient text-white text-[12px] font-medium shadow-xl flex items-center gap-2 border border-white/20">
     <span class="material-symbols-outlined text-[18px] text-emerald-400" id="toastIcon">check_circle</span>
     <span id="toastMsg">Action completed</span>
@@ -575,29 +607,55 @@
     let activeRejectOrderId = null;
     let staffSubTab = 'active';
 
-    // Fast App Toast
-    function showFastToast(msg, icon = 'check_circle') {
-      const toast = document.getElementById('atelierToast');
-      const text = document.getElementById('toastMsg');
-      const iconEl = document.getElementById('toastIcon');
-      if (!toast || !text) return;
-      text.textContent = msg;
-      if (iconEl) iconEl.textContent = icon;
-      toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-2');
-      toast.classList.add('opacity-100', 'translate-y-0');
-      setTimeout(() => {
-        toast.classList.remove('opacity-100', 'translate-y-0');
-        toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-2');
-      }, 1800);
-    }
-
-    // Audio Engine
+    // 2. Audio Notification System
     let audioCtx = null;
+    let staffAlarmInterval = null;
+
     function getAudioContext() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
       return audioCtx;
     }
+
+    function playStaffPulseTone() {
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.15);
+        osc.frequency.setValueAtTime(880, now + 0.30);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.6);
+      } catch (e) {}
+    }
+
+    // Alarm ດັງວົນຊ້ຳເມື່ອມີອໍເດີ້ໃໝ່ເຂົ້າມາຫາ Staff
+    function startStaffAlarm() {
+      const indicator = document.getElementById('staffRingingIndicator');
+      if (indicator) indicator.classList.remove('hidden');
+      if (staffAlarmInterval) return;
+      playStaffPulseTone();
+      staffAlarmInterval = setInterval(() => {
+        playStaffPulseTone();
+      }, 3500);
+    }
+
+    function stopStaffAlarm() {
+      if (staffAlarmInterval) {
+        clearInterval(staffAlarmInterval);
+        staffAlarmInterval = null;
+      }
+      const indicator = document.getElementById('staffRingingIndicator');
+      if (indicator) indicator.classList.add('hidden');
+    }
+
     function playChime(isReady = false) {
       try {
         const ctx = getAudioContext();
@@ -616,7 +674,43 @@
       } catch (e) {}
     }
 
-    // 2. Navigation
+    // Fast Boutique Toast
+    function showFastToast(msg, icon = 'check_circle') {
+      const toast = document.getElementById('atelierToast');
+      const text = document.getElementById('toastMsg');
+      const iconEl = document.getElementById('toastIcon');
+      if (!toast || !text) return;
+      text.textContent = msg;
+      if (iconEl) iconEl.textContent = icon;
+      toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-2');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-2');
+      }, 1800);
+    }
+
+    // 3. Slide-down Profile Dropdown Handlers
+    function toggleProfileDropdown(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('profileDropdownMenu');
+      if (menu) menu.classList.toggle('hidden');
+    }
+
+    function closeProfileDropdown() {
+      const menu = document.getElementById('profileDropdownMenu');
+      if (menu) menu.classList.add('hidden');
+    }
+
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('profileDropdownMenu');
+      const trigger = document.getElementById('userProfileChip');
+      if (dropdown && !dropdown.contains(e.target) && trigger && !trigger.contains(e.target)) {
+        closeProfileDropdown();
+      }
+    });
+
+    // 4. Navigation
     function switchCustomerTab(tabName) {
       ['menu', 'cart', 'ticket', 'profile'].forEach(t => {
         const el = document.getElementById(`tab-customer-${t}`);
@@ -640,7 +734,7 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // 3. Menu System
+    // 5. Menu System
     function filterCategory(cat) {
       currentCategoryFilter = cat;
       document.querySelectorAll('.cat-pill').forEach(btn => {
@@ -729,7 +823,6 @@
       document.getElementById('modalDynamicTotal').textContent = `$${(price * modalQuantity).toFixed(2)}`;
     }
 
-    // Fast Add to Cart with Boutique Toast (0.1s Pop-up)
     function confirmAddToCart() {
       if (!activeCustomizingItem) return;
       const unitPrice = activeCustomizingItem.variants?.[selectedVariant] || 4.50;
@@ -807,7 +900,7 @@
       if (selectedBankMethodId) {
         const bank = paymentMethods.find(p => p.id === selectedBankMethodId);
         display.innerHTML = `
-          <div class="p-3 bg-surface-pure rounded-xl animate-fade-in">
+          <div class="p-3 bg-surface-pure rounded-xl animate-slide-down">
             <img src="${bank.qrImage}" class="w-40 h-40 mx-auto rounded-lg"/>
             <p class="text-[12px] font-bold mt-2">${bank.bankName} - ${bank.accountNumber}</p>
           </div>
@@ -831,7 +924,7 @@
       reader.readAsDataURL(file);
     }
 
-    // 4. Guest Checkout Flow (Pop-up ຈາກແອັບ)
+    // 6. Guest Checkout Flow
     function handleStartCheckout() {
       if (cart.length === 0) { showFastToast("ກະຕ່າຫວ່າງເປົ່າ!", "error"); return; }
       if (!selectedBankMethodId) { showFastToast("ກະລຸນາເລືອກທະນາຄານກ່ອນ!", "info"); return; }
@@ -888,7 +981,7 @@
       switchCustomerTab('ticket');
     }
 
-    // 5. My Ticket (Live Progression Status)
+    // 7. My Ticket Progression
     function renderCustomerTicket() {
       const container = document.getElementById('activeTicketContainer');
       if (!container) return;
@@ -897,7 +990,7 @@
         return;
       }
 
-      const status = currentActiveOrder.status; // pending, crafting, ready, completed, cancelled
+      const status = currentActiveOrder.status;
       let statusTitle = "Order Received";
       let statusDesc = "ລໍຖ້າບາຣິສຕ້າກວດສະລິບ ແລະ ຮັບອໍເດີ້";
       let bgClass = "bg-forest-emerald";
@@ -926,7 +1019,6 @@
             <p class="text-[12px] opacity-85 mt-0.5">${statusDesc}</p>
           </div>
 
-          <!-- 4 Steps Live Progression -->
           ${status !== 'cancelled' ? `
             <div class="px-5">
               <div class="grid grid-cols-4 gap-1.5 py-1">
@@ -956,7 +1048,7 @@
       `;
     }
 
-    // 6. Staff Kitchen (ກວດສະລິບ, ຮັບ, ປະຕິເສດ, ປະຫວັດສຳເລັດ)
+    // 8. Staff Kitchen Display & Repeating Alarm
     function switchStaffSubTab(tab) {
       staffSubTab = tab;
       document.getElementById('staff-tab-active').className = tab === 'active' ? "px-4 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold" : "px-4 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px]";
@@ -1012,9 +1104,9 @@
         historyContainer.innerHTML = `<div class="col-span-full p-8 bg-surface-pure border border-hairline rounded-2xl text-center"><p class="text-taupe">ຍັງບໍ່ມີປະຫວັດອໍເດີ້ທີ່ສຳເລັດ</p></div>`;
       } else {
         historyContainer.innerHTML = completedOrders.map(o => `
-          <div class="p-4 bg-surface-pure border border-hairline rounded-2xl space-y-2 opacity-80">
+          <div class="p-4 bg-surface-pure border border-hairline rounded-2xl space-y-2 opacity-85">
             <div class="flex justify-between"><span class="font-mono font-bold text-forest-emerald">${o.id}</span><span class="text-emerald-800 text-[11px] font-bold">✓ ສຳເລັດແລ້ວ</span></div>
-            <p class="text-[12px]">${o.customerName} (${o.customerPhone})</p>
+            <p class="text-[12px] font-bold">${o.customerName} (${o.customerPhone})</p>
             <p class="text-[11px] text-taupe">${o.items.map(i=>i.name).join(', ')}</p>
             <span class="font-mono font-bold block text-[13px] pt-1 border-t border-hairline">$${o.total.toFixed(2)}</span>
           </div>
@@ -1032,6 +1124,7 @@
     }
 
     function updateOrderStatus(id, status) {
+      stopStaffAlarm();
       const order = orders.find(o => o.id === id);
       if (order) {
         order.status = status;
@@ -1055,6 +1148,7 @@
     function confirmRejectOrder() {
       const reason = document.getElementById('rejectInputReason').value.trim();
       if (!reason) return;
+      stopStaffAlarm();
       const order = orders.find(o => o.id === activeRejectOrderId);
       if (order) {
         order.status = 'cancelled';
@@ -1067,7 +1161,7 @@
       }
     }
 
-    // 7. Profile Tab
+    // 9. Profile Tab Content
     function renderCustomerProfile() {
       const container = document.getElementById('profileTabContent');
       if (!container) return;
@@ -1105,7 +1199,7 @@
       `;
     }
 
-    // 8. Auth
+    // 10. Auth System
     function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
     function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
     function toggleAuthMode() {
@@ -1158,6 +1252,8 @@
         btnLogin.classList.add('hidden');
         userChip.classList.remove('hidden');
         document.getElementById('avatarText').textContent = currentUser.name.charAt(0).toUpperCase();
+        document.getElementById('dropdownUserName').textContent = currentUser.name;
+        document.getElementById('dropdownUserEmail').textContent = currentUser.email;
       } else {
         btnLogin.classList.remove('hidden');
         userChip.classList.add('hidden');
@@ -1167,7 +1263,7 @@
       if (role === 'superadmin') { renderAdminMenu(); }
     }
 
-    // 9. Superadmin
+    // 11. Superadmin Functions
     function openAddMenuModal() { document.getElementById('addMenuModal').classList.remove('hidden'); }
     function closeAddMenuModal() { document.getElementById('addMenuModal').classList.add('hidden'); }
     function handleMenuImageUpload(e) {
@@ -1181,6 +1277,7 @@
       };
       reader.readAsDataURL(file);
     }
+
     function saveMenuItem(e) {
       const name = document.getElementById('inputItemName').value.trim();
       const cat = document.getElementById('inputItemCategory').value;
@@ -1200,6 +1297,7 @@
       closeAddMenuModal();
       showFastToast("ເພີ່ມເມນູໃໝ່ສຳເລັດ!");
     }
+
     function renderAdminMenu() {
       const container = document.getElementById('adminMenuListGrid');
       if (!container) return;
@@ -1210,7 +1308,7 @@
       `).join('');
     }
 
-    // Cloud Stream Realtime Listener
+    // 12. Realtime Cloud Stream & Auto Staff Alarm Trigger
     function initCloudStream() {
       if (!isFirebaseReady || !db) return;
       db.collection("orders").orderBy("createdAt", "desc").onSnapshot(snapshot => {
@@ -1220,7 +1318,18 @@
           orders = remote;
           localStorage.setItem('ladolce_orders', JSON.stringify(orders));
 
-          // Realtime sync to active customer ticket
+          // ດັກຈັບ: ຖ້າມີອໍເດີ້ pending ໃໝ່ -> ສັ່ງໃຫ້ສຽງ Alarm ດັງເຕືອນ Staff ທັນທີ
+          if (currentUser && (currentUser.role === 'staff' || currentUser.role === 'superadmin')) {
+            const hasPending = orders.some(o => o.status === 'pending');
+            if (hasPending) {
+              startStaffAlarm();
+            } else {
+              stopStaffAlarm();
+            }
+            renderStaffOrders();
+          }
+
+          // Realtime sync ຫາປີ້ຮັບເຄື່ອງຂອງລູກຄ້າ
           if (currentActiveOrder) {
             const live = orders.find(o => o.id === currentActiveOrder.id);
             if (live && live.status !== currentActiveOrder.status) {
@@ -1230,7 +1339,6 @@
               if (live.status === 'ready') playChime(true);
             }
           }
-          if (currentUser && currentUser.role === 'staff') renderStaffOrders();
         }
       });
     }
