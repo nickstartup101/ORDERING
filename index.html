@@ -431,12 +431,11 @@
         </button>
       </div>
 
-      <form id="menuForm" onsubmit="saveMenuItem(event)" class="p-5 overflow-y-auto space-y-4 text-[13px] flex-1">
-        <div>
-          <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ຊື່ເມນູ:</label>
-          <input required id="inputItemName" type="text" class="w-full rounded-lg border border-hairline p-2.5"/>
-        </div>
-
+      <!-- ປ່ຽນປຸ່ມບັນທຶກເມນູໃນ Modal ເປັນແບບນີ້: -->
+      <button type="button" onclick="saveMenuItem(event)" class="px-5 py-2 rounded-lg bg-forest-emerald text-white font-medium hover:bg-forest-leaf">
+      ບັນທຶກເມນູ
+    </button>
+     <div>
         <div class="grid grid-cols-3 gap-2.5">
           <div>
             <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ປະເພດສິນຄ້າ:</label>
