@@ -1,12 +1,12 @@
 // ==========================================
-// BARISTA KITCHEN & ORDER FULFILLMENT
+// BARISTA KITCHEN DISPLAY & REJECT ENGINE
 // ==========================================
 
 function renderStaffOrders() {
   const container = document.getElementById('staffOrdersContainer');
   if (!container) return;
 
-  const activeList = orders.filter(o => o.status !== 'completed');
+  const activeList = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled');
 
   if (activeList.length === 0) {
     container.innerHTML = `
@@ -26,12 +26,18 @@ function renderStaffOrders() {
     const isReady = order.status === 'ready';
 
     const card = document.createElement('div');
-    card.className = `p-4 rounded-2xl bg-surface-pure border-2 ${isPending ? 'border-red-400 ring-2 ring-red-100' : 'border-hairline'} shadow-xs space-y-3`;
+    card.className = `p-4 rounded-2xl bg-surface-pure border-2 ${isPending ? 'border-red-400 ring-2 ring-red-100 animate-pulse' : 'border-hairline'} shadow-xs space-y-3`;
     card.innerHTML = `
       <div class="flex items-center justify-between border-b border-hairline pb-2">
         <div>
           <span class="font-mono text-[14px] font-bold text-forest-emerald">${order.id}</span>
-          <span class="text-[11px] text-taupe block font-lao">${order.customerName} (${order.customerPhone})</span>
+          <div class="flex items-center gap-1.5 mt-0.5">
+            <span class="text-[12px] font-semibold text-charcoal font-lao">${order.customerName}</span>
+            <a href="tel:${order.customerPhone}" class="text-[11px] text-forest-emerald bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-mono font-bold flex items-center gap-0.5">
+              <span class="material-symbols-outlined text-[12px]">call</span>
+              ${order.customerPhone}
+            </a>
+          </div>
         </div>
         <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${isPending ? 'bg-red-100 text-red-800' : isCrafting ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
           ${order.status}
@@ -71,6 +77,9 @@ function renderStaffOrders() {
           <button onclick="updateOrderStatus('${order.id}', 'crafting')" class="flex-1 py-2 rounded-lg bg-forest-emerald text-white text-[11px] uppercase tracking-wider font-semibold hover:bg-forest-leaf transition-colors font-lao shadow-xs">
             ຮັບອໍເດີ້ (Accept)
           </button>
+          <button onclick="rejectOrder('${order.id}')" class="px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-[11px] font-semibold transition-colors font-lao">
+            ປະຕິເສດ (Reject)
+          </button>
         ` : ''}
 
         ${isCrafting ? `
@@ -93,6 +102,37 @@ function renderStaffOrders() {
   });
 }
 
+// ປະຕິເສດອໍເດີ້ ກໍລະນີສະລິບປອມ ຫຼື ມີບັນຫາ
+async function rejectOrder(orderId) {
+  const reason = prompt("ກະລຸນາໃສ່ເຫດຜົນທີ່ປະຕິເສດອໍເດີ້ (ເຊັ່ນ: ໃບສະລິບບໍ່ຖືກຕ້ອງ, ເງິນບໍ່ເຂົ້າບັນຊີ):", "ໃບສະລິບໂອນເງິນບໍ່ຖືກຕ້ອງ ກະລຸນາຕິດຕໍ່ບາຣິສຕ້າ");
+  if (!reason) return;
+
+  stopStaffAlarm();
+
+  const targetOrder = orders.find(o => o.id === orderId);
+  if (targetOrder) {
+    targetOrder.status = 'cancelled';
+    targetOrder.cancelReason = reason;
+  }
+
+  // Sync to Cloud Firestore Real-time
+  if (isFirebaseReady && db) {
+    try {
+      await db.collection("orders").doc(orderId).update({
+        status: 'cancelled',
+        cancelReason: reason
+      });
+      console.log("Order Rejected on Firestore:", orderId);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  localStorage.setItem('ladolce_orders', JSON.stringify(orders));
+  renderStaffOrders();
+  alert(`ອໍເດີ້ ${orderId} ຖືກປະຕິເສດແລ້ວ`);
+}
+
 function viewSlip(url, orderId) {
   document.getElementById('slipAuditImage').src = url;
   document.getElementById('slipAuditOrderRef').textContent = "Order ID: " + orderId;
@@ -103,6 +143,7 @@ function closeSlipAuditModal() {
   document.getElementById('slipAuditModal').classList.add('hidden');
 }
 
+// ອັບເດດສະຖານະ ແລະ Sync ໄປຫາຝັ່ງລູກຄ້າ Real-time
 async function updateOrderStatus(orderId, nextStatus) {
   stopStaffAlarm();
 
@@ -114,30 +155,27 @@ async function updateOrderStatus(orderId, nextStatus) {
     targetOrder.completedAt = new Date().toISOString();
   }
 
-  // Sync to Cloud Firestore
+  // 1. Sync ຂຶ້ນ Cloud Firestore ທັນທີ
   if (isFirebaseReady && db) {
     try {
       await db.collection("orders").doc(orderId).update({
         status: nextStatus,
         completedAt: nextStatus === 'completed' ? new Date().toISOString() : null
       });
+      console.log("Firestore Status Updated Real-time:", orderId, nextStatus);
     } catch (e) {
-      console.warn("Firestore status update local fallback:", e);
+      console.warn("Firestore update error:", e);
     }
   }
 
+  // 2. ອັບເດດ LocalStorage
   localStorage.setItem('ladolce_orders', JSON.stringify(orders));
   renderStaffOrders();
-  renderCustomerTicket();
-  renderAnalytics();
 
+  // 3. ແຈ້ງເຕືອນ
   if (nextStatus === 'ready') {
-    playBoutiqueChime(true);
-    showAtelierAlert({
-      title: "ແຈ້ງເຕືອນລູກຄ້າແລ້ວ!",
-      message: `ລະບົບໄດ້ສົ່ງສັນຍານກະດິ່ງ Real-time ຫາລູກຄ້າ ${orderId} ມາຮັບເຄື່ອງດື່ມທີ່ Counter 02 ແລ້ວ!`,
-      type: "success"
-    });
+    if (typeof playBoutiqueChime === 'function') playBoutiqueChime(true);
+    alert(`ອໍເດີ້ ${orderId} ພ້ອມແລ້ວ! ສົ່ງສຽງກະດິ່ງແຈ້ງເຕືອນລູກຄ້າແລ້ວ`);
   }
 }
 
@@ -155,11 +193,5 @@ async function sendDelayNotice(orderId) {
 
   localStorage.setItem('ladolce_orders', JSON.stringify(orders));
   renderStaffOrders();
-  renderCustomerTicket();
-
-  showAtelierAlert({
-    title: "ສົ່ງແຈ້ງເຕືອນລ່າຊ້າ",
-    message: `ສົ່ງຂໍ້ຄວາມແຈ້ງເຕືອນລ່າຊ້າ +5 ນາທີ ໄປຍັງປີ້ຮັບເຄື່ອງຂອງລູກຄ້າ ${orderId} ແລ້ວ`,
-    type: "info"
-  });
+  alert(`ສົ່ງແຈ້ງເຕືອນລ່າຊ້າ +5 ນາທີ ໄປຍັງລູກຄ້າ ${orderId} ແລ້ວ`);
 }
