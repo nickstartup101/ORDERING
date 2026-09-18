@@ -1,4 +1,4 @@
-// Firebase Configuration
+// ລະບົບຖານຂໍ້ມູນ ແລະ ການຕັ້ງຄ່າຫຼັກ
 const firebaseConfig = {
   apiKey: "AIzaSyA7wNI6iwyqcv1gwKkzZ_1YEEGNMnYqABc",
   authDomain: "ladolceordering.firebaseapp.com",
@@ -24,68 +24,109 @@ try {
   console.warn("Local storage simulation mode active:", e);
 }
 
-// Pre-defined System Users with Roles (Passwords are masked & verified securely)
+// ບັນຊີເຂົ້າລະບົບ (ສາມາດປ່ຽນລະຫັດຢູ່ນີ້ໄດ້ເລີຍ)
 const REGISTERED_ACCOUNTS = [
   { email: "customer@ladolce.com", password: "123", name: "Elena Rostova", role: "customer", phone: "+856 20 5512 8899" },
-  { email: "staff@ladolce.com", password: "123", name: "Mateo (Barista)", role: "staff", phone: "+856 20 7788 9900" },
-  { email: "owner@ladolce.com", password: "123", name: "Sengsavanh (Owner)", role: "superadmin", phone: "+856 20 9900 1122" }
+  { email: "staff@ladolce.com", password: "123", name: "Mateo (Barista Lead)", role: "staff", phone: "+856 20 7788 9900" },
+  { email: "owner@ladolce.com", password: "123", name: "Sengsavanh (Superadmin)", role: "superadmin", phone: "+856 20 9900 1122" }
 ];
 
-// Seed Menu
+// ເມນູເລີ່ມຕົ້ນ (ຮອງຮັບທັງ Drink & Food)
 const DEFAULT_MENU = [
   {
     id: "item_cortado",
     name: "Double Shot Cortado",
+    type: "drink", // 'drink' | 'food'
     category: "coffee",
     image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80",
-    desc: "Equal parts velvety micro-foam and intense double-ristretto extraction.",
+    desc: "Single-origin Guji double espresso ຕັດດ້ວຍນົມໂຟມລະອຽດ",
     variants: { hot: 4.80, iced: 5.20, frappe: null },
-    avgPrepMinutes: 4.2
+    avgPrepMinutes: 3.8
   },
   {
     id: "item_pistachio",
     name: "Iced Pistachio Spanish Latte",
+    type: "drink",
     category: "coffee",
     image: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=600&auto=format&fit=crop&q=80",
-    desc: "Ethiopia Guji espresso poured over hand-ground Bronte pistachio cream.",
+    desc: "ກາເຟເອັສເປຣສໂຊ່ຜະສົມຄຣີມຖົ່ວພິສຕາຊິໂອຈາກ Sicily",
     variants: { hot: 6.20, iced: 6.80, frappe: 7.20 },
-    avgPrepMinutes: 9.8
-  },
-  {
-    id: "item_matcha",
-    name: "Ceremonial Uji Matcha",
-    category: "tea",
-    image: "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600&auto=format&fit=crop&q=80",
-    desc: "First-harvest organic green tea from Kyoto, stone-ground and whisked fresh.",
-    variants: { hot: 5.80, iced: 6.20, frappe: 6.80 },
-    avgPrepMinutes: 6.5
+    avgPrepMinutes: 8.5
   },
   {
     id: "item_croissant",
-    name: "Almond Frangipane Croissant",
+    name: "Pure Butter Almond Croissant",
+    type: "food",
     category: "bakery",
     image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&auto=format&fit=crop&q=80",
-    desc: "Pure Normandy butter, twice-baked with roasted almond flakes.",
-    variants: { hot: 4.50, iced: null, frappe: null },
-    avgPrepMinutes: 3.1
+    desc: "ຄຣົວຊອງເນີຍສົດຝຣັ່ງ ແຊກໄສ້ອານມອນດ໌ອົບກອບ",
+    variants: { standard: 4.50, warmed: 4.80, setbox: 8.50 },
+    avgPrepMinutes: 3.0
+  },
+  {
+    id: "item_sourdough",
+    name: "Smoked Salmon Sourdough Tartine",
+    type: "food",
+    category: "bakery",
+    image: "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=600&auto=format&fit=crop&q=80",
+    desc: "ເຂົ້າຈີ່ຊາວໂດຣອົບສົດ ໜ້າແຊວມອນລົມຄວັນ ແລະ ຄຣີມຊີສ",
+    variants: { standard: 8.90, warmed: 9.20, setbox: null },
+    avgPrepMinutes: 12.0
   }
 ];
 
-// Custom Modifiers System (Milk, Toppings, etc.)
+// ຕົວເລືອກເສີມ Modifiers (ນົມ, ຄວາມຫວານ, Toppings, ຄວາມຮ້ອນອາຫານ)
 const DEFAULT_MODIFIERS = [
-  { id: "mod_whole_milk", group: "milk", name: "Whole Milk (ນົມສົດແທ້)", price: 0.00 },
-  { id: "mod_oat_milk", group: "milk", name: "Oatly Barista (ນົມເຂົ້າໂອດ)", price: 0.75 },
-  { id: "mod_almond_milk", group: "milk", name: "Artisanal Almond Milk (ນົມອານມອນດ໌)", price: 0.75 },
-  { id: "mod_extra_shot", group: "topping", name: "Extra Double Ristretto Shot", price: 1.20 },
-  { id: "mod_cold_foam", group: "topping", name: "Sea Salt Vanilla Cold Foam", price: 1.00 },
-  { id: "mod_caramel_drizzle", group: "topping", name: "Salted Caramel Drizzle", price: 0.50 }
+  { id: "mod_whole", group: "milk", name: "Whole Milk (ນົມສົດແທ້)", price: 0.00 },
+  { id: "mod_oat", group: "milk", name: "Oatly Barista (ນົມເຂົ້າໂອດ)", price: 0.75 },
+  { id: "mod_almond", group: "milk", name: "Almond Milk (ນົມອານມອນດ໌)", price: 0.75 },
+  { id: "mod_shot", group: "topping", name: "Extra Double Ristretto Shot", price: 1.20 },
+  { id: "mod_foam", group: "topping", name: "Sea Salt Vanilla Cold Foam", price: 1.00 },
+  { id: "mod_warm", group: "food_prep", name: "ອຸ່ນຮ້ອນພິເສດ (Extra Toasted)", price: 0.00 }
 ];
 
-// Persistent State
+// ບັນຊີທະນາຄານ ແລະ ຮູບ QR Code ພ້ອມສີຂອບທະນາຄານ
+const DEFAULT_PAYMENT_METHODS = [
+  {
+    id: "pay_bcel",
+    bankName: "BCEL One (OnePay)",
+    accountNumber: "010-12-00-12345678",
+    accountName: "LA DOLCE ROASTERY CO.,LTD",
+    borderColor: "#DC2626", // ສີແດງ BCEL
+    qrImage: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=BCEL_ONEPAY_LADOLCE_MERCHANT_010120012345678"
+  },
+  {
+    id: "pay_ldb",
+    bankName: "LDB Trust Bank",
+    accountNumber: "030-01-22-98765432",
+    accountName: "LA DOLCE ATELIER",
+    borderColor: "#2563EB", // ສີຟ້າ LDB
+    qrImage: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=LDB_PAY_LADOLCE_MERCHANT_030012298765432"
+  },
+  {
+    id: "pay_jdb",
+    bankName: "JDB YesPay",
+    accountNumber: "550-99-44-11223344",
+    accountName: "LA DOLCE COFFEE",
+    borderColor: "#D97706", // ສີທອງ/ສົ້ມ JDB
+    qrImage: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=JDB_YESPAY_LADOLCE_MERCHANT_550994411223344"
+  }
+];
+
+// Persistent State Holders
 let menuItems = JSON.parse(localStorage.getItem('ladolce_menu')) || DEFAULT_MENU;
 let modifiers = JSON.parse(localStorage.getItem('ladolce_modifiers')) || DEFAULT_MODIFIERS;
+let paymentMethods = JSON.parse(localStorage.getItem('ladolce_payment_methods')) || DEFAULT_PAYMENT_METHODS;
 let orders = JSON.parse(localStorage.getItem('ladolce_orders')) || [];
 let cart = JSON.parse(localStorage.getItem('ladolce_cart')) || [];
 let currentUser = JSON.parse(localStorage.getItem('ladolce_user')) || null;
 let currentActiveOrder = JSON.parse(localStorage.getItem('ladolce_active_order')) || null;
 let userAccounts = JSON.parse(localStorage.getItem('ladolce_accounts')) || REGISTERED_ACCOUNTS;
+
+// ຕົວຄວບຄຸມລະບົບຮ້ານ (Store Settings ສາມາດປັບໂດຍ Superadmin)
+let storeSettings = JSON.parse(localStorage.getItem('ladolce_store_settings')) || {
+  isStoreOpen: true,
+  estimatedWaitMinutes: 10,
+  taxRatePercent: 8.0,
+  announcementNotice: ""
+};
