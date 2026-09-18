@@ -1,0 +1,38 @@
+@layer base {
+  html, body {
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+    background-color: #FAF9F6;
+    color: #1A1A1A;
+    font-family: 'DM Sans', 'Noto Sans Lao', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    overscroll-behavior: none;
+  }
+  .pb-safe { padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px); }
+  .pt-safe { padding-top: max(env(safe-area-inset-top, 0px), 14px); }
+}
+
+::-webkit-scrollbar { 
+  display: none; 
+}
+
+.barcode-pattern {
+  background: repeating-linear-gradient(
+    90deg, 
+    #11241c 0, 
+    #11241c 2px, 
+    transparent 2px, 
+    transparent 4px, 
+    #11241c 4px, 
+    #11241c 7px, 
+    transparent 7px, 
+    transparent 9px
+  );
+}
+
+.transition-subtle {
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
