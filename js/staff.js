@@ -1,7 +1,49 @@
-// ==========================================
-// BARISTA KITCHEN DISPLAY & REJECT ENGINE
-// ==========================================
+// =======================================================
+// BARISTA KITCHEN DISPLAY & BACKGROUND NOTIFICATION ENGINE
+// =======================================================
 
+// 1. ລະບົບຂໍສິດແຈ້ງເຕືອນໜ້າຈໍລັອກ (Lock Screen Notification)
+function requestStaffNotificationPermission() {
+  if ("Notification" in window) {
+    if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          console.log("✅ Staff Notification permission granted!");
+        }
+      });
+    }
+  }
+}
+
+// 2. ສົ່ງ Notification ເດັ້ງໜ້າຈໍ ພ້ອມສັ່ນ ແລະ ສຽງເຕືອນ ເມື່ອພັບແອັບ
+function triggerBackgroundOrderNotification(order) {
+  // ສັ່ງດັງສຽງ
+  if (typeof playStaffPulseTone === 'function') {
+    playStaffPulseTone();
+  }
+
+  // ສັ່ງສັ່ນໂທລະສັບ
+  if (navigator.vibrate) {
+    navigator.vibrate([300, 150, 300, 150, 400]);
+  }
+
+  // ເດັ້ງ Push Notification ໜ້າຈໍລັອກ
+  if ("Notification" in window && Notification.permission === "granted") {
+    const notif = new Notification(`🔔 ມີອໍເດີ້ໃໝ່ເຂົ້າມາ! #${order.id}`, {
+      body: `ລູກຄ້າ: ${order.customerName} (${order.customerPhone})\nຍອດລວມ: $${order.total.toFixed(2)} | ກົດເພື່ອເຂົ້າກວດສະລິບ`,
+      icon: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=128",
+      tag: "order_" + order.id,
+      requireInteraction: true
+    });
+
+    notif.onclick = function() {
+      window.focus();
+      this.close();
+    };
+  }
+}
+
+// 3. Render ຄິວອໍເດີ້ສຳລັບ Barista
 function renderStaffOrders() {
   const container = document.getElementById('staffOrdersContainer');
   if (!container) return;
@@ -102,12 +144,12 @@ function renderStaffOrders() {
   });
 }
 
-// ປະຕິເສດອໍເດີ້ ກໍລະນີສະລິບປອມ ຫຼື ມີບັນຫາ
+// 4. ປະຕິເສດອໍເດີ້ ກໍລະນີສະລິບປອມ
 async function rejectOrder(orderId) {
-  const reason = prompt("ກະລຸນາໃສ່ເຫດຜົນທີ່ປະຕິເສດອໍເດີ້ (ເຊັ່ນ: ໃບສະລິບບໍ່ຖືກຕ້ອງ, ເງິນບໍ່ເຂົ້າບັນຊີ):", "ໃບສະລິບໂອນເງິນບໍ່ຖືກຕ້ອງ ກະລຸນາຕິດຕໍ່ບາຣິສຕ້າ");
+  const reason = prompt("ກະລຸນາໃສ່ເຫດຜົນທີ່ປະຕິເສດອໍເດີ້:", "ໃບສະລິບໂອນເງິນບໍ່ຖືກຕ້ອງ ກະລຸນາຕິດຕໍ່ບາຣິສຕ້າ");
   if (!reason) return;
 
-  stopStaffAlarm();
+  if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
 
   const targetOrder = orders.find(o => o.id === orderId);
   if (targetOrder) {
@@ -115,14 +157,13 @@ async function rejectOrder(orderId) {
     targetOrder.cancelReason = reason;
   }
 
-  // Sync to Cloud Firestore Real-time
-  if (isFirebaseReady && db) {
+  if (typeof isFirebaseReady !== 'undefined' && isFirebaseReady && db) {
     try {
       await db.collection("orders").doc(orderId).update({
         status: 'cancelled',
         cancelReason: reason
       });
-      console.log("Order Rejected on Firestore:", orderId);
+      console.log("✅ Order Rejected on Firestore:", orderId);
     } catch (e) {
       console.error(e);
     }
@@ -143,9 +184,9 @@ function closeSlipAuditModal() {
   document.getElementById('slipAuditModal').classList.add('hidden');
 }
 
-// ອັບເດດສະຖານະ ແລະ Sync ໄປຫາຝັ່ງລູກຄ້າ Real-time
+// 5. ອັບເດດສະຖານະອໍເດີ້ Real-time
 async function updateOrderStatus(orderId, nextStatus) {
-  stopStaffAlarm();
+  if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
 
   const targetOrder = orders.find(o => o.id === orderId);
   if (!targetOrder) return;
@@ -155,24 +196,21 @@ async function updateOrderStatus(orderId, nextStatus) {
     targetOrder.completedAt = new Date().toISOString();
   }
 
-  // 1. Sync ຂຶ້ນ Cloud Firestore ທັນທີ
-  if (isFirebaseReady && db) {
+  if (typeof isFirebaseReady !== 'undefined' && isFirebaseReady && db) {
     try {
       await db.collection("orders").doc(orderId).update({
         status: nextStatus,
         completedAt: nextStatus === 'completed' ? new Date().toISOString() : null
       });
-      console.log("Firestore Status Updated Real-time:", orderId, nextStatus);
+      console.log("✅ Firestore Status Updated Real-time:", orderId, nextStatus);
     } catch (e) {
       console.warn("Firestore update error:", e);
     }
   }
 
-  // 2. ອັບເດດ LocalStorage
   localStorage.setItem('ladolce_orders', JSON.stringify(orders));
   renderStaffOrders();
 
-  // 3. ແຈ້ງເຕືອນ
   if (nextStatus === 'ready') {
     if (typeof playBoutiqueChime === 'function') playBoutiqueChime(true);
     alert(`ອໍເດີ້ ${orderId} ພ້ອມແລ້ວ! ສົ່ງສຽງກະດິ່ງແຈ້ງເຕືອນລູກຄ້າແລ້ວ`);
@@ -185,7 +223,7 @@ async function sendDelayNotice(orderId) {
 
   targetOrder.delayNotice = "ຄິວຫຼາຍ ຂໍເວລາເພີ່ມ 5 ນາທີ ເພື່ອຄວາມສົດໃໝ່";
 
-  if (isFirebaseReady && db) {
+  if (typeof isFirebaseReady !== 'undefined' && isFirebaseReady && db) {
     try {
       await db.collection("orders").doc(orderId).update({ delayNotice: targetOrder.delayNotice });
     } catch (e) {}
