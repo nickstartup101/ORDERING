@@ -1,38 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,400&family=Noto+Sans+Lao:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
+
 @layer base {
   html, body {
     width: 100vw;
     margin: 0;
     padding: 0;
     background-color: #FAF9F6;
-    color: #1A1A1A;
-    font-family: 'DM Sans', 'Noto Sans Lao', sans-serif;
+    color: #141A17;
+    /* ບັງຄັບໃຊ້ Noto Sans Lao ສຳລັບໂຕໜັງສືທັງໝົດ */
+    font-family: 'Noto Sans Lao', 'DM Sans', sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  body {
-    overscroll-behavior: none;
+  
+  /* ຫົວຂໍ້ພາສາອັງກິດໃຊ້ Serif ແຕ່ຖ້າມີຕົວອັກສອນລາວຈະ fallback ເປັນ Noto Sans Lao ຢ່າງສວຍງາມ */
+  .font-serif-title {
+    font-family: 'Playfair Display', 'Noto Sans Lao', serif;
   }
+
+  body {
+    overscroll-behavior-y: none;
+  }
+
   .pb-safe { padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px); }
   .pt-safe { padding-top: max(env(safe-area-inset-top, 0px), 14px); }
 }
 
-::-webkit-scrollbar { 
-  display: none; 
-}
+::-webkit-scrollbar { display: none; }
 
+/* ໂຄງສ້າງ Barcode Ticket */
 .barcode-pattern {
   background: repeating-linear-gradient(
-    90deg, 
-    #11241c 0, 
-    #11241c 2px, 
-    transparent 2px, 
-    transparent 4px, 
-    #11241c 4px, 
-    #11241c 7px, 
-    transparent 7px, 
-    transparent 9px
+    90deg,
+    #11241C 0,
+    #11241C 2.5px,
+    transparent 2.5px,
+    transparent 5px,
+    #0A3A2A 5px,
+    #0A3A2A 8.5px,
+    transparent 8.5px,
+    transparent 11px
   );
 }
 
 .transition-subtle {
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Green Accent Gradient Overlays */
+.bg-forest-gradient {
+  background: linear-gradient(135deg, #11241C 0%, #0D2E22 50%, #06402B 100%);
 }
