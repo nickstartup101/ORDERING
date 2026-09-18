@@ -1,85 +1,31 @@
-// ==========================================
-// AUTHENTICATION & PROFILE SYSTEM
-// ==========================================
-
-let sessionTimer = null;
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 ນາທີ
-
-// 1. Reset Session Timer ເມື່ອມີການເຄື່ອນໄຫວ
-function resetSessionTimer() {
-  if (sessionTimer) clearTimeout(sessionTimer);
-  if (currentUser) {
-    sessionTimer = setTimeout(() => {
-      autoLogoutSession();
-    }, SESSION_TIMEOUT_MS);
-  }
-}
-
-// ດັກຈັບການເຄື່ອນໄຫວຂອງຜູ້ໃຊ້ທັງຫມົດ
-['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
-  document.addEventListener(evt, resetSessionTimer, { passive: true });
-});
-
-function autoLogoutSession() {
-  if (!currentUser) return;
-  currentUser = null;
-  localStorage.removeItem('ladolce_user');
-  updateUserSessionUI();
-  dispatchRoleView('customer');
-  showAtelierAlert({
-    title: "ໝົດເວລາເຊດຊັນ (Session Timeout)",
-    message: "ທ່ານບໍ່ມີການເຄື່ອນໄຫວເກີນ 30 ນາທີ ລະບົບໄດ້ອອກຈາກລະບົບອັດຕະໂນມັດເພື່ອຄວາມປອດໄພ",
-    type: "info"
-  });
-}
-
-function openAuthModal() {
-  document.getElementById('authModal').classList.remove('hidden');
-}
-
-function closeAuthModal() {
-  document.getElementById('authModal').classList.add('hidden');
-}
-
-let isRegisterMode = false;
-function toggleAuthMode() {
-  isRegisterMode = !isRegisterMode;
-  const nameBox = document.getElementById('authNameBox');
-  const title = document.getElementById('authModalTitle');
-  const btn = document.getElementById('btnAuthSubmit');
-  const toggle = document.getElementById('authToggleText');
-
-  if (isRegisterMode) {
-    nameBox.classList.remove('hidden');
-    title.textContent = "ລົງທະບຽນໃໝ່";
-    btn.textContent = "ລົງທະບຽນ (Sign Up)";
-    toggle.textContent = "ມີບັນຊີແລ້ວ? ເຂົ້າສູ່ລະບົບ";
-  } else {
-    nameBox.classList.add('hidden');
-    title.textContent = "ເຂົ້າສູ່ລະບົບ";
-    btn.textContent = "ເຂົ້າສູ່ລະບົບ (Sign In)";
-    toggle.textContent = "ຍັງບໍ່ມີບັນຊີ? ລົງທະບຽນໃໝ່ທີ່ນີ້";
-  }
-}
-
-function handleAuthSubmit() {
+async function handleAuthSubmit() {
   const emailInput = document.getElementById('authEmail').value.trim();
   const passInput = document.getElementById('authPassword').value.trim();
   const nameInput = document.getElementById('authName').value.trim();
 
   if (!emailInput || !passInput) {
-    showAtelierAlert({ title: "ແຈ້ງເຕືອນ", message: "ກະລຸນາປ້ອນອີເມວ ແລະ ລະຫັດຜ່ານ!", type: "info" });
+    if (typeof showAtelierAlert === 'function') {
+      showAtelierAlert({ title: "ແຈ້ງເຕືອນ", message: "ກະລຸນາປ້ອນອີເມວ ແລະ ລະຫັດຜ່ານ!", type: "info" });
+    } else {
+      alert("ກະລຸນາປ້ອນອີເມວ ແລະ ລະຫັດຜ່ານ!");
+    }
     return;
   }
 
   if (isRegisterMode) {
+    // 1. ກວດສອບອີເມວຊ້ຳ
     const existing = userAccounts.find(u => u.email.toLowerCase() === emailInput.toLowerCase());
     if (existing) {
-      showAtelierAlert({ title: "ແຈ້ງເຕືອນ", message: "ອີເມວນີ້ມີໃນລະບົບແລ້ວ!", type: "error" });
+      if (typeof showAtelierAlert === 'function') {
+        showAtelierAlert({ title: "ແຈ້ງເຕືອນ", message: "ອີເມວນີ້ມີໃນລະບົບແລ້ວ!", type: "error" });
+      } else {
+        alert("ອີເມວນີ້ມີໃນລະບົບແລ້ວ!");
+      }
       return;
     }
 
     const newUser = {
+      uid: 'u_' + Date.now(),
       email: emailInput,
       password: passInput,
       name: nameInput || "Valued Customer",
@@ -88,312 +34,65 @@ function handleAuthSubmit() {
       isPhoneVerified: false,
       dob: "",
       profileImage: null,
-      beans: 50 // ແຕ້ມຕ້ອນຮັບລູກຄ້າໃໝ່
+      beans: 50,
+      createdAt: new Date().toISOString()
     };
 
+    // 2. ບັນທຶກລົງ LocalStorage
     userAccounts.push(newUser);
     localStorage.setItem('ladolce_accounts', JSON.stringify(userAccounts));
     currentUser = newUser;
+
+    // 3. ບັນທຶກລົງ Cloud Firestore Collection 'users' ແທ້ 100%
+    if (isFirebaseReady && db) {
+      try {
+        await db.collection("users").doc(newUser.email).set(newUser, { merge: true });
+        console.log("✅ New customer registered to Firestore:", newUser.email);
+      } catch (cloudErr) {
+        console.warn("⚠️ Firestore user save fallback:", cloudErr.message);
+      }
+    }
+
   } else {
-    const user = userAccounts.find(u => 
+    // ກວດສອບເຂົ້າສູ່ລະບົບ
+    let user = userAccounts.find(u => 
       u.email.toLowerCase() === emailInput.toLowerCase() && u.password === passInput
     );
 
+    // ຖ້າໃນ Local ບໍ່ມີ ລອງກວດສອບໃນ Firestore
+    if (!user && isFirebaseReady && db) {
+      try {
+        const doc = await db.collection("users").doc(emailInput).get();
+        if (doc.exists && doc.data().password === passInput) {
+          user = doc.data();
+          userAccounts.push(user);
+          localStorage.setItem('ladolce_accounts', JSON.stringify(userAccounts));
+        }
+      } catch (e) {}
+    }
+
     if (!user) {
-      showAtelierAlert({ title: "ເຂົ້າສູ່ລະບົບບໍ່ສຳເລັດ", message: "ອີເມວ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ!", type: "error" });
+      if (typeof showAtelierAlert === 'function') {
+        showAtelierAlert({ title: "ເຂົ້າສູ່ລະບົບບໍ່ສຳເລັດ", message: "ອີເມວ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ!", type: "error" });
+      } else {
+        alert("ອີເມວ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ!");
+      }
       return;
     }
     currentUser = user;
   }
 
   localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
-  resetSessionTimer();
+  if (typeof resetSessionTimer === 'function') resetSessionTimer();
   closeAuthModal();
   updateUserSessionUI();
   dispatchRoleView(currentUser.role);
-  showAtelierAlert({
-    title: "ຍິນດີຕ້ອນຮັບ!",
-    message: `ສະບາຍດີ, ${currentUser.name} ເຂົ້າສູ່ລະບົບສຳເລັດແລ້ວ. ເຊດຊັນຈະມີອາຍຸ 30 ນາທີ.`,
-    type: "success"
-  });
-}
 
-function logoutUser() {
-  currentUser = null;
-  localStorage.removeItem('ladolce_user');
-  if (sessionTimer) clearTimeout(sessionTimer);
-  updateUserSessionUI();
-  dispatchRoleView('customer');
-  showAtelierAlert({ title: "ສຳເລັດ", message: "ທ່ານໄດ້ອອກຈາກລະບົບຮຽບຮ້ອຍແລ້ວ", type: "info" });
-}
-
-function dispatchRoleView(role) {
-  const customerView = document.getElementById('customerAppView');
-  const staffView = document.getElementById('adminStaffAppView');
-  const superAdminView = document.getElementById('superAdminAppView');
-  const bottomNav = document.getElementById('customerBottomNav');
-  const roleBadge = document.getElementById('currentRoleBadge');
-
-  customerView.classList.add('hidden');
-  staffView.classList.add('hidden');
-  superAdminView.classList.add('hidden');
-  bottomNav.classList.add('hidden');
-
-  if (role === 'staff') {
-    staffView.classList.remove('hidden');
-    roleBadge.textContent = "Barista Display";
-    renderStaffOrders();
-  } else if (role === 'superadmin') {
-    superAdminView.classList.remove('hidden');
-    roleBadge.textContent = "SuperAdmin Suite";
-    renderAnalytics();
-    renderAdminMenu();
-    renderModifierSettings();
-  } else {
-    customerView.classList.remove('hidden');
-    bottomNav.classList.remove('hidden');
-    roleBadge.textContent = "Customer View";
-    switchCustomerTab('menu');
+  if (typeof showAtelierAlert === 'function') {
+    showAtelierAlert({
+      title: isRegisterMode ? "ລົງທະບຽນສຳເລັດ! 🎉" : "ຍິນດີຕ້ອນຮັບ!",
+      message: `ສະບາຍດີ, ${currentUser.name}. ຂໍ້ມູນຂອງທ່ານຖືກບັນທຶກລົງລະບົບ Database ແລ້ວ.`,
+      type: "success"
+    });
   }
-}
-
-function updateUserSessionUI() {
-  const btnLogin = document.getElementById('btnLoginHeader');
-  const userChip = document.getElementById('userProfileChip');
-  const avatarTxt = document.getElementById('avatarText');
-
-  if (currentUser) {
-    btnLogin.classList.add('hidden');
-    userChip.classList.remove('hidden');
-    if (currentUser.profileImage) {
-      userChip.innerHTML = `<img src="${currentUser.profileImage}" class="w-8 h-8 rounded-full object-cover border-2 border-forest-emerald"/>`;
-    } else {
-      userChip.innerHTML = `<div class="w-8 h-8 rounded-full bg-forest-emerald text-white flex items-center justify-center font-serif text-[13px]">${currentUser.name.charAt(0).toUpperCase()}</div>`;
-    }
-  } else {
-    btnLogin.classList.remove('hidden');
-    userChip.classList.add('hidden');
-  }
-}
-
-// 2. ຈັດການຂໍ້ມູນ Profile ແບບຄົບວົງຈອນ (ຮູບ, ວັນເກີດ, ເບີໂທ, ປ່ຽນລະຫັດ)
-function renderCustomerProfile() {
-  const container = document.getElementById('tab-customer-profile');
-  if (!container) return;
-
-  if (!currentUser) {
-    container.innerHTML = `
-      <div class="max-w-md mx-auto p-8 rounded-2xl bg-surface-pure border border-hairline text-center space-y-4 shadow-xs">
-        <span class="material-symbols-outlined text-[48px] text-forest-leaf">account_circle</span>
-        <h3 class="font-serif-title text-[20px] text-primary font-medium">ເຂົ້າສູ່ລະບົບເພື່ອຈັດການໂປຣໄຟລ໌</h3>
-        <p class="text-[12px] text-taupe font-lao">ສະສົມແຕ້ມ Beans, ຕິດຕາມປະຫວັດການສັ່ງຊື້ ແລະ ຮັບສິດທິພິເສດວັນເກີດ</p>
-        <button onclick="openAuthModal()" class="px-6 py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] uppercase font-semibold tracking-wider hover:bg-forest-leaf transition-all">
-          ເຂົ້າສູ່ລະບົບ / ລົງທະບຽນ
-        </button>
-      </div>
-    `;
-    return;
-  }
-
-  const avatarDisplay = currentUser.profileImage 
-    ? `<img src="${currentUser.profileImage}" class="w-20 h-20 rounded-full object-cover border-2 border-forest-emerald shadow-xs"/>`
-    : `<div class="w-20 h-20 rounded-full bg-forest-gradient text-white flex items-center justify-center font-serif text-[28px] shadow-xs">${currentUser.name.charAt(0).toUpperCase()}</div>`;
-
-  container.innerHTML = `
-    <div class="max-w-lg mx-auto space-y-5">
-      
-      <!-- Profile Header Card -->
-      <div class="p-6 rounded-2xl bg-surface-pure border border-hairline space-y-5 shadow-xs">
-        <div class="flex items-center gap-4">
-          <div class="relative group">
-            ${avatarDisplay}
-            <label class="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-forest-emerald text-white flex items-center justify-center cursor-pointer shadow-xs hover:bg-forest-leaf transition-transform hover:scale-110">
-              <span class="material-symbols-outlined text-[14px]">photo_camera</span>
-              <input type="file" accept="image/*" class="hidden" onchange="handleProfilePhotoUpload(event)"/>
-            </label>
-          </div>
-          <div class="flex-1 min-w-0">
-            <h3 class="font-serif-title text-[19px] text-primary font-medium truncate">${currentUser.name}</h3>
-            <p class="text-[12px] text-taupe font-mono truncate">${currentUser.email}</p>
-            <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-medium">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Connoisseur Tier • Gold
-            </span>
-          </div>
-          <button onclick="logoutUser()" class="text-[11px] text-red-700 hover:underline uppercase font-medium">ອອກຈາກລະບົບ</button>
-        </div>
-
-        <!-- Beans Loyalty Meter -->
-        <div class="p-3.5 rounded-xl bg-surface border border-hairline space-y-2">
-          <div class="flex justify-between items-baseline">
-            <span class="text-[11px] uppercase tracking-wider font-semibold text-primary">ຄະແນນສະສົມ (Bean Loyalty)</span>
-            <span class="font-serif-title text-[15px] font-bold text-forest-emerald">${currentUser.beans || 340} <span class="text-[11px] font-sans text-taupe font-normal">/ 400 Beans</span></span>
-          </div>
-          <div class="w-full bg-hairline h-2 rounded-full overflow-hidden">
-            <div class="bg-forest-leaf h-full rounded-full transition-all duration-700" style="width: 85%;"></div>
-          </div>
-          <span class="text-[10px] text-taupe block">ອີກ 60 beans ຮັບຟຣີ Pour-over ກາເຟພິເສດ 1 ຈອກ</span>
-        </div>
-
-        <!-- Personal Info Form -->
-        <div class="space-y-3 pt-2 border-t border-hairline text-[12px]">
-          <h4 class="font-serif-title text-[15px] text-primary font-medium">ຂໍ້ມູນສ່ວນຕົວ & ການຢືນຢັນ</h4>
-          
-          <div>
-            <label class="block text-taupe mb-1">ຊື່ເຕັມ (Full Name):</label>
-            <input type="text" id="profInputName" value="${currentUser.name}" class="w-full rounded-lg border border-hairline p-2"/>
-          </div>
-
-          <div>
-            <label class="block text-taupe mb-1">ເບີໂທລະສັບ (Phone Number):</label>
-            <div class="flex gap-2">
-              <input type="text" id="profInputPhone" value="${currentUser.phone || ''}" class="flex-1 rounded-lg border border-hairline p-2 font-mono"/>
-              <button onclick="verifyPhoneAction()" class="px-3 py-1.5 rounded-lg border text-[11px] font-medium transition-colors ${currentUser.isPhoneVerified ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-forest-emerald text-forest-emerald hover:bg-forest-emerald hover:text-white'}">
-                ${currentUser.isPhoneVerified ? '✓ ຢືນຢັນແລ້ວ' : 'ຢືນຢັນ OTP'}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-taupe mb-1">ວັນເດືອນປີເກີດ (Date of Birth) ສຳລັບຂອງຂວັນວັນເກີດ:</label>
-            <input type="date" id="profInputDob" value="${currentUser.dob || ''}" class="w-full rounded-lg border border-hairline p-2"/>
-          </div>
-
-          <button onclick="saveProfileDetails()" class="w-full py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-medium hover:bg-forest-leaf transition-all shadow-xs">
-            ບັນທຶກຂໍ້ມູນໂປຣໄຟລ໌
-          </button>
-        </div>
-
-        <!-- Change Password Section -->
-        <div class="space-y-3 pt-3 border-t border-hairline text-[12px]">
-          <h4 class="font-serif-title text-[15px] text-primary font-medium">ປ່ຽນລະຫັດຜ່ານໃໝ່</h4>
-          <div class="grid grid-cols-2 gap-2">
-            <input type="password" id="profNewPass" placeholder="ລະຫັດຜ່ານໃໝ່" class="rounded-lg border border-hairline p-2"/>
-            <input type="password" id="profConfirmPass" placeholder="ຢືນຢັນລະຫັດຜ່ານ" class="rounded-lg border border-hairline p-2"/>
-          </div>
-          <button onclick="changeCustomerPassword()" class="w-full py-2 rounded-lg border border-forest-emerald text-forest-emerald hover:bg-forest-emerald hover:text-white transition-all text-[11px] font-medium">
-            ອັບເດດລະຫັດຜ່ານ
-          </button>
-        </div>
-      </div>
-
-      <!-- Order History List -->
-      <div class="p-6 rounded-2xl bg-surface-pure border border-hairline space-y-3 shadow-xs">
-        <h4 class="font-serif-title text-[16px] text-primary font-medium">ປະຫວັດການສັ່ງຊື້ຂອງທ່ານ</h4>
-        <div id="customerHistoryList" class="divide-y divide-hairline border border-hairline rounded-xl bg-surface">
-          <!-- Rendered dynamically -->
-        </div>
-      </div>
-
-    </div>
-  `;
-
-  renderCustomerHistoryList();
-}
-
-async function handleProfilePhotoUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  try {
-    currentUser.profileImage = await compressImage(file, 300, 300, 0.8);
-    saveCurrentUserData();
-    renderCustomerProfile();
-    updateUserSessionUI();
-    showAtelierAlert({ title: "ສຳເລັດ", message: "ອັບເດດຮູບໂປຣໄຟລ໌ຮຽບຮ້ອຍແລ້ວ!", type: "success" });
-  } catch (err) {
-    showAtelierAlert({ title: "ຜິດພາດ", message: "ບໍ່ສາມາດອັບໂຫຼດຮູບໄດ້", type: "error" });
-  }
-}
-
-function verifyPhoneAction() {
-  if (currentUser.isPhoneVerified) {
-    showAtelierAlert({ title: "ແຈ້ງເຕືອນ", message: "ເບີໂທລະສັບນີ້ໄດ້ຮັບການຢືນຢັນແລ້ວ", type: "info" });
-    return;
-  }
-  const otp = prompt("ລະບົບໄດ້ສົ່ງລະຫັດ OTP ໄປຫາເບີ " + currentUser.phone + " (ລະຫັດທົດສອບແມ່ນ: 8899):");
-  if (otp === "8899") {
-    currentUser.isPhoneVerified = true;
-    saveCurrentUserData();
-    renderCustomerProfile();
-    showAtelierAlert({ title: "ສຳເລັດ", message: "ເບີໂທລະສັບຂອງທ່ານໄດ້ຮັບການຢືນຢັນ OTP ຮຽບຮ້ອຍແລ້ວ!", type: "success" });
-  } else if (otp) {
-    showAtelierAlert({ title: "ຜິດພາດ", message: "ລະຫັດ OTP ບໍ່ຖືກຕ້ອງ!", type: "error" });
-  }
-}
-
-function saveProfileDetails() {
-  const name = document.getElementById('profInputName').value.trim();
-  const phone = document.getElementById('profInputPhone').value.trim();
-  const dob = document.getElementById('profInputDob').value;
-
-  if (!name) {
-    showAtelierAlert({ title: "ແຈ້ງເຕືອນ", message: "ກະລຸນາໃສ່ຊື່ຂອງທ່ານ!", type: "info" });
-    return;
-  }
-
-  currentUser.name = name;
-  currentUser.phone = phone;
-  currentUser.dob = dob;
-
-  saveCurrentUserData();
-  renderCustomerProfile();
-  updateUserSessionUI();
-  showAtelierAlert({ title: "ສຳເລັດ", message: "ບັນທຶກຂໍ້ມູນໂປຣໄຟລ໌ຮຽບຮ້ອຍແລ້ວ!", type: "success" });
-}
-
-function changeCustomerPassword() {
-  const newPass = document.getElementById('profNewPass').value;
-  const confirmPass = document.getElementById('profConfirmPass').value;
-
-  if (!newPass || newPass.length < 3) {
-    showAtelierAlert({ title: "ແຈ້ງເຕືອນ", message: "ລະຫັດຜ່ານໃໝ່ຕ້ອງມີຢ່າງໜ້ອຍ 3 ຕົວອັກສອນ!", type: "info" });
-    return;
-  }
-
-  if (newPass !== confirmPass) {
-    showAtelierAlert({ title: "ຜິດພາດ", message: "ລະຫັດຜ່ານທັງສອງຊ່ອງບໍ່ກົງກັນ!", type: "error" });
-    return;
-  }
-
-  currentUser.password = newPass;
-  saveCurrentUserData();
-  document.getElementById('profNewPass').value = '';
-  document.getElementById('profConfirmPass').value = '';
-  showAtelierAlert({ title: "ສຳເລັດ", message: "ປ່ຽນລະຫັດຜ່ານໃໝ່ຮຽບຮ້ອຍແລ້ວ!", type: "success" });
-}
-
-function saveCurrentUserData() {
-  localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
-  // Sync back to accounts list
-  const idx = userAccounts.findIndex(u => u.email.toLowerCase() === currentUser.email.toLowerCase());
-  if (idx !== -1) {
-    userAccounts[idx] = currentUser;
-    localStorage.setItem('ladolce_accounts', JSON.stringify(userAccounts));
-  }
-}
-
-function renderCustomerHistoryList() {
-  const container = document.getElementById('customerHistoryList');
-  if (!container) return;
-
-  const myOrders = orders.filter(o => o.customerPhone === currentUser.phone || o.customerEmail === currentUser.email);
-
-  if (myOrders.length === 0) {
-    container.innerHTML = `<div class="p-4 text-center text-taupe text-[12px] font-lao">ຍັງບໍ່ມີປະຫວັດການສັ່ງຊື້</div>`;
-    return;
-  }
-
-  container.innerHTML = myOrders.slice(0, 5).map(o => `
-    <div class="p-3.5 flex items-center justify-between text-[12px]">
-      <div>
-        <span class="font-mono font-bold text-forest-emerald">${o.id}</span>
-        <p class="text-[11px] text-taupe font-lao">${o.items.map(it => it.name).join(', ')}</p>
-        <span class="text-[10px] text-taupe">${new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-      </div>
-      <div class="text-right">
-        <span class="font-mono font-bold text-charcoal">$${o.total.toFixed(2)}</span>
-        <span class="block text-[10px] uppercase font-bold text-emerald-800">${o.status}</span>
-      </div>
-    </div>
-  `).join('');
 }
