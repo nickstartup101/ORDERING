@@ -1,8 +1,7 @@
 // =======================================================
-// LA DOLCE ATELIER — MAIN CONTROLLER & APPLICATION BOOTSTRAP
+// LA DOLCE ATELIER — MAIN APP CONTROLLER
 // =======================================================
 
-// 1. ລະບົບປ່ຽນ Tab ໜ້າຈໍລູກຄ້າ (Menu, Cart, Ticket, Profile)
 function switchCustomerTab(tabName) {
   const tabs = ['menu', 'cart', 'ticket', 'profile'];
   
@@ -25,7 +24,6 @@ function switchCustomerTab(tabName) {
     activeBtn.classList.remove('text-taupe');
   }
 
-  // Render ຂໍ້ມູນສະເພາະແຕ່ລະ Tab ເມື່ອກົດເຂົ້າໄປ
   if (tabName === 'cart' && typeof renderCartList === 'function') {
     renderCartList();
     if (typeof renderCustomerPaymentOptions === 'function') renderCustomerPaymentOptions();
@@ -40,18 +38,17 @@ function switchCustomerTab(tabName) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// 2. ດັກຟັງການປ່ຽນແປງເມນູ (Broadcast Event) ໃຫ້ Render ທັນທີທັງສອງຝັ່ງ ບໍ່ຕ້ອງກົດ F5
 window.addEventListener('ladolce_menu_updated', () => {
   if (typeof renderMenu === 'function') renderMenu();
   if (typeof renderAdminMenu === 'function') renderAdminMenu();
   if (typeof renderAnalytics === 'function') renderAnalytics();
 });
 
-// 3. Real-time Synchronization ກັບ Firebase Firestore
+// Real-time Cloud Synchronization
 function initCloudSync() {
-  if (!isFirebaseReady || !db) return;
+  if (typeof isFirebaseReady === 'undefined' || !isFirebaseReady || !db) return;
 
-  // Sync Menu Items ຈາກ Cloud Real-time
+  // Sync Menu
   db.collection("menu_items").onSnapshot((snapshot) => {
     if (!snapshot.empty) {
       const remoteItems = [];
@@ -62,9 +59,9 @@ function initCloudSync() {
       if (typeof renderMenu === 'function') renderMenu();
       if (typeof renderAdminMenu === 'function') renderAdminMenu();
     }
-  }, (err) => console.log("Firestore menu stream fallback:", err));
+  }, (err) => console.log("Firestore menu stream:", err));
 
-  // Sync Orders ຈາກ Cloud Real-time
+  // Sync Orders (ພ້ອມດັກສຽງເຕືອນ ແລະ Push Notification ສຳລັບ Staff)
   db.collection("orders").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
     if (!snapshot.empty) {
       const remoteOrders = [];
@@ -72,8 +69,26 @@ function initCloudSync() {
       orders = remoteOrders;
       localStorage.setItem('ladolce_orders', JSON.stringify(orders));
 
-      // ກວດສອບອໍເດີ້ລູກຄ້າປັດຈຸບັນ ເພື່ອດັງກະດິ່ງແຈ້ງເຕືອນ
-      if (currentUser && currentActiveOrder) {
+      // ດັກຈັບສຳລັບ Staff: ເດັ້ງ Notification ທັນທີເຖິງວ່າຈະພັບແອັບຢູ່
+      if (currentUser && (currentUser.role === 'staff' || currentUser.role === 'superadmin')) {
+        const pendingOrders = orders.filter(o => o.status === 'pending');
+        if (pendingOrders.length > 0) {
+          const latestOrder = pendingOrders[0];
+          if (typeof triggerBackgroundOrderNotification === 'function') {
+            triggerBackgroundOrderNotification(latestOrder);
+          }
+          if (typeof startStaffAlarm === 'function') {
+            startStaffAlarm();
+          }
+        } else {
+          if (typeof stopStaffAlarm === 'function') {
+            stopStaffAlarm();
+          }
+        }
+      }
+
+      // Sync ຝັ່ງລູກຄ້າ Real-time (ດັງກະດິ່ງເມື່ອອໍເດີ້ພ້ອມຮັບ)
+      if (currentActiveOrder) {
         const liveActive = orders.find(o => o.id === currentActiveOrder.id);
         if (liveActive && liveActive.status !== currentActiveOrder.status) {
           currentActiveOrder = liveActive;
@@ -83,13 +98,9 @@ function initCloudSync() {
 
           if (liveActive.status === 'ready') {
             if (typeof playBoutiqueChime === 'function') playBoutiqueChime(true);
-            if (typeof showAtelierAlert === 'function') {
-              showAtelierAlert({
-                title: "ເຄື່ອງດື່ມພ້ອມແລ້ວ! ☕",
-                message: "ເຄື່ອງດື່ມຂອງທ່ານພ້ອມແລ້ວ! ເຊີນຮັບໄດ້ທີ່ Counter 02 Downtown Roastery",
-                type: "success"
-              });
-            }
+            alert("☕ ເຄື່ອງດື່ມຂອງທ່ານພ້ອມແລ້ວ! ເຊີນຮັບໄດ້ທີ່ Counter 02");
+          } else if (liveActive.status === 'cancelled') {
+            alert("⚠️ ອໍເດີ້ຂອງທ່ານຖືກຍົກເລີກ: " + (liveActive.cancelReason || "ກະລຸນາຕິດຕໍ່ບາຣິສຕ້າ"));
           }
         }
       }
@@ -97,10 +108,9 @@ function initCloudSync() {
       if (typeof renderStaffOrders === 'function') renderStaffOrders();
       if (typeof renderAnalytics === 'function') renderAnalytics();
     }
-  }, (err) => console.log("Firestore orders stream fallback:", err));
+  }, (err) => console.log("Firestore orders stream:", err));
 }
 
-// 4. Floating Toast Notification ສຳຮອງ
 function showToast(msg) {
   const toast = document.getElementById('toast');
   const text = document.getElementById('toastMsg');
@@ -116,9 +126,8 @@ function showToast(msg) {
   }, 2500);
 }
 
-// 5. APPLICATION BOOTSTRAP (ເລີ່ມຕົ້ນການເຮັດວຽກເມື່ອເປີດໜ້າເວັບ)
+// Bootstrap
 window.addEventListener('DOMContentLoaded', () => {
-  // ກູ້ຄືນ Session ເກົ່າທີ່ເຄີຍ Login ໄວ້ (ແກ້ໄຂບັນຫາ F5 ແລ້ວຫຼຸດອອກຈາກລະບົບ)
   const savedUser = localStorage.getItem('ladolce_user');
   if (savedUser) {
     try {
@@ -129,12 +138,10 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ໂຫຼດພາສາທີ່ຕັ້ງໄວ້
   if (typeof setLanguage === 'function' && typeof currentLang !== 'undefined') {
     setLanguage(currentLang);
   }
 
-  // Render ສ່ວນປະກອບຫຼັກທັງໝົດ
   if (typeof renderMenu === 'function') renderMenu();
   if (typeof updateCartBadges === 'function') updateCartBadges();
   if (typeof updateUserSessionUI === 'function') updateUserSessionUI();
@@ -144,17 +151,14 @@ window.addEventListener('DOMContentLoaded', () => {
   if (typeof updateStoreStatusUI === 'function') updateStoreStatusUI();
   if (typeof resetSessionTimer === 'function') resetSessionTimer();
 
-  // ນຳທາງເຂົ້າໜ້າ Dashboard ຕາມ Role ທີ່ Login ຄ້າງໄວ້ທັນທີ
   if (currentUser && currentUser.role && typeof dispatchRoleView === 'function') {
     dispatchRoleView(currentUser.role);
   } else if (typeof dispatchRoleView === 'function') {
     dispatchRoleView('customer');
   }
 
-  // ເລີ່ມຕົ້ນ Cloud Sync
   initCloudSync();
 
-  // ປົດລັອກສຽງ Web Audio API ເມື່ອມີການແຕະໜ້າຈໍເທື່ອທຳອິດ
   document.body.addEventListener('click', function unlockAudio() {
     if (typeof getAudioContext === 'function') getAudioContext();
     document.body.removeEventListener('click', unlockAudio);
