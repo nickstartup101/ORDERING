@@ -1,65 +1,4 @@
-// ລະບົບ Authentication, Role Switcher (PIN 7878 / 2324)
-let isRegisterMode = false;
-
-function openRoleSwitcher() {
-  document.getElementById('roleModal').classList.remove('hidden');
-}
-
-function closeRoleSwitcher() {
-  document.getElementById('roleModal').classList.add('hidden');
-}
-
-function verifyRolePin(type) {
-  if (type === 'staff') {
-    const pin = document.getElementById('staffPinInput').value;
-    if (pin === '7878') {
-      switchRole('staff');
-      closeRoleSwitcher();
-      document.getElementById('staffPinInput').value = '';
-    } else {
-      alert('ລະຫັດ PIN ພະນັກງານບໍ່ຖືກຕ້ອງ! (PIN ແມ່ນ 7878)');
-    }
-  } else if (type === 'admin') {
-    const pin = document.getElementById('adminPinInput').value;
-    if (pin === '2324') {
-      switchRole('admin');
-      closeRoleSwitcher();
-      document.getElementById('adminPinInput').value = '';
-    } else {
-      alert('ລະຫັດ PIN Superadmin ບໍ່ຖືກຕ້ອງ! (PIN ແມ່ນ 2324)');
-    }
-  }
-}
-
-function switchRole(role) {
-  currentRole = role;
-  closeRoleSwitcher();
-
-  document.getElementById('customerAppView').classList.add('hidden');
-  document.getElementById('adminStaffAppView').classList.add('hidden');
-  document.getElementById('superAdminAppView').classList.add('hidden');
-  document.getElementById('customerBottomNav').classList.add('hidden');
-
-  const roleBadge = document.getElementById('currentRoleBadge');
-
-  if (role === 'customer') {
-    document.getElementById('customerAppView').classList.remove('hidden');
-    document.getElementById('customerBottomNav').classList.remove('hidden');
-    roleBadge.textContent = "Customer View";
-    stopStaffAlarm();
-  } else if (role === 'staff') {
-    document.getElementById('adminStaffAppView').classList.remove('hidden');
-    roleBadge.textContent = "Staff Kitchen (7878)";
-    renderStaffOrders();
-  } else if (role === 'admin') {
-    document.getElementById('superAdminAppView').classList.remove('hidden');
-    roleBadge.textContent = "SuperAdmin (2324)";
-    renderAnalytics();
-    renderAdminMenu();
-    stopStaffAlarm();
-  }
-}
-
+// Secure Login & Registration without exposed PINs
 function openAuthModal() {
   document.getElementById('authModal').classList.remove('hidden');
 }
@@ -68,66 +7,124 @@ function closeAuthModal() {
   document.getElementById('authModal').classList.add('hidden');
 }
 
+let isRegisterMode = false;
 function toggleAuthMode() {
   isRegisterMode = !isRegisterMode;
-  const title = document.getElementById('authTitle');
-  const subtitle = document.getElementById('authSubtitle');
-  const nameField = document.getElementById('authNameField');
-  const btnSubmit = document.getElementById('btnAuthSubmit');
-  const toggleText = document.getElementById('btnAuthToggleText');
+  const nameBox = document.getElementById('authNameBox');
+  const title = document.getElementById('authModalTitle');
+  const btn = document.getElementById('btnAuthSubmit');
+  const toggle = document.getElementById('authToggleText');
 
   if (isRegisterMode) {
-    title.textContent = "ລົງທະບຽນໃໝ່";
-    subtitle.textContent = "ສ້າງບັນຊີເພື່ອສະສົມຄະແນນ ແລະ ຈື່ຈຳເມນູທີ່ມັກ";
-    nameField.classList.remove('hidden');
-    btnSubmit.textContent = "ລົງທະບຽນ (Sign Up)";
-    toggleText.textContent = "ມີບັນຊີແລ້ວ? ເຂົ້າສູ່ລະບົບ";
+    nameBox.classList.remove('hidden');
+    title.textContent = t('register');
+    btn.textContent = t('register');
+    toggle.textContent = "Already have an account? Sign In";
   } else {
-    title.textContent = "ເຂົ້າສູ່ລະບົບ";
-    subtitle.textContent = "ລະບຸຕົວຕົນເພື່ອສະສົມຄະແນນ ແລະ ຕິດຕາມອໍເດີ້";
-    nameField.classList.add('hidden');
-    btnSubmit.textContent = "ເຂົ້າສູ່ລະບົບ (Sign In)";
-    toggleText.textContent = "ຍັງບໍ່ມີບັນຊີ? ລົງທະບຽນໃໝ່ທີ່ນີ້";
+    nameBox.classList.add('hidden');
+    title.textContent = t('login');
+    btn.textContent = t('login');
+    toggle.textContent = "New customer? Create an account";
   }
 }
 
 function handleAuthSubmit() {
-  const email = document.getElementById('authEmailInput').value || "elena@ladolce.com";
-  const name = isRegisterMode 
-    ? (document.getElementById('authNameInput').value || "Elena Rostova") 
-    : (email.split('@')[0]);
+  const emailInput = document.getElementById('authEmail').value.trim();
+  const passInput = document.getElementById('authPassword').value.trim();
+  const nameInput = document.getElementById('authName').value.trim();
 
-  currentUser = {
-    name: name,
-    email: email,
-    phone: "+856 20 5512 8899"
-  };
+  if (!emailInput || !passInput) {
+    alert("ກະລຸນາປ້ອນອີເມວ ແລະ ລະຫັດຜ່ານ!");
+    return;
+  }
+
+  if (isRegisterMode) {
+    const existing = userAccounts.find(u => u.email.toLowerCase() === emailInput.toLowerCase());
+    if (existing) {
+      alert("ອີເມວນີ້ມີໃນລະບົບແລ້ວ!");
+      return;
+    }
+
+    const newUser = {
+      email: emailInput,
+      password: passInput,
+      name: nameInput || "Valued Customer",
+      role: "customer",
+      phone: "+856 20 " + Math.floor(10000000 + Math.random() * 90000000)
+    };
+
+    userAccounts.push(newUser);
+    localStorage.setItem('ladolce_accounts', JSON.stringify(userAccounts));
+    currentUser = newUser;
+  } else {
+    // Authenticate
+    const user = userAccounts.find(u => 
+      u.email.toLowerCase() === emailInput.toLowerCase() && u.password === passInput
+    );
+
+    if (!user) {
+      alert("ອີເມວ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ!");
+      return;
+    }
+    currentUser = user;
+  }
 
   localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
-  updateAuthUI();
   closeAuthModal();
-  showToast(`ຍິນດີຕ້ອນຮັບ, ${currentUser.name}!`);
+  updateUserSessionUI();
+  dispatchRoleView(currentUser.role);
+  showToast(`Welcome, ${currentUser.name}`);
 }
 
-function updateAuthUI() {
-  const btnPrompt = document.getElementById('btnLoginPrompt');
-  const profileChip = document.getElementById('userProfileChip');
-  const avatarText = document.getElementById('avatarText');
+function logoutUser() {
+  currentUser = null;
+  localStorage.removeItem('ladolce_user');
+  updateUserSessionUI();
+  dispatchRoleView('customer');
+  showToast("ອອກຈາກລະບົບແລ້ວ");
+}
 
-  if (currentUser) {
-    btnPrompt.classList.add('hidden');
-    profileChip.classList.remove('hidden');
-    avatarText.textContent = currentUser.name.charAt(0).toUpperCase();
+function dispatchRoleView(role) {
+  const customerView = document.getElementById('customerAppView');
+  const staffView = document.getElementById('adminStaffAppView');
+  const superAdminView = document.getElementById('superAdminAppView');
+  const bottomNav = document.getElementById('customerBottomNav');
+  const roleBadge = document.getElementById('currentRoleBadge');
+
+  customerView.classList.add('hidden');
+  staffView.classList.add('hidden');
+  superAdminView.classList.add('hidden');
+  bottomNav.classList.add('hidden');
+
+  if (role === 'staff') {
+    staffView.classList.remove('hidden');
+    roleBadge.textContent = "Barista Display";
+    renderStaffOrders();
+  } else if (role === 'superadmin') {
+    superAdminView.classList.remove('hidden');
+    roleBadge.textContent = "SuperAdmin Suite";
+    renderAnalytics();
+    renderAdminMenu();
+    renderModifierSettings();
   } else {
-    btnPrompt.classList.remove('hidden');
-    profileChip.classList.add('hidden');
+    customerView.classList.remove('hidden');
+    bottomNav.classList.remove('hidden');
+    roleBadge.textContent = "Customer View";
+    switchCustomerTab('menu');
   }
 }
 
-function logoutCustomer() {
-  currentUser = null;
-  localStorage.removeItem('ladolce_user');
-  updateAuthUI();
-  renderCustomerProfile();
-  showToast("ອອກຈາກລະບົບແລ້ວ");
+function updateUserSessionUI() {
+  const btnLogin = document.getElementById('btnLoginHeader');
+  const userChip = document.getElementById('userProfileChip');
+  const avatarTxt = document.getElementById('avatarText');
+
+  if (currentUser) {
+    btnLogin.classList.add('hidden');
+    userChip.classList.remove('hidden');
+    avatarTxt.textContent = currentUser.name.charAt(0).toUpperCase();
+  } else {
+    btnLogin.classList.remove('hidden');
+    userChip.classList.add('hidden');
+  }
 }
