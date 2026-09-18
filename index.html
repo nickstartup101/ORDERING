@@ -421,7 +421,7 @@
     </div>
   </div>
 
-  <!-- 2. ADD / EDIT MENU MODAL -->
+  <!-- 2. ADD / EDIT MENU MODAL (ໂຄງສ້າງທີ່ຖືກຕ້ອງ 100%) -->
   <div id="addMenuModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-lg rounded-2xl border border-hairline overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
       <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
@@ -431,11 +431,12 @@
         </button>
       </div>
 
-      <!-- ປ່ຽນປຸ່ມບັນທຶກເມນູໃນ Modal ເປັນແບບນີ້: -->
-      <button type="button" onclick="saveMenuItem(event)" class="px-5 py-2 rounded-lg bg-forest-emerald text-white font-medium hover:bg-forest-leaf">
-      ບັນທຶກເມນູ
-    </button>
-     <div>
+      <form id="menuForm" class="p-5 overflow-y-auto space-y-4 text-[13px] flex-1">
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ຊື່ເມນູ:</label>
+          <input required id="inputItemName" type="text" placeholder="ເຊັ່ນ: Iced Spanish Latte" class="w-full rounded-lg border border-hairline p-2.5"/>
+        </div>
+
         <div class="grid grid-cols-3 gap-2.5">
           <div>
             <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ປະເພດສິນຄ້າ:</label>
@@ -466,48 +467,53 @@
 
         <div>
           <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ຄຳອະທິບາຍ & ໂນ໊ດລົດຊາດ:</label>
-          <textarea id="inputItemDesc" rows="2" class="w-full rounded-lg border border-hairline p-2.5 text-[12px]"></textarea>
+          <textarea id="inputItemDesc" rows="2" placeholder="ລາຍລະອຽດສິນຄ້າ..." class="w-full rounded-lg border border-hairline p-2.5 text-[12px]"></textarea>
         </div>
 
+        <!-- Drink Variants (Hot / Iced / Frappe) -->
         <div id="drinkVariantsBox" class="border border-hairline rounded-xl p-3 bg-surface space-y-2">
           <span class="block text-[11px] uppercase tracking-wider font-semibold text-primary">ລາຄາເຄື່ອງດື່ມ (USD $):</span>
           <div class="grid grid-cols-3 gap-2">
             <div>
               <label class="block text-[10px] text-taupe mb-0.5">ຮ້ອນ ($):</label>
-              <input id="priceHot" type="number" step="0.10" class="w-full text-[12px] rounded border border-hairline p-1.5"/>
+              <input id="priceHot" type="number" step="0.10" placeholder="4.50" class="w-full text-[12px] rounded border border-hairline p-1.5"/>
             </div>
             <div>
               <label class="block text-[10px] text-taupe mb-0.5">ເຢັນ ($):</label>
-              <input id="priceIced" type="number" step="0.10" class="w-full text-[12px] rounded border border-hairline p-1.5"/>
+              <input id="priceIced" type="number" step="0.10" placeholder="5.00" class="w-full text-[12px] rounded border border-hairline p-1.5"/>
             </div>
             <div>
               <label class="block text-[10px] text-taupe mb-0.5">ປັ່ນ ($):</label>
-              <input id="priceFrappe" type="number" step="0.10" class="w-full text-[12px] rounded border border-hairline p-1.5"/>
+              <input id="priceFrappe" type="number" step="0.10" placeholder="5.50" class="w-full text-[12px] rounded border border-hairline p-1.5"/>
             </div>
           </div>
         </div>
 
+        <!-- Food Variants (Standard / Warmed / Setbox) -->
         <div id="foodVariantsBox" class="border border-hairline rounded-xl p-3 bg-surface space-y-2 hidden">
           <span class="block text-[11px] uppercase tracking-wider font-semibold text-primary">ລາຄາອາຫານ / ເບເກີຣີ່ (USD $):</span>
           <div class="grid grid-cols-3 gap-2">
             <div>
               <label class="block text-[10px] text-taupe mb-0.5">ປົກກະຕິ Standard ($):</label>
-              <input id="priceFoodStandard" type="number" step="0.10" class="w-full text-[12px] rounded border border-hairline p-1.5"/>
+              <input id="priceFoodStandard" type="number" step="0.10" placeholder="4.00" class="w-full text-[12px] rounded border border-hairline p-1.5"/>
             </div>
             <div>
               <label class="block text-[10px] text-taupe mb-0.5">ອຸ່ນຮ້ອນ Warmed ($):</label>
-              <input id="priceFoodWarmed" type="number" step="0.10" class="w-full text-[12px] rounded border border-hairline p-1.5"/>
+              <input id="priceFoodWarmed" type="number" step="0.10" placeholder="4.50" class="w-full text-[12px] rounded border border-hairline p-1.5"/>
             </div>
             <div>
               <label class="block text-[10px] text-taupe mb-0.5">ກ່ອງ Set Box ($):</label>
-              <input id="priceFoodSetbox" type="number" step="0.10" class="w-full text-[12px] rounded border border-hairline p-1.5"/>
+              <input id="priceFoodSetbox" type="number" step="0.10" placeholder="8.00" class="w-full text-[12px] rounded border border-hairline p-1.5"/>
             </div>
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 pt-2">
+        <!-- ປຸ່ມບັນທຶກຢູ່ລຸ່ມສຸດຢ່າງຖືກຕ້ອງ -->
+        <div class="flex justify-end gap-2 pt-3 border-t border-hairline">
           <button type="button" onclick="closeAddMenuModal()" class="px-4 py-2 border border-hairline rounded-lg text-taupe">ຍົກເລີກ</button>
-          <button type="submit" class="px-5 py-2 rounded-lg bg-forest-emerald text-white font-medium hover:bg-forest-leaf">ບັນທຶກເມນູ</button>
+          <button type="button" onclick="saveMenuItem(event)" class="px-5 py-2 rounded-lg bg-forest-emerald text-white font-medium hover:bg-forest-leaf transition-all shadow-xs">
+            ບັນທຶກເມນູ
+          </button>
         </div>
       </form>
     </div>
@@ -523,7 +529,7 @@
         </button>
       </div>
 
-      <form id="paymentForm" onsubmit="savePaymentMethod(event)" class="space-y-3 text-[12px]">
+      <form id="paymentForm" class="space-y-3 text-[12px]">
         <div>
           <label class="block text-taupe mb-1">ຊື່ທະນາຄານ (ເຊັ່ນ: BCEL One, LDB, JDB):</label>
           <input required id="inputBankName" type="text" placeholder="BCEL One" class="w-full rounded border border-hairline p-2"/>
@@ -550,7 +556,7 @@
         </div>
         <div class="flex justify-end gap-2 pt-2 border-t border-hairline">
           <button type="button" onclick="closeAddPaymentModal()" class="px-3 py-1.5 border border-hairline rounded text-taupe">ຍົກເລີກ</button>
-          <button type="submit" class="px-4 py-1.5 rounded bg-forest-emerald text-white font-medium">ບັນທຶກ</button>
+          <button type="button" onclick="savePaymentMethod(event)" class="px-4 py-1.5 rounded bg-forest-emerald text-white font-medium">ບັນທຶກ</button>
         </div>
       </form>
     </div>
@@ -617,7 +623,7 @@
   <!-- ================= SCRIPTS IN CORRECT SEQUENCE ================= -->
   <script src="js/i18n.js"></script>
   <script src="js/config.js"></script>
-  <script src="js/dialog.js"></script> <!-- Custom Pop-up ຕ້ອງຢູ່ກ່ອນໄຟລ໌ອື່ນໆ -->
+  <script src="js/dialog.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/menu.js"></script>
@@ -628,12 +634,11 @@
   <script src="js/app.js"></script>
 
   <script>
-    // Initializer calls for Superadmin & Payment
     window.addEventListener('DOMContentLoaded', () => {
-      renderPaymentSettings();
-      renderModifierSettings();
-      renderCustomerPaymentOptions();
-      updateStoreStatusUI(); 
+      if (typeof renderPaymentSettings === 'function') renderPaymentSettings();
+      if (typeof renderModifierSettings === 'function') renderModifierSettings();
+      if (typeof renderCustomerPaymentOptions === 'function') renderCustomerPaymentOptions();
+      if (typeof updateStoreStatusUI === 'function') updateStoreStatusUI(); 
     });
   </script>
 </body>
