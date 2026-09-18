@@ -1,37 +1,73 @@
-// Reliable Tab Switching Engine
-function switchCustomerTab(tabName) {
-  const tabs = ['menu', 'cart', 'ticket', 'profile'];
-  tabs.forEach(t => {
-    const el = document.getElementById(`tab-customer-${t}`);
-    const btn = document.getElementById(`nav-btn-${t}`);
-    if (el) el.classList.add('hidden');
-    if (btn) {
-      btn.classList.remove('text-primary', 'font-semibold');
-      btn.classList.add('text-taupe');
+// ==========================================
+// APPLICATION ORCHESTRATION
+// ==========================================
+
+// ຟັງ Event ເມື່ອມີການເພີ່ມ/ແກ້ໄຂ/ລົບ ເມນູ ໃຫ້ Render ທັນທີທັງສອງຝັ່ງ
+window.addEventListener('ladolce_menu_updated', () => {
+  renderMenu();
+  renderAdminMenu();
+  renderAnalytics();
+});
+
+// Sync Firestore Real-time Snapshots
+function initCloudSync() {
+  if (!isFirebaseReady || !db) return;
+
+  // Sync Menu Items
+  db.collection("menu_items").onSnapshot((snapshot) => {
+    if (!snapshot.empty) {
+      const remoteItems = [];
+      snapshot.forEach(doc => remoteItems.push({ id: doc.id, ...doc.data() }));
+      menuItems = remoteItems;
+      localStorage.setItem('ladolce_menu', JSON.stringify(menuItems));
+      renderMenu();
+      renderAdminMenu();
     }
-  });
+  }, (err) => console.log("Firestore menu stream fallback:", err));
 
-  const activeTab = document.getElementById(`tab-customer-${tabName}`);
-  const activeBtn = document.getElementById(`nav-btn-${tabName}`);
-  if (activeTab) activeTab.classList.remove('hidden');
-  if (activeBtn) {
-    activeBtn.classList.add('text-primary', 'font-semibold');
-    activeBtn.classList.remove('text-taupe');
-  }
+  // Sync Orders
+  db.collection("orders").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+    if (!snapshot.empty) {
+      const remoteOrders = [];
+      snapshot.forEach(doc => remoteOrders.push({ id: doc.id, ...doc.data() }));
+      orders = remoteOrders;
+      localStorage.setItem('ladolce_orders', JSON.stringify(orders));
 
-  if (tabName === 'cart') renderCartList();
-  if (tabName === 'ticket') renderCustomerTicket();
-  if (tabName === 'profile') renderCustomerProfile();
+      // ກວດສອບອໍເດີ້ລູກຄ້າປັດຈຸບັນ
+      if (currentUser && currentActiveOrder) {
+        const liveActive = orders.find(o => o.id === currentActiveOrder.id);
+        if (liveActive && liveActive.status !== currentActiveOrder.status) {
+          currentActiveOrder = liveActive;
+          localStorage.setItem('ladolce_active_order', JSON.stringify(currentActiveOrder));
+          renderCustomerTicket();
+          if (liveActive.status === 'ready') {
+            playBoutiqueChime(true);
+            showAtelierAlert({
+              title: "ເຄື່ອງດື່ມພ້ອມແລ້ວ! ☕",
+              message: "ເຄື່ອງດື່ມຂອງທ່ານພ້ອມແລ້ວ! ເຊີນຮັບໄດ້ທີ່ Counter 02 Downtown Roastery",
+              type: "success"
+            });
+          }
+        }
+      }
 
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+      renderStaffOrders();
+      renderAnalytics();
+    }
+  }, (err) => console.log("Firestore orders stream fallback:", err));
 }
 
-// Initial Boot
+// Bootstrap
 window.addEventListener('DOMContentLoaded', () => {
-  setLanguage(currentLang);
   renderMenu();
   updateCartBadges();
   updateUserSessionUI();
+  renderPaymentSettings();
+  renderModifierSettings();
+  renderCustomerPaymentOptions();
+  updateStoreStatusUI();
+  resetSessionTimer();
+  initCloudSync();
 
   if (currentUser) {
     dispatchRoleView(currentUser.role);
