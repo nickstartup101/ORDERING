@@ -1,108 +1,74 @@
 // =======================================================
-// LA DOLCE — FULL CLOUD FIRESTORE REALTIME SYNC ENGINE
+// TAB SWITCHING & DROPDOWN ENGINE
 // =======================================================
 
-function showToast(msg) {
-  const toast = document.getElementById('atelierToast');
-  const text = document.getElementById('toastMsg');
-  if (!toast || !text) return;
-  text.textContent = msg;
-  toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-2');
-  toast.classList.add('opacity-100', 'translate-y-0');
-  setTimeout(() => {
-    toast.classList.remove('opacity-100', 'translate-y-0');
-    toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-2');
-  }, 1800);
-}
+function switchCustomerTab(tabName) {
+  console.log("Switching to tab:", tabName);
 
-// ດຶງຂໍ້ມູນ Cloud Firestore ແບບ Real-time Snapshot ທັງ 3 Collections
-function initCloudStream() {
-  if (typeof isFirebaseReady === 'undefined' || !isFirebaseReady || !db) {
-    console.warn("Firestore not ready, using local data.");
-    return;
+  // 1. ເຊື່ອງທຸກ Section
+  const tabs = ['menu', 'cart', 'ticket', 'profile'];
+  tabs.forEach(t => {
+    const el = document.getElementById(`tab-customer-${t}`);
+    const btn = document.getElementById(`nav-btn-${t}`);
+    if (el) el.classList.add('hidden');
+    if (btn) {
+      btn.classList.remove('text-forest-emerald', 'font-semibold');
+      btn.classList.add('text-taupe');
+    }
+  });
+
+  // 2. ເປີດສະເພາະ Section ທີ່ເລືອກ
+  const activeTab = document.getElementById(`tab-customer-${tabName}`);
+  const activeBtn = document.getElementById(`nav-btn-${tabName}`);
+
+  if (activeTab) {
+    activeTab.classList.remove('hidden');
+  } else {
+    console.error("Tab element not found: tab-customer-" + tabName);
   }
 
-  console.log("🚀 Starting Cloud Firestore Live Stream...");
-
-  // 1. ດຶງ Collection 'menu_items' (ເມນູສິນຄ້າສົດໆຈາກ Cloud)
-  db.collection("menu_items").onSnapshot(snapshot => {
-    if (!snapshot.empty) {
-      const remoteMenu = [];
-      snapshot.forEach(doc => remoteMenu.push({ id: doc.id, ...doc.data() }));
-      menuItems = remoteMenu;
-      localStorage.setItem('ladolce_menu', JSON.stringify(menuItems));
-      console.log(`📦 Synced ${menuItems.length} menu items from Firestore`);
-      
-      if (typeof renderMenu === 'function') renderMenu();
-      if (typeof renderAdminMenu === 'function') renderAdminMenu();
-    } else {
-      console.log("No menu_items on cloud, using local fallback");
-      if (typeof renderMenu === 'function') renderMenu();
-    }
-  }, err => console.error("Menu stream error:", err));
-
-  // 2. ດຶງ Collection 'orders' (ອໍເດີ້ທັງໝົດ ແລະ ດັກສຽງເຕືອນ Barista)
-  db.collection("orders").orderBy("createdAt", "desc").onSnapshot(snapshot => {
-    if (!snapshot.empty) {
-      const remoteOrders = [];
-      snapshot.forEach(doc => remoteOrders.push({ id: doc.id, ...doc.data() }));
-      orders = remoteOrders;
-      localStorage.setItem('ladolce_orders', JSON.stringify(orders));
-      console.log(`📑 Synced ${orders.length} orders from Firestore`);
-
-      // ດັກຈັບ: ຖ້າມີອໍເດີ້ pending ໃໝ່ -> ສັ່ງສຽງເຕືອນ Staff ທັນທີ
-      if (currentUser && (currentUser.role === 'staff' || currentUser.role === 'superadmin')) {
-        const hasPending = orders.some(o => o.status === 'pending');
-        if (hasPending) {
-          if (typeof startStaffAlarm === 'function') startStaffAlarm();
-        } else {
-          if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
-        }
-        if (typeof renderStaffOrders === 'function') renderStaffOrders();
-      }
-
-      // Sync ຫາປີ້ຂອງລູກຄ້າ Real-time
-      if (currentActiveOrder) {
-        const live = orders.find(o => o.id === currentActiveOrder.id);
-        if (live && live.status !== currentActiveOrder.status) {
-          currentActiveOrder = live;
-          localStorage.setItem('ladolce_active_order', JSON.stringify(currentActiveOrder));
-          if (typeof renderCustomerTicket === 'function') renderCustomerTicket();
-          if (live.status === 'ready' && typeof playChime === 'function') playChime(true);
-        }
-      }
-
-      // ຄິດໄລ່ຍອດຂາຍລວມ (LAK)
-      const completed = orders.filter(o => o.status === 'completed');
-      const totalRevenue = completed.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-      const metricEl = document.getElementById('metricTotalSales');
-      if (metricEl) metricEl.textContent = formatLAK(totalRevenue);
-    }
-  }, err => console.error("Orders stream error:", err));
-
-  // 3. ດຶງ Collection 'users' (ລາຍຊື່ຜູ້ໃຊ້ສຳລັບ Superadmin)
-  db.collection("users").onSnapshot(snapshot => {
-    if (!snapshot.empty) {
-      const remoteUsers = [];
-      snapshot.forEach(doc => remoteUsers.push({ id: doc.id, ...doc.data() }));
-      cloudUsers = remoteUsers;
-      console.log(`👥 Synced ${cloudUsers.length} users from Firestore`);
-      if (typeof renderUsersList === 'function') renderUsersList();
-    }
-  }, err => console.error("Users stream error:", err));
-}
-
-// Bootstrap
-window.addEventListener('DOMContentLoaded', () => {
-  // Render ທັນທີຈາກ Cache
-  if (typeof renderMenu === 'function') renderMenu();
-  if (typeof updateCartBadges === 'function') updateCartBadges();
-  if (typeof updateStoreStatusUI === 'function') updateStoreStatusUI();
-  
-  if (currentUser && typeof dispatchRoleView === 'function') {
-    dispatchRoleView(currentUser.role);
+  if (activeBtn) {
+    activeBtn.classList.add('text-forest-emerald', 'font-semibold');
+    activeBtn.classList.remove('text-taupe');
   }
 
-  // ເຊື່ອມຕໍ່ Cloud Stream ສົດໆ
-  initCloudStream();
+  // 3. Render ຂໍ້ມູນສະເພາະແຕ່ລະແທັບ
+  if (tabName === 'menu' && typeof renderMenu === 'function') {
+    renderMenu();
+  }
+  if (tabName === 'cart') {
+    if (typeof renderCartList === 'function') renderCartList();
+    if (typeof renderCustomerPaymentOptions === 'function') renderCustomerPaymentOptions();
+  }
+  if (tabName === 'ticket' && typeof renderCustomerTicket === 'function') {
+    renderCustomerTicket();
+  }
+  if (tabName === 'profile' && typeof renderCustomerProfile === 'function') {
+    renderCustomerProfile();
+  }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// 4. Slide-down Dropdown Handlers
+function toggleProfileDropdown(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('profileDropdownMenu');
+  if (menu) {
+    menu.classList.toggle('hidden');
+  }
+}
+
+function closeProfileDropdown() {
+  const menu = document.getElementById('profileDropdownMenu');
+  if (menu) menu.classList.add('hidden');
+}
+
+// ຄລິກພື້ນທີ່ຫວ່າງຂ້າງນອກແລ້ວ Dropdown ພັບເກັບອັດຕະໂນມັດ
+document.addEventListener('click', (e) => {
+  const dropdown = document.getElementById('profileDropdownMenu');
+  const trigger = document.getElementById('userProfileChip');
+  if (dropdown && !dropdown.contains(e.target) && trigger && !trigger.contains(e.target)) {
+    closeProfileDropdown();
+  }
 });
