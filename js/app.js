@@ -1,5 +1,5 @@
 // =======================================================
-// APPLICATION ORCHESTRATION & CLOUD STREAM ENGINE
+// LA DOLCE — FULL CLOUD FIRESTORE REALTIME SYNC ENGINE
 // =======================================================
 
 function showToast(msg) {
@@ -15,31 +15,42 @@ function showToast(msg) {
   }, 1800);
 }
 
-// Real-time Cloud Firestore Listener (Instant 0.05s)
+// ດຶງຂໍ້ມູນ Cloud Firestore ແບບ Real-time Snapshot ທັງ 3 Collections
 function initCloudStream() {
-  if (!isFirebaseReady || !db) return;
+  if (typeof isFirebaseReady === 'undefined' || !isFirebaseReady || !db) {
+    console.warn("Firestore not ready, using local data.");
+    return;
+  }
 
-  // 1. Sync Menu Items ແທ້ຈາກ Firestore
+  console.log("🚀 Starting Cloud Firestore Live Stream...");
+
+  // 1. ດຶງ Collection 'menu_items' (ເມນູສິນຄ້າສົດໆຈາກ Cloud)
   db.collection("menu_items").onSnapshot(snapshot => {
     if (!snapshot.empty) {
       const remoteMenu = [];
       snapshot.forEach(doc => remoteMenu.push({ id: doc.id, ...doc.data() }));
       menuItems = remoteMenu;
       localStorage.setItem('ladolce_menu', JSON.stringify(menuItems));
+      console.log(`📦 Synced ${menuItems.length} menu items from Firestore`);
+      
       if (typeof renderMenu === 'function') renderMenu();
       if (typeof renderAdminMenu === 'function') renderAdminMenu();
+    } else {
+      console.log("No menu_items on cloud, using local fallback");
+      if (typeof renderMenu === 'function') renderMenu();
     }
-  }, err => console.warn("Menu stream issue:", err));
+  }, err => console.error("Menu stream error:", err));
 
-  // 2. Sync Orders & Repeating Alarm ສຳລັບ Staff
+  // 2. ດຶງ Collection 'orders' (ອໍເດີ້ທັງໝົດ ແລະ ດັກສຽງເຕືອນ Barista)
   db.collection("orders").orderBy("createdAt", "desc").onSnapshot(snapshot => {
     if (!snapshot.empty) {
-      const remote = [];
-      snapshot.forEach(doc => remote.push({ id: doc.id, ...doc.data() }));
-      orders = remote;
+      const remoteOrders = [];
+      snapshot.forEach(doc => remoteOrders.push({ id: doc.id, ...doc.data() }));
+      orders = remoteOrders;
       localStorage.setItem('ladolce_orders', JSON.stringify(orders));
+      console.log(`📑 Synced ${orders.length} orders from Firestore`);
 
-      // ດັກສຽງເຕືອນ Barista
+      // ດັກຈັບ: ຖ້າມີອໍເດີ້ pending ໃໝ່ -> ສັ່ງສຽງເຕືອນ Staff ທັນທີ
       if (currentUser && (currentUser.role === 'staff' || currentUser.role === 'superadmin')) {
         const hasPending = orders.some(o => o.status === 'pending');
         if (hasPending) {
@@ -50,7 +61,7 @@ function initCloudStream() {
         if (typeof renderStaffOrders === 'function') renderStaffOrders();
       }
 
-      // Sync ປີ້ລູກຄ້າ Real-time
+      // Sync ຫາປີ້ຂອງລູກຄ້າ Real-time
       if (currentActiveOrder) {
         const live = orders.find(o => o.id === currentActiveOrder.id);
         if (live && live.status !== currentActiveOrder.status) {
@@ -61,17 +72,29 @@ function initCloudStream() {
         }
       }
 
-      // ຍອດຂາຍ
-      const total = orders.filter(o => o.status === 'completed').reduce((s, o) => s + o.total, 0);
-      const totalSalesEl = document.getElementById('metricTotalSales');
-      if (totalSalesEl) totalSalesEl.textContent = formatLAK(total);
+      // ຄິດໄລ່ຍອດຂາຍລວມ (LAK)
+      const completed = orders.filter(o => o.status === 'completed');
+      const totalRevenue = completed.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+      const metricEl = document.getElementById('metricTotalSales');
+      if (metricEl) metricEl.textContent = formatLAK(totalRevenue);
     }
-  }, err => console.warn("Orders stream issue:", err));
+  }, err => console.error("Orders stream error:", err));
+
+  // 3. ດຶງ Collection 'users' (ລາຍຊື່ຜູ້ໃຊ້ສຳລັບ Superadmin)
+  db.collection("users").onSnapshot(snapshot => {
+    if (!snapshot.empty) {
+      const remoteUsers = [];
+      snapshot.forEach(doc => remoteUsers.push({ id: doc.id, ...doc.data() }));
+      cloudUsers = remoteUsers;
+      console.log(`👥 Synced ${cloudUsers.length} users from Firestore`);
+      if (typeof renderUsersList === 'function') renderUsersList();
+    }
+  }, err => console.error("Users stream error:", err));
 }
 
-// Fast App Bootstrap
+// Bootstrap
 window.addEventListener('DOMContentLoaded', () => {
-  // ໂຫຼດເມນູຂຶ້ນທັນທີ 0.001s
+  // Render ທັນທີຈາກ Cache
   if (typeof renderMenu === 'function') renderMenu();
   if (typeof updateCartBadges === 'function') updateCartBadges();
   if (typeof updateStoreStatusUI === 'function') updateStoreStatusUI();
@@ -80,6 +103,6 @@ window.addEventListener('DOMContentLoaded', () => {
     dispatchRoleView(currentUser.role);
   }
 
-  // Sync Cloud Firestore ຢູ່ Background
+  // ເຊື່ອມຕໍ່ Cloud Stream ສົດໆ
   initCloudStream();
 });
