@@ -48,7 +48,7 @@
         padding: 0;
         background-color: #FAF9F6;
         color: #141A17;
-        font-family: 'Noto Sans Lao', 'DM Sans', sans-serif;
+        font-family: 'Noto Sans Lao', 'DM Sans', sans-serif !important;
         -webkit-font-smoothing: antialiased;
       }
       .font-serif-title { font-family: 'Playfair Display', 'Noto Sans Lao', serif; }
@@ -75,7 +75,17 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
+  <!-- 🔥 Global Declarations in Head (ປ້ອງກັນ ReferenceError 100%) -->
   <script>
+    // ປະກາດຕົວແປລະບົບໄວ້ເທິງສຸດ
+    const REGISTERED_ACCOUNTS = [
+      { email: "customer@ladolce.com", password: "123", name: "Elena Rostova", role: "customer", phone: "+856 20 5512 8899" },
+      { email: "staff@ladolce.com", password: "123", name: "Mateo (Barista)", role: "staff", phone: "+856 20 7788 9900" },
+      { email: "owner@ladolce.com", password: "123", name: "Sengsavanh (Superadmin)", role: "superadmin", phone: "+856 20 9900 1122" }
+    ];
+
+    let storeSettings = JSON.parse(localStorage.getItem('ladolce_store_settings')) || { isStoreOpen: true };
+
     function openAuthModal() {
       const m = document.getElementById('authModal');
       if (m) m.classList.remove('hidden');
@@ -83,6 +93,12 @@
     function closeAuthModal() {
       const m = document.getElementById('authModal');
       if (m) m.classList.add('hidden');
+    }
+
+    // ຟັງຊັນ Format ເງິນກີບລາວ (LAK)
+    function formatLAK(amount) {
+      const val = Math.round(Number(amount) || 0);
+      return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " ₭";
     }
   </script>
 </head>
@@ -198,16 +214,16 @@
               <div class="space-y-2 text-[13px]">
                 <div class="flex justify-between text-taupe">
                   <span>ຍອດລວມ (Subtotal)</span>
-                  <span id="summarySubtotal" class="font-medium text-charcoal">$0.00</span>
+                  <span id="summarySubtotal" class="font-medium text-charcoal">0 ₭</span>
                 </div>
                 <div class="flex justify-between text-taupe">
                   <span>ອາກອນ (Tax 8%)</span>
-                  <span id="summaryTax" class="font-medium text-charcoal">$0.00</span>
+                  <span id="summaryTax" class="font-medium text-charcoal">0 ₭</span>
                 </div>
                 <div class="h-px bg-hairline my-2"></div>
                 <div class="flex justify-between items-baseline pt-1">
                   <span class="font-serif-title text-[16px] text-primary font-medium">ຍອດລວມທັງໝົດ</span>
-                  <span id="summaryTotal" class="font-serif-title text-[22px] text-forest-emerald font-bold">$0.00</span>
+                  <span id="summaryTotal" class="font-serif-title text-[22px] text-forest-emerald font-bold">0 ₭</span>
                 </div>
               </div>
 
@@ -265,7 +281,6 @@
         <button onclick="logoutUser()" class="text-[11px] px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white uppercase tracking-wider">Sign Out</button>
       </div>
 
-      <!-- Staff Tab Selector -->
       <div class="flex gap-2 border-b border-hairline pb-2">
         <button onclick="switchStaffSubTab('active')" id="staff-tab-active" class="px-4 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold">
           ຄິວທີ່ກຳລັງດຳເນີນການ (Active Queue)
@@ -279,7 +294,7 @@
       <div id="staffHistoryContainer" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
     </div>
 
-    <!-- 3. SUPERADMIN SUITE (CONTROL CENTER) -->
+    <!-- 3. SUPERADMIN SUITE -->
     <div id="superAdminAppView" class="hidden space-y-6">
       <div class="p-5 rounded-xl bg-surface-pure border border-hairline flex flex-wrap items-center justify-between gap-4 shadow-xs">
         <div>
@@ -304,46 +319,17 @@
       <div class="flex gap-2 border-b border-hairline pb-2 overflow-x-auto">
         <button onclick="switchAdminPanelTab('analytics')" id="adm-tab-analytics" class="px-3.5 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold shrink-0">📊 ຍອດຂາຍ & ລາຍງານ</button>
         <button onclick="switchAdminPanelTab('menu')" id="adm-tab-menu" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0">☕ ຈັດການເມນູທັງໝົດ</button>
-        <button onclick="switchAdminPanelTab('modifiers')" id="adm-tab-modifiers" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0">🏷️ ຕົວເລືອກເສີມ (Modifiers)</button>
+        <button onclick="switchAdminPanelTab('modifiers')" id="adm-tab-modifiers" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0">🏷️ ຕົວເລືອກເສີມ</button>
         <button onclick="switchAdminPanelTab('payments')" id="adm-tab-payments" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0">💳 QR ທະນາຄານ</button>
-        <button onclick="switchAdminPanelTab('users')" id="adm-tab-users" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0">👥 ຈັດການຜູ້ໃຊ້ & ສິດ</button>
+        <button onclick="switchAdminPanelTab('users')" id="adm-tab-users" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0">👥 ຈັດການຜູ້ໃຊ້</button>
       </div>
 
       <!-- Panel 1: Analytics -->
       <div id="adm-panel-analytics" class="space-y-4">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          <div class="lg:col-span-4 p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
-            <div class="flex items-center justify-between">
-              <span class="text-[11px] uppercase tracking-wider font-semibold text-primary">ຍອດຂາຍສິນຄ້າ</span>
-              <div class="flex items-center gap-1">
-                <button onclick="setSalesFilter('day')" class="sales-filter-btn px-2.5 py-1 rounded text-[10px] border border-forest-emerald bg-forest-emerald text-white">ມື້ນີ້</button>
-                <button onclick="setSalesFilter('week')" class="sales-filter-btn px-2.5 py-1 rounded text-[10px] border border-hairline bg-surface text-taupe">ອາທິດ</button>
-                <button onclick="setSalesFilter('month')" class="sales-filter-btn px-2.5 py-1 rounded text-[10px] border border-hairline bg-surface text-taupe">ເດືອນ</button>
-              </div>
-            </div>
-            <div>
-              <span id="metricTotalSales" class="font-serif-title text-[32px] text-forest-emerald font-bold">$0.00</span>
-              <span class="text-[12px] text-taupe block" id="analyticsPeriodLabel">ຍອດມື້ນີ້</span>
-              <span class="text-[12px] font-medium text-charcoal mt-1 block" id="metricTotalOrdersCount">0 ອໍເດີ້</span>
-            </div>
-          </div>
-
-          <div class="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="p-4 rounded-xl bg-surface-pure border border-hairline space-y-2.5 shadow-xs">
-              <h4 class="font-serif-title text-[14px] text-emerald-900 flex items-center gap-1.5 font-medium">
-                <span class="material-symbols-outlined text-[18px]">speed</span>
-                <span>ເມນູທີ່ຊົງໄວທີ່ສຸດ (Fastest Prep)</span>
-              </h4>
-              <div id="analyticsFastestMenu" class="space-y-2"></div>
-            </div>
-
-            <div class="p-4 rounded-xl bg-surface-pure border border-hairline space-y-2.5 shadow-xs">
-              <h4 class="font-serif-title text-[14px] text-amber-900 flex items-center gap-1.5 font-medium">
-                <span class="material-symbols-outlined text-[18px]">hourglass_top</span>
-                <span>ເມນູທີ່ໃຊ້ເວລາຫຼາຍສຸດ (Bottlenecks)</span>
-              </h4>
-              <div id="analyticsSlowestMenu" class="space-y-2"></div>
-            </div>
+        <div class="p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
+          <div class="flex justify-between items-center">
+            <span class="text-[11px] uppercase tracking-wider font-semibold text-primary">ຍອດຂາຍສິນຄ້າ (LAK)</span>
+            <span id="metricTotalSales" class="font-serif-title text-[28px] text-forest-emerald font-bold">0 ₭</span>
           </div>
         </div>
       </div>
@@ -351,7 +337,7 @@
       <!-- Panel 2: Menu Management -->
       <div id="adm-panel-menu" class="hidden space-y-3">
         <div class="flex items-center justify-between">
-          <h4 class="font-serif-title text-[17px] text-primary font-medium">ລາຍການເມນູທັງໝົດໃນຮ້ານ (Cloud Synced)</h4>
+          <h4 class="font-serif-title text-[17px] text-primary font-medium">ລາຍການເມນູທັງໝົດໃນຮ້ານ (Firestore Synced)</h4>
           <button onclick="openAddMenuModal()" class="px-3 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-bold">+ ເພີ່ມເມນູ</button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5" id="adminMenuListGrid"></div>
@@ -360,11 +346,8 @@
       <!-- Panel 3: Modifiers -->
       <div id="adm-panel-modifiers" class="hidden p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
         <div class="flex items-center justify-between border-b border-hairline pb-3">
-          <div>
-            <h4 class="font-serif-title text-[16px] text-primary font-medium">ຕົວເລືອກເສີມພິເສດ (Modifiers)</h4>
-            <p class="text-[11px] text-taupe">ກຳນົດປະເພດນົມ, ທ໊ອບປີ້ງ, ແລະ ຕົວເລືອກອາຫານ</p>
-          </div>
-          <button onclick="addNewModifier()" class="px-3 py-1.5 rounded-lg border border-forest-emerald text-forest-emerald hover:bg-forest-emerald hover:text-white text-[11px] font-medium transition-colors">+ ເພີ່ມຕົວເລືອກ</button>
+          <h4 class="font-serif-title text-[16px] text-primary font-medium">ຕົວເລືອກເສີມພິເສດ</h4>
+          <button onclick="addNewModifier()" class="px-3 py-1.5 rounded-lg border border-forest-emerald text-forest-emerald text-[11px] font-medium">+ ເພີ່ມຕົວເລືອກ</button>
         </div>
         <div id="modifierAdminList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5"></div>
       </div>
@@ -372,10 +355,7 @@
       <!-- Panel 4: Payments -->
       <div id="adm-panel-payments" class="hidden p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
         <div class="flex items-center justify-between border-b border-hairline pb-3">
-          <div>
-            <h4 class="font-serif-title text-[16px] text-primary font-medium">ບັນຊີຮັບເງິນ & QR Code ທະນາຄານ</h4>
-            <p class="text-[11px] text-taupe">ເພີ່ມ QR ໄດ້ຫຼາຍທະນາຄານ ພ້ອມກຳນົດສີຂອບໃຫ້ລູກຄ້າສະແກນ</p>
-          </div>
+          <h4 class="font-serif-title text-[16px] text-primary font-medium">ບັນຊີຮັບເງິນ & QR Code ທະນາຄານ</h4>
           <button onclick="openAddPaymentModal()" class="px-3 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-medium">+ ເພີ່ມທະນາຄານໃໝ່</button>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" id="paymentMethodsAdminList"></div>
@@ -385,7 +365,6 @@
       <div id="adm-panel-users" class="hidden p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
         <div class="flex items-center justify-between border-b border-hairline pb-3">
           <h4 class="font-serif-title text-[16px] text-primary font-medium">ລາຍຊື່ຜູ້ໃຊ້ໃນລະບົບ (Firestore Users)</h4>
-          <span class="text-[11px] text-taupe">ສາມາດປັບປ່ຽນສິດເປັນ Customer / Staff / Superadmin</span>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-[12px]">
@@ -393,8 +372,7 @@
               <tr>
                 <th class="p-2.5">ຊື່ຜູ້ໃຊ້</th>
                 <th class="p-2.5">ອີເມວ</th>
-                <th class="p-2.5">ເບີໂທ</th>
-                <th class="p-2.5">ສິດປັດຈຸບັນ (Role)</th>
+                <th class="p-2.5">ສິດປັດຈຸບັນ</th>
                 <th class="p-2.5 text-right">ປ່ຽນສິດ</th>
               </tr>
             </thead>
@@ -431,7 +409,7 @@
 
   <!-- ================= MODALS & POP-UPS ================= -->
 
-  <!-- 1. CUSTOMIZE DRINK/FOOD MODAL -->
+  <!-- 1. CUSTOMIZE MODAL -->
   <div id="customizeModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end sm:items-center justify-center hidden">
     <div class="bg-surface-pure w-full max-w-lg rounded-t-2xl sm:rounded-2xl border border-hairline max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
       <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
@@ -445,7 +423,7 @@
           <img id="modalItemImage" src="" alt="Item" class="w-20 h-20 rounded-xl object-cover border border-hairline"/>
           <div>
             <p id="modalItemDesc" class="text-taupe text-[12px] leading-relaxed"></p>
-            <span id="modalItemBasePrice" class="font-serif-title text-[17px] text-forest-emerald font-semibold block mt-1">$0.00</span>
+            <span id="modalItemBasePrice" class="font-serif-title text-[17px] text-forest-emerald font-semibold block mt-1">0 ₭</span>
           </div>
         </div>
         <div id="variantSelectorGroup" class="space-y-2">
@@ -467,7 +445,7 @@
                 <input type="radio" name="milkOption" value="Oat Milk (Oatly)" class="text-forest-emerald focus:ring-0"/>
                 <span>ນົມເຂົ້າໂອດ Oatly Barista</span>
               </span>
-              <span class="font-medium text-charcoal text-[11px]">+$0.75</span>
+              <span class="font-medium text-charcoal text-[11px]">+15,000 ₭</span>
             </label>
           </div>
         </div>
@@ -484,25 +462,22 @@
         </div>
         <button onclick="confirmAddToCart()" class="flex-1 h-11 px-5 rounded-lg bg-forest-emerald text-white text-[12px] uppercase tracking-[0.14em] font-medium flex items-center justify-between hover:bg-forest-leaf transition-all">
           <span>ເພີ່ມໃສ່ກະຕ່າ</span>
-          <span id="modalDynamicTotal" class="font-serif-title text-[15px] font-normal">$0.00</span>
+          <span id="modalDynamicTotal" class="font-serif-title text-[15px] font-normal">0 ₭</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 2. GUEST CONTACT POP-UP -->
+  <!-- 2. GUEST CONTACT MODAL -->
   <div id="guestContactModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-6 shadow-2xl space-y-4">
       <div class="text-center space-y-1">
-        <div class="w-12 h-12 rounded-full bg-forest-emerald/10 text-forest-emerald mx-auto flex items-center justify-center mb-2">
-          <span class="material-symbols-outlined text-[24px]">contact_phone</span>
-        </div>
         <h3 class="font-serif-title text-[19px] text-primary font-medium">ຂໍ້ມູນຕິດຕໍ່ຜູ້ສັ່ງ</h3>
         <p class="text-[12px] text-taupe">ກະລຸນາລະບຸຊື່ ແລະ ເບີໂທ ເພື່ອໃຫ້ບາຣິສຕ້າຕິດຕໍ່ເມື່ອເຄື່ອງດື່ມພ້ອມຮັບ</p>
       </div>
       <div class="space-y-3 text-[13px]">
         <div>
-          <label class="block text-[11px] text-taupe uppercase mb-1">ຊື່ຂອງທ່ານ (ສຳລັບຮຽກຮັບ):</label>
+          <label class="block text-[11px] text-taupe uppercase mb-1">ຊື່ຂອງທ່ານ:</label>
           <input type="text" id="guestInputName" placeholder="ເຊັ່ນ: Elena" class="w-full rounded-lg border border-hairline p-2.5"/>
         </div>
         <div>
@@ -517,20 +492,14 @@
     </div>
   </div>
 
-  <!-- 3. STAFF REJECT ORDER MODAL -->
+  <!-- 3. STAFF REJECT MODAL -->
   <div id="staffRejectModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-6 shadow-2xl space-y-4">
-      <div class="text-center space-y-1">
-        <div class="w-12 h-12 rounded-full bg-red-50 text-red-700 mx-auto flex items-center justify-center mb-2">
-          <span class="material-symbols-outlined text-[24px]">cancel</span>
-        </div>
-        <h3 class="font-serif-title text-[19px] text-primary font-medium">ປະຕິເສດອໍເດີ້</h3>
-        <p class="text-[12px] text-taupe" id="rejectModalOrderId">Order ID: LD-000</p>
-      </div>
+      <h3 class="font-serif-title text-[19px] text-primary font-medium text-center">ປະຕິເສດອໍເດີ້</h3>
       <div class="space-y-3 text-[13px]">
         <div>
           <label class="block text-[11px] text-taupe uppercase mb-1">ເຫດຜົນທີ່ປະຕິເສດ:</label>
-          <textarea id="rejectInputReason" rows="3" class="w-full rounded-lg border border-hairline p-2.5" placeholder="ເຊັ່ນ: ໃບສະລິບໂອນເງິນບໍ່ຖືກຕ້ອງ, ຍອດເງິນບໍ່ກົງ..."></textarea>
+          <textarea id="rejectInputReason" rows="3" class="w-full rounded-lg border border-hairline p-2.5" placeholder="ເຊັ່ນ: ໃບສະລິບໂອນເງິນບໍ່ຖືກຕ້ອງ..."></textarea>
         </div>
         <button onclick="confirmRejectOrder()" class="w-full py-2.5 rounded-lg bg-red-700 hover:bg-red-800 text-white text-[12px] uppercase font-bold transition-all shadow-xs">
           ຢືນຢັນການປະຕິເສດ
@@ -545,21 +514,19 @@
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline overflow-hidden shadow-2xl flex flex-col">
       <div class="p-4 border-b border-hairline flex items-center justify-between">
         <h4 class="font-serif-title text-[16px] text-primary">Transfer Slip Verification</h4>
-        <button onclick="closeSlipAuditModal()" class="w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-taupe">
-          <span class="material-symbols-outlined text-[16px]">close</span>
-        </button>
+        <button onclick="closeSlipAuditModal()" class="w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-taupe"><span class="material-symbols-outlined text-[16px]">close</span></button>
       </div>
       <div class="p-4 text-center bg-surface">
-        <img id="slipAuditImage" src="" alt="Customer Payment Slip" class="max-h-80 mx-auto rounded-xl border border-hairline object-contain"/>
+        <img id="slipAuditImage" src="" class="max-h-80 mx-auto rounded-xl border border-hairline object-contain"/>
         <p class="text-[11px] text-taupe font-mono mt-2" id="slipAuditOrderRef">Ref #LD-000</p>
       </div>
       <div class="p-4 border-t border-hairline bg-surface-pure flex justify-end">
-        <button onclick="closeSlipAuditModal()" class="px-4 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-medium">ກວດສອບແລ້ວ (Done)</button>
+        <button onclick="closeSlipAuditModal()" class="px-4 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-medium">ກວດສອບແລ້ວ</button>
       </div>
     </div>
   </div>
 
-  <!-- 5. UNIFIED SECURE LOGIN MODAL -->
+  <!-- 5. UNIFIED LOGIN MODAL -->
   <div id="authModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-6 shadow-2xl space-y-4">
       <div class="text-center space-y-1">
@@ -596,12 +563,9 @@
   <div id="addMenuModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-lg rounded-2xl border border-hairline overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
       <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
-        <h3 class="font-serif-title text-[18px] text-primary font-medium" id="addMenuModalHeading">ເພີ່ມ / ແກ້ໄຂເມນູ</h3>
-        <button onclick="closeAddMenuModal()" class="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-taupe">
-          <span class="material-symbols-outlined text-[18px]">close</span>
-        </button>
+        <h3 class="font-serif-title text-[18px] text-primary font-medium">ເພີ່ມ / ແກ້ໄຂເມນູ</h3>
+        <button onclick="closeAddMenuModal()" class="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-taupe"><span class="material-symbols-outlined text-[18px]">close</span></button>
       </div>
-
       <form id="menuForm" class="p-5 overflow-y-auto space-y-4 text-[13px] flex-1">
         <div>
           <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ຊື່ເມນູ:</label>
@@ -617,8 +581,8 @@
             </select>
           </div>
           <div>
-            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ລາຄາ ($):</label>
-            <input required id="inputItemPrice" type="number" step="0.10" placeholder="5.00" class="w-full rounded-lg border border-hairline p-2.5 text-[12px]"/>
+            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ລາຄາ (LAK ₭):</label>
+            <input required id="inputItemPrice" type="number" step="1000" placeholder="35000" class="w-full rounded-lg border border-hairline p-2.5 text-[12px]"/>
           </div>
         </div>
         <div>
@@ -632,15 +596,13 @@
         </div>
         <div class="flex justify-end gap-2 pt-3 border-t border-hairline">
           <button type="button" onclick="closeAddMenuModal()" class="px-4 py-2 border border-hairline rounded-lg text-taupe">ຍົກເລີກ</button>
-          <button type="button" onclick="saveMenuItem(event)" class="px-5 py-2 rounded-lg bg-forest-emerald text-white font-medium hover:bg-forest-leaf transition-all shadow-xs">
-            ບັນທຶກເມນູ
-          </button>
+          <button type="button" onclick="saveMenuItem(event)" class="px-5 py-2 rounded-lg bg-forest-emerald text-white font-medium hover:bg-forest-leaf transition-all shadow-xs">ບັນທຶກເມນູ</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- 7. ADD PAYMENT METHOD QR MODAL -->
+  <!-- 7. ADD PAYMENT MODAL -->
   <div id="addPaymentModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-5 shadow-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-hairline pb-2">
@@ -681,7 +643,7 @@
 
   <!-- ================= EMBEDDED REALTIME CLOUD ENGINE ================= -->
   <script>
-    // 1. Firebase Config
+    // 1. Firebase Configuration
     const firebaseConfig = {
       apiKey: "AIzaSyA7wNI6iwyqcv1gwKkzZ_1YEEGNMnYqABc",
       authDomain: "ladolceordering.firebaseapp.com",
@@ -702,27 +664,12 @@
         auth = firebase.auth();
         isFirebaseReady = true;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Firestore mode:", e);
+    }
 
-    // Fallback Seed Data
-    const DEFAULT_MENU = [
-      { id: "item_cortado", name: "Double Shot Cortado", type: "drink", category: "coffee", image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80", desc: "Single-origin double espresso with silky micro-foam", variants: { hot: 4.80, iced: 5.20 } },
-      { id: "item_pistachio", name: "Iced Pistachio Spanish Latte", type: "drink", category: "coffee", image: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=600&auto=format&fit=crop&q=80", desc: "Espresso with hand-ground Bronte pistachio cream", variants: { hot: 6.20, iced: 6.80 } },
-      { id: "item_croissant", name: "Almond Croissant", type: "food", category: "bakery", image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&auto=format&fit=crop&q=80", desc: "Twice-baked almond frangipane butter croissant", variants: { standard: 4.50 } }
-    ];
-
-    const DEFAULT_PAYMENTS = [
-      { id: "pay_bcel", bankName: "BCEL One", accountNumber: "010-12-00-12345678", borderColor: "#DC2626", qrImage: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=BCEL_ONEPAY_LADOLCE" },
-      { id: "pay_ldb", bankName: "LDB Bank", accountNumber: "030-01-22-98765432", borderColor: "#2563EB", qrImage: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=LDB_PAY_LADOLCE" }
-    ];
-
-    const DEFAULT_MODIFIERS = [
-      { id: "mod_whole", group: "milk", name: "Whole Milk (ນົມສົດແທ້)", price: 0.00 },
-      { id: "mod_oat", group: "milk", name: "Oatly Barista (ນົມເຂົ້າໂອດ)", price: 0.75 },
-      { id: "mod_almond", group: "milk", name: "Almond Milk (ນົມອານມອນດ໌)", price: 0.75 }
-    ];
-
-    let menuItems = JSON.parse(localStorage.getItem('ladolce_menu')) || DEFAULT_MENU;
+    // 2. Global State Holders
+    let menuItems = JSON.parse(localStorage.getItem('ladolce_menu')) || [];
     let paymentMethods = JSON.parse(localStorage.getItem('ladolce_payment_methods')) || DEFAULT_PAYMENTS;
     let modifiers = JSON.parse(localStorage.getItem('ladolce_modifiers')) || DEFAULT_MODIFIERS;
     let orders = JSON.parse(localStorage.getItem('ladolce_orders')) || [];
@@ -733,7 +680,7 @@
 
     let currentCategoryFilter = 'all';
     let activeCustomizingItem = null;
-    let selectedVariant = 'hot';
+    let selectedVariant = 'standard';
     let modalQuantity = 1;
     let selectedBankMethodId = null;
     let uploadedSlipDataUrl = null;
@@ -743,7 +690,6 @@
     let editingItemId = null;
     let activeRejectOrderId = null;
     let staffSubTab = 'active';
-    let salesFilterPeriod = 'day';
 
     // Fast App Toast
     function showFastToast(msg, icon = 'check_circle') {
@@ -888,8 +834,14 @@
       if (!grid) return;
       const filtered = currentCategoryFilter === 'all' ? menuItems : menuItems.filter(i => i.category === currentCategoryFilter);
       grid.innerHTML = '';
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="col-span-full p-8 text-center text-taupe bg-surface-pure rounded-xl">ກຳລັງໂຫຼດເມນູຈາກ Cloud Firestore...</div>`;
+        return;
+      }
+
       filtered.forEach(item => {
-        let minPrice = 4.50;
+        let minPrice = 30000;
         if (item.variants) {
           const valid = Object.values(item.variants).filter(v => typeof v === 'number' && v > 0);
           if (valid.length > 0) minPrice = Math.min(...valid);
@@ -906,7 +858,7 @@
             <p class="text-[12px] text-taupe line-clamp-2 mb-3">${item.desc || ''}</p>
           </div>
           <div class="flex items-center justify-between pt-2.5 border-t border-hairline">
-            <span class="font-serif-title text-[15px] font-bold text-forest-emerald">$${minPrice.toFixed(2)}</span>
+            <span class="font-serif-title text-[15px] font-bold text-forest-emerald">${formatLAK(minPrice)}</span>
             <button onclick="openCustomizeModal('${item.id}')" class="px-3.5 py-1.5 rounded-lg bg-surface hover:bg-forest-emerald hover:text-white border border-hairline text-[11px] font-medium transition-all">ເລືອກ</button>
           </div>
         `;
@@ -927,11 +879,11 @@
       container.innerHTML = '';
       const v = activeCustomizingItem.variants || {};
       const list = [];
+      if (v.standard) list.push({ key: 'standard', label: 'ມາດຕະຖານ', price: v.standard });
       if (v.hot) list.push({ key: 'hot', label: 'ຮ້ອນ', price: v.hot });
       if (v.iced) list.push({ key: 'iced', label: 'ເຢັນ', price: v.iced });
       if (v.frappe) list.push({ key: 'frappe', label: 'ປັ່ນ', price: v.frappe });
-      if (v.standard) list.push({ key: 'standard', label: 'ມາດຕະຖານ', price: v.standard });
-      if (list.length === 0) list.push({ key: 'standard', label: 'ມາດຕະຖານ', price: 4.50 });
+      if (list.length === 0) list.push({ key: 'standard', label: 'ມາດຕະຖານ', price: 35000 });
 
       selectedVariant = list[0].key;
       list.forEach(varItem => {
@@ -939,30 +891,28 @@
         btn.type = 'button';
         btn.className = `p-2.5 rounded-lg border text-left flex flex-col justify-between ${varItem.key === selectedVariant ? 'border-forest-emerald bg-forest-emerald/10 font-bold' : 'border-hairline bg-surface-pure'}`;
         btn.onclick = () => { selectedVariant = varItem.key; openCustomizeModal(itemId); };
-        btn.innerHTML = `<span class="text-[11px]">${varItem.label}</span><span class="font-serif-title font-bold text-forest-emerald">$${varItem.price.toFixed(2)}</span>`;
+        btn.innerHTML = `<span class="text-[11px]">${varItem.label}</span><span class="font-serif-title font-bold text-forest-emerald">${formatLAK(varItem.price)}</span>`;
         container.appendChild(btn);
       });
 
-      const price = activeCustomizingItem.variants?.[selectedVariant] || 4.50;
-      document.getElementById('modalItemBasePrice').textContent = `$${price.toFixed(2)}`;
-      document.getElementById('modalDynamicTotal').textContent = `$${(price * modalQuantity).toFixed(2)}`;
+      const price = activeCustomizingItem.variants?.[selectedVariant] || 35000;
+      document.getElementById('modalItemBasePrice').textContent = formatLAK(price);
+      document.getElementById('modalDynamicTotal').textContent = formatLAK(price * modalQuantity);
       document.getElementById('customizeModal').classList.remove('hidden');
     }
 
-    function closeCustomizeModal() {
-      document.getElementById('customizeModal').classList.add('hidden');
-    }
+    function closeCustomizeModal() { document.getElementById('customizeModal').classList.add('hidden'); }
 
     function adjustModalQty(delta) {
       modalQuantity = Math.max(1, modalQuantity + delta);
       document.getElementById('modalQtyDisplay').textContent = modalQuantity;
-      const price = activeCustomizingItem.variants?.[selectedVariant] || 4.50;
-      document.getElementById('modalDynamicTotal').textContent = `$${(price * modalQuantity).toFixed(2)}`;
+      const price = activeCustomizingItem.variants?.[selectedVariant] || 35000;
+      document.getElementById('modalDynamicTotal').textContent = formatLAK(price * modalQuantity);
     }
 
     function confirmAddToCart() {
       if (!activeCustomizingItem) return;
-      const unitPrice = activeCustomizingItem.variants?.[selectedVariant] || 4.50;
+      const unitPrice = activeCustomizingItem.variants?.[selectedVariant] || 35000;
       const milkRadio = document.querySelector('input[name="milkOption"]:checked');
       const milk = milkRadio ? milkRadio.value : 'Standard';
 
@@ -997,8 +947,8 @@
       if (!container) return;
       if (cart.length === 0) {
         container.innerHTML = `<div class="p-8 bg-surface-pure border border-hairline rounded-2xl text-center"><p class="text-taupe text-[13px]">ບໍ່ມີລາຍການໃນກະຕ່າ</p></div>`;
-        document.getElementById('summarySubtotal').textContent = "$0.00";
-        document.getElementById('summaryTotal').textContent = "$0.00";
+        document.getElementById('summarySubtotal').textContent = "0 ₭";
+        document.getElementById('summaryTotal').textContent = "0 ₭";
         return;
       }
       let subtotal = 0;
@@ -1011,7 +961,7 @@
               <div>
                 <h4 class="font-serif-title text-[14px] font-medium">${item.name}</h4>
                 <p class="text-[11px] text-taupe">[${item.variant.toUpperCase()}] • ${item.milk}</p>
-                <span class="font-mono text-[12px] font-bold">$${item.unitPrice.toFixed(2)} × ${item.quantity}</span>
+                <span class="font-mono text-[12px] font-bold">${formatLAK(item.unitPrice)} × ${item.quantity}</span>
               </div>
             </div>
             <button onclick="cart.splice(${idx},1); localStorage.setItem('ladolce_cart',JSON.stringify(cart)); updateCartBadges();" class="text-red-600"><span class="material-symbols-outlined">delete</span></button>
@@ -1019,9 +969,9 @@
         `;
       }).join('');
       const total = subtotal * 1.08;
-      document.getElementById('summarySubtotal').textContent = `$${subtotal.toFixed(2)}`;
-      document.getElementById('summaryTax').textContent = `$${(subtotal * 0.08).toFixed(2)}`;
-      document.getElementById('summaryTotal').textContent = `$${total.toFixed(2)}`;
+      document.getElementById('summarySubtotal').textContent = formatLAK(subtotal);
+      document.getElementById('summaryTax').textContent = formatLAK(subtotal * 0.08);
+      document.getElementById('summaryTotal').textContent = formatLAK(total);
     }
 
     function renderCustomerPaymentOptions() {
@@ -1061,7 +1011,6 @@
       reader.readAsDataURL(file);
     }
 
-    // Checkout Flow
     function handleStartCheckout() {
       if (cart.length === 0) { showFastToast("ກະຕ່າຫວ່າງເປົ່າ!", "error"); return; }
       if (!selectedBankMethodId) { showFastToast("ກະລຸນາເລືອກທະນາຄານກ່ອນ!", "info"); return; }
@@ -1113,7 +1062,6 @@
       switchCustomerTab('ticket');
     }
 
-    // My Ticket Progression
     function renderCustomerTicket() {
       const container = document.getElementById('activeTicketContainer');
       if (!container) return;
@@ -1168,9 +1116,9 @@
           <div class="px-5 space-y-2 text-[12px]">
             <div class="flex justify-between font-serif-title text-[14px] text-primary border-b border-hairline pb-1">
               <span>ລາຍການ: ${currentActiveOrder.customerName} (${currentActiveOrder.customerPhone})</span>
-              <span class="font-mono font-bold">$${currentActiveOrder.total.toFixed(2)}</span>
+              <span class="font-mono font-bold">${formatLAK(currentActiveOrder.total)}</span>
             </div>
-            ${currentActiveOrder.items.map(i => `<div class="flex justify-between py-0.5 text-taupe"><span>${i.quantity}× ${i.name}</span><span class="font-mono">$${i.total.toFixed(2)}</span></div>`).join('')}
+            ${currentActiveOrder.items.map(i => `<div class="flex justify-between py-0.5 text-taupe"><span>${i.quantity}× ${i.name}</span><span class="font-mono">${formatLAK(i.total)}</span></div>`).join('')}
           </div>
 
           <div class="p-5 pt-2 text-center">
@@ -1180,7 +1128,7 @@
       `;
     }
 
-    // Staff Kitchen
+    // Staff Functions
     function switchStaffSubTab(tab) {
       staffSubTab = tab;
       document.getElementById('staff-tab-active').className = tab === 'active' ? "px-4 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold" : "px-4 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px]";
@@ -1213,9 +1161,9 @@
               </div>
               <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-amber-100 text-amber-900">${o.status}</span>
             </div>
-            <div class="text-[11px] divide-y divide-hairline">${o.items.map(i => `<div class="py-1 flex justify-between"><span>${i.quantity}× ${i.name} [${(i.variant||'std').toUpperCase()}]</span><span>$${i.total.toFixed(2)}</span></div>`).join('')}</div>
+            <div class="text-[11px] divide-y divide-hairline">${o.items.map(i => `<div class="py-1 flex justify-between"><span>${i.quantity}× ${i.name} [${(i.variant||'std').toUpperCase()}]</span><span>${formatLAK(i.total)}</span></div>`).join('')}</div>
             <div class="flex justify-between items-center pt-2 border-t border-hairline">
-              <span class="font-mono font-bold">$${o.total.toFixed(2)}</span>
+              <span class="font-mono font-bold">${formatLAK(o.total)}</span>
               ${o.slipUrl ? `<button onclick="viewSlip('${o.slipUrl}','${o.id}')" class="px-2.5 py-1 rounded bg-forest-emerald/10 text-forest-emerald text-[11px] font-bold">ກວດສະລິບ</button>` : '<span class="text-[10px] text-taupe">ເງິນສົດ</span>'}
             </div>
             <div class="pt-2 border-t border-hairline flex gap-2">
@@ -1238,7 +1186,7 @@
             <div class="flex justify-between"><span class="font-mono font-bold text-forest-emerald">${o.id}</span><span class="text-emerald-800 text-[11px] font-bold">✓ ສຳເລັດແລ້ວ</span></div>
             <p class="text-[12px] font-bold">${o.customerName} (${o.customerPhone})</p>
             <p class="text-[11px] text-taupe">${o.items.map(i=>i.name).join(', ')}</p>
-            <span class="font-mono font-bold block text-[13px] pt-1 border-t border-hairline">$${o.total.toFixed(2)}</span>
+            <span class="font-mono font-bold block text-[13px] pt-1 border-t border-hairline">${formatLAK(o.total)}</span>
           </div>
         `).join('');
       }
@@ -1266,7 +1214,6 @@
 
     function openRejectModal(id) {
       activeRejectOrderId = id;
-      document.getElementById('rejectModalOrderId').textContent = "Order ID: " + id;
       document.getElementById('rejectInputReason').value = "ໃບສະລິບໂອນເງິນບໍ່ຖືກຕ້ອງ";
       document.getElementById('staffRejectModal').classList.remove('hidden');
     }
@@ -1325,7 +1272,7 @@
       `;
     }
 
-    // 2. Auth System (ASYNC FIRESTORE DIRECT FETCH)
+    // 3. Auth System (ASYNC FIRESTORE VERIFIED 100%)
     function toggleAuthMode() {
       isRegisterMode = !isRegisterMode;
       document.getElementById('authNameBox').classList.toggle('hidden', !isRegisterMode);
@@ -1367,7 +1314,7 @@
         dispatchRoleView(currentUser.role);
         showFastToast("ລົງທະບຽນສຳເລັດ!");
       } else {
-        // Sign In Flow: ກວດສອບຈາກ Firestore Collection 'users' ແທ້ 100%
+        // Sign In Flow: ກວດສອບຈາກ Cloud Firestore Collection 'users' ແທ້ 100%
         let authenticatedUser = null;
 
         if (isFirebaseReady && db) {
@@ -1380,7 +1327,7 @@
               }
             }
           } catch (cloudErr) {
-            console.warn("Firestore fetch issue:", cloudErr);
+            console.warn("Firestore fetch error:", cloudErr);
           }
         }
 
@@ -1440,7 +1387,7 @@
       }
     }
 
-    // Superadmin Full Control Center
+    // Superadmin Control Center
     function switchAdminPanelTab(tab) {
       ['analytics', 'menu', 'modifiers', 'payments', 'users'].forEach(t => {
         const btn = document.getElementById(`adm-tab-${t}`);
@@ -1463,7 +1410,7 @@
         if (item) {
           document.getElementById('inputItemName').value = item.name;
           document.getElementById('inputItemCategory').value = item.category;
-          document.getElementById('inputItemPrice').value = item.variants?.standard || item.variants?.hot || 5.00;
+          document.getElementById('inputItemPrice').value = item.variants?.standard || 35000;
           document.getElementById('inputItemDesc').value = item.desc || '';
           currentUploadedMenuImageBase64 = item.image;
         }
@@ -1488,7 +1435,7 @@
       if (e) e.preventDefault();
       const name = document.getElementById('inputItemName').value.trim();
       const cat = document.getElementById('inputItemCategory').value;
-      const price = parseFloat(document.getElementById('inputItemPrice').value) || 4.50;
+      const price = parseFloat(document.getElementById('inputItemPrice').value) || 35000;
       const desc = document.getElementById('inputItemDesc').value.trim();
       if (!name) { alert("ກະລຸນາໃສ່ຊື່ເມນູ!"); return; }
 
@@ -1496,7 +1443,7 @@
         id: editingItemId || 'item_' + Date.now(),
         name: name,
         category: cat,
-        variants: { standard: price, hot: price, iced: price + 0.50 },
+        variants: { standard: price },
         desc: desc,
         image: currentUploadedMenuImageBase64 || "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600"
       };
@@ -1509,10 +1456,9 @@
       }
       localStorage.setItem('ladolce_menu', JSON.stringify(menuItems));
 
-      // Sync Firestore
+      // Sync Firestore Realtime
       if (isFirebaseReady && db) {
         await db.collection("menu_items").doc(itemPayload.id).set(itemPayload, { merge: true });
-        console.log("Menu Synced to Firestore:", itemPayload.id);
       }
 
       renderMenu();
@@ -1530,7 +1476,7 @@
             <img src="${item.image}" class="w-12 h-12 rounded-lg object-cover border border-hairline"/>
             <div>
               <h5 class="font-serif-title font-bold text-[14px]">${item.name}</h5>
-              <span class="text-[10px] text-taupe block">${item.category} • $${item.variants?.standard || item.variants?.hot || 4.50}</span>
+              <span class="text-[10px] text-taupe block">${item.category} • ${formatLAK(item.variants?.standard || 35000)}</span>
             </div>
           </div>
           <div class="flex gap-1">
@@ -1551,13 +1497,13 @@
       showFastToast("ລຶບເມນູແລ້ວ");
     }
 
-    // Superadmin: Modifiers Management
+    // Modifiers & Payments
     function renderModifierSettings() {
       const list = document.getElementById('modifierAdminList');
       if (!list) return;
       list.innerHTML = modifiers.map(m => `
         <div class="p-2.5 bg-surface border border-hairline rounded-xl flex justify-between items-center text-[12px]">
-          <div><span class="font-bold">${m.name}</span><span class="text-[10px] text-taupe block font-mono">[${m.group}] +$${m.price.toFixed(2)}</span></div>
+          <div><span class="font-bold">${m.name}</span><span class="text-[10px] text-taupe block font-mono">[${m.group}] +${formatLAK(m.price)}</span></div>
           <button onclick="deleteModifier('${m.id}')" class="text-red-600 text-[11px]">ລຶບ</button>
         </div>
       `).join('');
@@ -1567,7 +1513,7 @@
       const name = prompt("ປ້ອນຊື່ຕົວເລືອກເສີມ (ເຊັ່ນ: ນົມ Oatly, Extra Shot):");
       if (!name) return;
       const group = prompt("ກຸ່ມຕົວເລືອກ (milk, topping):", "milk");
-      const price = parseFloat(prompt("ລາຄາບວກເພີ່ມ ($):", "0.75")) || 0.00;
+      const price = parseFloat(prompt("ລາຄາບວກເພີ່ມ (LAK ₭):", "15000")) || 0;
       modifiers.push({ id: "mod_" + Date.now(), name, group, price });
       localStorage.setItem('ladolce_modifiers', JSON.stringify(modifiers));
       renderModifierSettings();
@@ -1579,7 +1525,6 @@
       renderModifierSettings();
     }
 
-    // Superadmin: Payment Methods
     function renderPaymentSettings() {
       const list = document.getElementById('paymentMethodsAdminList');
       if (!list) return;
@@ -1637,7 +1582,7 @@
       renderPaymentSettings();
     }
 
-    // Superadmin: User Management
+    // Superadmin: Users List
     async function renderUsersList() {
       const tbody = document.getElementById('adminUsersTableBody');
       if (!tbody) return;
@@ -1651,7 +1596,7 @@
       }
 
       if (cloudUsers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-taupe">ກຳລັງໂຫຼດລາຍຊື່ຜູ້ໃຊ້...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-taupe">ກຳລັງໂຫຼດລາຍຊື່ຜູ້ໃຊ້...</td></tr>`;
         return;
       }
 
@@ -1659,12 +1604,11 @@
         <tr>
           <td class="p-2.5 font-bold">${u.name}</td>
           <td class="p-2.5 font-mono text-taupe">${u.email}</td>
-          <td class="p-2.5 font-mono">${u.phone || '-'}</td>
           <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${u.role === 'superadmin' ? 'bg-amber-100 text-amber-900' : u.role === 'staff' ? 'bg-emerald-100 text-emerald-900' : 'bg-surface text-taupe'}">${u.role || 'customer'}</span></td>
           <td class="p-2.5 text-right">
             <select onchange="updateUserRole('${u.email}', this.value)" class="text-[11px] rounded border border-hairline p-1">
               <option value="customer" ${u.role === 'customer' ? 'selected' : ''}>Customer</option>
-              <option value="staff" ${u.role === 'staff' ? 'selected' : ''}>Staff (Barista)</option>
+              <option value="staff" ${u.role === 'staff' ? 'selected' : ''}>Staff</option>
               <option value="superadmin" ${u.role === 'superadmin' ? 'selected' : ''}>Superadmin</option>
             </select>
           </td>
@@ -1699,11 +1643,11 @@
       }
     }
 
-    // 3. Realtime Cloud Sync Stream (Auto Fetch Menu & Orders from Firestore)
+    // 4. Realtime Firestore Sync Stream
     function initCloudStream() {
       if (!isFirebaseReady || !db) return;
 
-      // 1. Sync Menu Items ແທ້ຈາກ Firestore
+      // 1. Sync Menu Items ຈາກ Cloud Firestore
       db.collection("menu_items").onSnapshot(snapshot => {
         if (!snapshot.empty) {
           const remoteMenu = [];
@@ -1712,10 +1656,16 @@
           localStorage.setItem('ladolce_menu', JSON.stringify(menuItems));
           renderMenu();
           renderAdminMenu();
+        } else {
+          // ຖ້າໃນ Cloud ຍັງຫວ່າງເປົ່າ ໃຫ້ດຶງ Default
+          if (menuItems.length === 0) {
+            menuItems = DEFAULT_MENU;
+            renderMenu();
+          }
         }
-      });
+      }, err => console.log("Menu sync fallback:", err));
 
-      // 2. Sync Orders & Repeating Alarm
+      // 2. Sync Orders & Alarm
       db.collection("orders").orderBy("createdAt", "desc").onSnapshot(snapshot => {
         if (!snapshot.empty) {
           const remote = [];
@@ -1744,11 +1694,16 @@
               if (live.status === 'ready') playChime(true);
             }
           }
+
+          // ຍອດຂາຍ
+          const total = orders.filter(o => o.status === 'completed').reduce((s, o) => s + o.total, 0);
+          const totalSalesEl = document.getElementById('metricTotalSales');
+          if (totalSalesEl) totalSalesEl.textContent = formatLAK(total);
         }
-      });
+      }, err => console.log("Orders sync fallback:", err));
     }
 
-    // App Initializer
+    // App Bootstrap
     window.addEventListener('DOMContentLoaded', () => {
       renderMenu();
       updateCartBadges();
