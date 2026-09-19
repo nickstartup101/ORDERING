@@ -492,49 +492,29 @@
     </div>
   </div>
 
-  <!-- 6. SUPERADMIN ADD MENU MODAL -->
-  <div id="addMenuModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
-    <div class="bg-surface-pure w-full max-w-lg rounded-2xl border border-hairline overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
-      <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
-        <h3 class="font-serif-title text-[18px] text-primary font-medium">ເພີ່ມ / ແກ້ໄຂເມນູ</h3>
-        <button onclick="closeAddMenuModal()" class="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-taupe"><span class="material-symbols-outlined text-[18px]">close</span></button>
+ <!-- Superadmin Sub-tabs (Google Material Symbols Outlined) -->
+      <div class="flex gap-2 border-b border-hairline pb-2 overflow-x-auto">
+        <button onclick="switchAdminPanelTab('analytics')" id="adm-tab-analytics" class="px-3.5 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold shrink-0 flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[16px]">bar_chart</span>
+          <span>ຍອດຂາຍ & ລາຍງານ</span>
+        </button>
+        <button onclick="switchAdminPanelTab('menu')" id="adm-tab-menu" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0 flex items-center gap-1.5 hover:text-charcoal transition-colors">
+          <span class="material-symbols-outlined text-[16px]">restaurant_menu</span>
+          <span>ຈັດການເມນູທັງໝົດ</span>
+        </button>
+        <button onclick="switchAdminPanelTab('modifiers')" id="adm-tab-modifiers" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0 flex items-center gap-1.5 hover:text-charcoal transition-colors">
+          <span class="material-symbols-outlined text-[16px]">tune</span>
+          <span>ຕົວເລືອກເສີມ (Modifiers)</span>
+        </button>
+        <button onclick="switchAdminPanelTab('payments')" id="adm-tab-payments" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0 flex items-center gap-1.5 hover:text-charcoal transition-colors">
+          <span class="material-symbols-outlined text-[16px]">qr_code_scanner</span>
+          <span>QR ທະນາຄານ</span>
+        </button>
+        <button onclick="switchAdminPanelTab('users')" id="adm-tab-users" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0 flex items-center gap-1.5 hover:text-charcoal transition-colors">
+          <span class="material-symbols-outlined text-[16px]">group</span>
+          <span>ຈັດການຜູ້ໃຊ້ & ສິດ</span>
+        </button>
       </div>
-      <form id="menuForm" class="p-5 overflow-y-auto space-y-4 text-[13px] flex-1">
-        <div>
-          <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ຊື່ເມນູ:</label>
-          <input required id="inputItemName" type="text" placeholder="ເຊັ່ນ: Iced Spanish Latte" class="w-full rounded-lg border border-hairline p-2.5"/>
-        </div>
-        <div class="grid grid-cols-2 gap-2.5">
-          <div>
-            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ໝວດໝູ່:</label>
-            <select id="inputItemCategory" class="w-full rounded-lg border border-hairline p-2.5 text-[12px]">
-              <option value="coffee">ກາເຟ (Coffee)</option>
-              <option value="tea">ຊາ/ມັດຊະ (Tea/Matcha)</option>
-              <option value="bakery">ເບເກີຣີ່ (Bakery)</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ລາຄາ (LAK ₭):</label>
-            <input required id="inputItemPrice" type="number" step="1000" placeholder="35000" class="w-full rounded-lg border border-hairline p-2.5 text-[12px]"/>
-          </div>
-        </div>
-        <div>
-          <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ອັບໂຫຼດຮູບພາບສິນຄ້າ (ບໍ່ເກີນ 1MB):</label>
-          <input type="file" id="menuImageFileInput" accept="image/*" class="w-full text-[12px] border border-hairline rounded-lg p-2" onchange="handleMenuImageUpload(event)"/>
-          <img id="menuImagePreview" class="h-28 mt-2 rounded-lg border border-hairline object-cover hidden" src=""/>
-        </div>
-        <div>
-          <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ຄຳອະທິບາຍ:</label>
-          <textarea id="inputItemDesc" rows="2" class="w-full rounded-lg border border-hairline p-2.5 text-[12px]"></textarea>
-        </div>
-        <div class="flex justify-end gap-2 pt-3 border-t border-hairline">
-          <button type="button" onclick="closeAddMenuModal()" class="px-4 py-2 border border-hairline rounded-lg text-taupe">ຍົກເລີກ</button>
-          <button type="button" onclick="saveMenuItem(event)" class="px-5 py-2 rounded-lg bg-forest-emerald text-white font-medium hover:bg-forest-leaf transition-all shadow-xs">ບັນທຶກເມນູ</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <!-- 7. ADD PAYMENT MODAL -->
   <div id="addPaymentModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-5 shadow-2xl space-y-4">
