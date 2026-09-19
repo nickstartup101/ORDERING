@@ -74,33 +74,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-  <!-- 🔥 Global Declarations in Head (ປ້ອງກັນ ReferenceError 100%) -->
-  <script>
-    // ປະກາດຕົວແປລະບົບໄວ້ເທິງສຸດ
-    const REGISTERED_ACCOUNTS = [
-      { email: "customer@ladolce.com", password: "123", name: "Elena Rostova", role: "customer", phone: "+856 20 5512 8899" },
-      { email: "staff@ladolce.com", password: "123", name: "Mateo (Barista)", role: "staff", phone: "+856 20 7788 9900" },
-      { email: "owner@ladolce.com", password: "123", name: "Sengsavanh (Superadmin)", role: "superadmin", phone: "+856 20 9900 1122" }
-    ];
-
-    let storeSettings = JSON.parse(localStorage.getItem('ladolce_store_settings')) || { isStoreOpen: true };
-
-    function openAuthModal() {
-      const m = document.getElementById('authModal');
-      if (m) m.classList.remove('hidden');
-    }
-    function closeAuthModal() {
-      const m = document.getElementById('authModal');
-      if (m) m.classList.add('hidden');
-    }
-
-    // ຟັງຊັນ Format ເງິນກີບລາວ (LAK)
-    function formatLAK(amount) {
-      const val = Math.round(Number(amount) || 0);
-      return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " ₭";
-    }
-  </script>
 </head>
 
 <body class="bg-surface text-charcoal min-h-screen flex flex-col antialiased selection:bg-forest-leaf selection:text-white font-lao">
@@ -641,9 +614,50 @@
     <span id="toastMsg">Action completed</span>
   </div>
 
-  <!-- ================= EMBEDDED REALTIME CLOUD ENGINE ================= -->
+  <!-- ================= EMBEDDED REALTIME ENGINE (ALL CONSTANTS AT TOP) ================= -->
   <script>
-    // 1. Firebase Configuration
+    // 🔥 ປະກາດຄ່າເລີ່ມຕົ້ນທັງໝົດໄວ້ເທິງສຸດ (ປ້ອງກັນ ReferenceError 100%)
+    const DEFAULT_PAYMENTS = [
+      { id: "pay_bcel", bankName: "BCEL One", accountNumber: "010-12-00-12345678", borderColor: "#DC2626", qrImage: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=BCEL_ONEPAY_LADOLCE" },
+      { id: "pay_ldb", bankName: "LDB Bank", accountNumber: "030-01-22-98765432", borderColor: "#2563EB", qrImage: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=LDB_PAY_LADOLCE" }
+    ];
+
+    const DEFAULT_MODIFIERS = [
+      { id: "mod_whole", group: "milk", name: "Whole Milk (ນົມສົດແທ້)", price: 0 },
+      { id: "mod_oat", group: "milk", name: "Oatly Barista (ນົມເຂົ້າໂອດ)", price: 15000 },
+      { id: "mod_almond", group: "milk", name: "Almond Milk (ນົມອານມອນດ໌)", price: 15000 }
+    ];
+
+    const DEFAULT_MENU = [
+      { id: "item_cortado", name: "Double Shot Cortado", type: "drink", category: "coffee", image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80", desc: "Single-origin double espresso with silky micro-foam", variants: { standard: 35000, hot: 35000, iced: 40000 } },
+      { id: "item_pistachio", name: "Iced Pistachio Spanish Latte", type: "drink", category: "coffee", image: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=600&auto=format&fit=crop&q=80", desc: "Espresso with hand-ground Bronte pistachio cream", variants: { standard: 45000, hot: 45000, iced: 50000 } },
+      { id: "item_croissant", name: "Almond Croissant", type: "food", category: "bakery", image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&auto=format&fit=crop&q=80", desc: "Twice-baked almond frangipane butter croissant", variants: { standard: 32000 } }
+    ];
+
+    // Global App States
+    let currentCategoryFilter = 'all';
+    let activeCustomizingItem = null;
+    let selectedVariant = 'standard';
+    let modalQuantity = 1;
+    let selectedBankMethodId = null;
+    let uploadedSlipDataUrl = null;
+    let isRegisterMode = false;
+    let currentUploadedMenuImageBase64 = null;
+    let currentUploadedBankQRBase64 = null;
+    let editingItemId = null;
+    let activeRejectOrderId = null;
+    let staffSubTab = 'active';
+
+    let menuItems = JSON.parse(localStorage.getItem('ladolce_menu')) || [];
+    let paymentMethods = JSON.parse(localStorage.getItem('ladolce_payment_methods')) || DEFAULT_PAYMENTS;
+    let modifiers = JSON.parse(localStorage.getItem('ladolce_modifiers')) || DEFAULT_MODIFIERS;
+    let orders = JSON.parse(localStorage.getItem('ladolce_orders')) || [];
+    let cart = JSON.parse(localStorage.getItem('ladolce_cart')) || [];
+    let currentUser = JSON.parse(localStorage.getItem('ladolce_user')) || null;
+    let currentActiveOrder = JSON.parse(localStorage.getItem('ladolce_active_order')) || null;
+    let cloudUsers = [];
+
+    // Firebase Init
     const firebaseConfig = {
       apiKey: "AIzaSyA7wNI6iwyqcv1gwKkzZ_1YEEGNMnYqABc",
       authDomain: "ladolceordering.firebaseapp.com",
@@ -664,32 +678,7 @@
         auth = firebase.auth();
         isFirebaseReady = true;
       }
-    } catch (e) {
-      console.warn("Firestore mode:", e);
-    }
-
-    // 2. Global State Holders
-    let menuItems = JSON.parse(localStorage.getItem('ladolce_menu')) || [];
-    let paymentMethods = JSON.parse(localStorage.getItem('ladolce_payment_methods')) || DEFAULT_PAYMENTS;
-    let modifiers = JSON.parse(localStorage.getItem('ladolce_modifiers')) || DEFAULT_MODIFIERS;
-    let orders = JSON.parse(localStorage.getItem('ladolce_orders')) || [];
-    let cart = JSON.parse(localStorage.getItem('ladolce_cart')) || [];
-    let currentUser = JSON.parse(localStorage.getItem('ladolce_user')) || null;
-    let currentActiveOrder = JSON.parse(localStorage.getItem('ladolce_active_order')) || null;
-    let cloudUsers = [];
-
-    let currentCategoryFilter = 'all';
-    let activeCustomizingItem = null;
-    let selectedVariant = 'standard';
-    let modalQuantity = 1;
-    let selectedBankMethodId = null;
-    let uploadedSlipDataUrl = null;
-    let isRegisterMode = false;
-    let currentUploadedMenuImageBase64 = null;
-    let currentUploadedBankQRBase64 = null;
-    let editingItemId = null;
-    let activeRejectOrderId = null;
-    let staffSubTab = 'active';
+    } catch (e) {}
 
     // Fast App Toast
     function showFastToast(msg, icon = 'check_circle') {
@@ -1332,7 +1321,7 @@
         }
 
         // Fallback ກວດສອບ Built-in Accounts (Elena, Mateo, Sengsavanh)
-        if (!authenticatedUser) {
+        if (!authenticatedUser && typeof REGISTERED_ACCOUNTS !== 'undefined') {
           const matched = REGISTERED_ACCOUNTS.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass);
           if (matched) authenticatedUser = matched;
         }
@@ -1643,11 +1632,11 @@
       }
     }
 
-    // 4. Realtime Firestore Sync Stream
+    // 4. Realtime Firestore Sync Stream (Auto Fetch Menu & Orders from Firestore)
     function initCloudStream() {
       if (!isFirebaseReady || !db) return;
 
-      // 1. Sync Menu Items ຈາກ Cloud Firestore
+      // 1. Sync Menu Items ແທ້ຈາກ Firestore
       db.collection("menu_items").onSnapshot(snapshot => {
         if (!snapshot.empty) {
           const remoteMenu = [];
@@ -1657,7 +1646,6 @@
           renderMenu();
           renderAdminMenu();
         } else {
-          // ຖ້າໃນ Cloud ຍັງຫວ່າງເປົ່າ ໃຫ້ດຶງ Default
           if (menuItems.length === 0) {
             menuItems = DEFAULT_MENU;
             renderMenu();
@@ -1673,7 +1661,6 @@
           orders = remote;
           localStorage.setItem('ladolce_orders', JSON.stringify(orders));
 
-          // ດັກສຽງເຕືອນ Barista
           if (currentUser && (currentUser.role === 'staff' || currentUser.role === 'superadmin')) {
             const hasPending = orders.some(o => o.status === 'pending');
             if (hasPending) {
@@ -1684,7 +1671,6 @@
             renderStaffOrders();
           }
 
-          // Realtime Customer Ticket
           if (currentActiveOrder) {
             const live = orders.find(o => o.id === currentActiveOrder.id);
             if (live && live.status !== currentActiveOrder.status) {
@@ -1695,7 +1681,6 @@
             }
           }
 
-          // ຍອດຂາຍ
           const total = orders.filter(o => o.status === 'completed').reduce((s, o) => s + o.total, 0);
           const totalSalesEl = document.getElementById('metricTotalSales');
           if (totalSalesEl) totalSalesEl.textContent = formatLAK(total);
