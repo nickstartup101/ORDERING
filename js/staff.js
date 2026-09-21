@@ -1,9 +1,10 @@
 // =======================================================
-// BARISTA KITCHEN DISPLAY & ORDER FULFILLMENT
+// BARISTA KITCHEN DISPLAY, REPEAT ALARM & POP-UP ENGINE
 // =======================================================
 
 let staffSubTab = 'active';
 let activeRejectOrderId = null;
+let currentModalOrderId = null;
 
 function switchStaffSubTab(tab) {
   staffSubTab = tab;
@@ -49,10 +50,13 @@ function renderStaffOrders() {
             <button onclick="openRejectModal('${o.id}')" class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-[11px] font-bold">ປະຕິເສດ</button>
           ` : ''}
           ${o.status === 'crafting' ? `
-            <button onclick="sendDelayNotice('${o.id}')" class="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-[11px] text-amber-900 font-bold">+5m ລ່າຊ້າ</button>
+            <button onclick="sendDelayNotice('${o.id}')" class="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-[11px] text-amber-900 font-bold flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">hourglass_top</span>
+              <span>+5m ລ່າຊ້າ</span>
+            </button>
             <button onclick="updateOrderStatus('${o.id}','ready')" class="flex-1 py-1.5 rounded-lg bg-emerald-800 text-white text-[11px] font-bold">ພ້ອມຮັບ</button>
           ` : ''}
-          ${o.status === 'ready' ? `<button onclick="updateOrderStatus('${o.id}','completed')" class="w-full py-1.5 rounded-lg bg-primary text-white text-[11px] font-bold">ມອບແລ້ວ</button>` : ''}
+          ${o.status === 'ready' ? `<button onclick="updateOrderStatus('${o.id}','completed')" class="w-full py-1.5 rounded-lg bg-primary text-white text-[11px] font-bold">ມອບແລ້ວ (Completed)</button>` : ''}
         </div>
       </div>
     `).join('');
@@ -83,26 +87,41 @@ function closeSlipAuditModal() {
   document.getElementById('slipAuditModal').classList.add('hidden');
 }
 
-function updateOrderStatus(id, status) {
+async function updateOrderStatus(id, status) {
   stopStaffAlarm();
   const order = orders.find(o => o.id === id);
   if (order) {
     order.status = status;
+    if (status === 'completed') {
+      order.completedAt = new Date().toISOString();
+    }
+
     localStorage.setItem('ladolce_orders', JSON.stringify(orders));
-    if (isFirebaseReady && db) db.collection("orders").doc(id).update({ status });
+    
+    if (isFirebaseReady && db) {
+      await db.collection("orders").doc(id).update({
+        status: status,
+        completedAt: status === 'completed' ? new Date().toISOString() : null
+      });
+    }
+
     renderStaffOrders();
-    if (status === 'ready') playChime(true);
+    if (typeof renderAnalytics === 'function') renderAnalytics();
     showToast(`ອັບເດດ ${id} ເປັນ ${status}`);
   }
 }
 
-function sendDelayNotice(id) {
+async function sendDelayNotice(id) {
   const order = orders.find(o => o.id === id);
   if (order) {
     order.delayNotice = "ຄິວຫຼາຍ ຂໍເວລາເພີ່ມ 5 ນາທີ ເພື່ອຄວາມສົດໃໝ່";
     localStorage.setItem('ladolce_orders', JSON.stringify(orders));
-    if (isFirebaseReady && db) db.collection("orders").doc(id).update({ delayNotice: order.delayNotice });
-    showToast("ສົ່ງແຈ້ງເຕືອນລ່າຊ້າຫາລູກຄ້າແລ້ວ");
+    
+    if (isFirebaseReady && db) {
+      await db.collection("orders").doc(id).update({ delayNotice: order.delayNotice });
+    }
+
+    showToast("ສົ່ງແຈ້ງເຕືອນລ່າຊ້າຫາລູກຄ້າແລ້ວ!");
   }
 }
 
@@ -116,18 +135,47 @@ function closeRejectModal() {
   document.getElementById('staffRejectModal').classList.add('hidden');
 }
 
-function confirmRejectOrder() {
+async function confirmRejectOrder() {
   const reason = document.getElementById('rejectInputReason').value.trim();
   if (!reason) return;
   stopStaffAlarm();
+
   const order = orders.find(o => o.id === activeRejectOrderId);
   if (order) {
     order.status = 'cancelled';
     order.cancelReason = reason;
     localStorage.setItem('ladolce_orders', JSON.stringify(orders));
-    if (isFirebaseReady && db) db.collection("orders").doc(activeRejectOrderId).update({ status: 'cancelled', cancelReason: reason });
+
+    if (isFirebaseReady && db) {
+      await db.collection("orders").doc(activeRejectOrderId).update({
+        status: 'cancelled',
+        cancelReason: reason
+      });
+    }
+
     renderStaffOrders();
     closeRejectModal();
     showToast("ປະຕິເສດອໍເດີ້ແລ້ວ");
   }
+}
+
+// Staff Incoming Order Pop-up Controls
+function triggerStaffIncomingModal(order) {
+  currentModalOrderId = order.id;
+  document.getElementById('staffNotifOrderId').textContent = "Order #" + order.id;
+  document.getElementById('staffNotifCustomer').textContent = `${order.customerName} (${order.customerPhone})`;
+  document.getElementById('staffNotifTotal').textContent = formatLAK(order.total);
+  document.getElementById('staffNewOrderModal')?.classList.remove('hidden');
+}
+
+function closeStaffNewOrderModal() {
+  stopStaffAlarm();
+  document.getElementById('staffNewOrderModal')?.classList.add('hidden');
+}
+
+function acceptStaffNewOrderFromModal() {
+  if (currentModalOrderId) {
+    updateOrderStatus(currentModalOrderId, 'crafting');
+  }
+  closeStaffNewOrderModal();
 }
