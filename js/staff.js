@@ -2,6 +2,9 @@
 // BARISTA KITCHEN DISPLAY & ORDER FULFILLMENT
 // =======================================================
 
+let staffSubTab = 'active';
+let activeRejectOrderId = null;
+
 function switchStaffSubTab(tab) {
   staffSubTab = tab;
   document.getElementById('staff-tab-active').className = tab === 'active' ? "px-4 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold" : "px-4 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px]";
@@ -40,12 +43,15 @@ function renderStaffOrders() {
           <span class="font-mono font-bold">${formatLAK(o.total)}</span>
           ${o.slipUrl ? `<button onclick="viewSlip('${o.slipUrl}','${o.id}')" class="px-2.5 py-1 rounded bg-forest-emerald/10 text-forest-emerald text-[11px] font-bold">ກວດສະລິບ</button>` : '<span class="text-[10px] text-taupe">ເງິນສົດ</span>'}
         </div>
-        <div class="pt-2 border-t border-hairline flex gap-2">
+        <div class="pt-2 border-t border-hairline flex flex-wrap gap-2">
           ${o.status === 'pending' ? `
             <button onclick="updateOrderStatus('${o.id}','crafting')" class="flex-1 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-bold">ຮັບອໍເດີ້</button>
             <button onclick="openRejectModal('${o.id}')" class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-[11px] font-bold">ປະຕິເສດ</button>
           ` : ''}
-          ${o.status === 'crafting' ? `<button onclick="updateOrderStatus('${o.id}','ready')" class="w-full py-1.5 rounded-lg bg-emerald-800 text-white text-[11px] font-bold">ພ້ອມຮັບ</button>` : ''}
+          ${o.status === 'crafting' ? `
+            <button onclick="sendDelayNotice('${o.id}')" class="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-[11px] text-amber-900 font-bold">+5m ລ່າຊ້າ</button>
+            <button onclick="updateOrderStatus('${o.id}','ready')" class="flex-1 py-1.5 rounded-lg bg-emerald-800 text-white text-[11px] font-bold">ພ້ອມຮັບ</button>
+          ` : ''}
           ${o.status === 'ready' ? `<button onclick="updateOrderStatus('${o.id}','completed')" class="w-full py-1.5 rounded-lg bg-primary text-white text-[11px] font-bold">ມອບແລ້ວ</button>` : ''}
         </div>
       </div>
@@ -87,6 +93,16 @@ function updateOrderStatus(id, status) {
     renderStaffOrders();
     if (status === 'ready') playChime(true);
     showToast(`ອັບເດດ ${id} ເປັນ ${status}`);
+  }
+}
+
+function sendDelayNotice(id) {
+  const order = orders.find(o => o.id === id);
+  if (order) {
+    order.delayNotice = "ຄິວຫຼາຍ ຂໍເວລາເພີ່ມ 5 ນາທີ ເພື່ອຄວາມສົດໃໝ່";
+    localStorage.setItem('ladolce_orders', JSON.stringify(orders));
+    if (isFirebaseReady && db) db.collection("orders").doc(id).update({ delayNotice: order.delayNotice });
+    showToast("ສົ່ງແຈ້ງເຕືອນລ່າຊ້າຫາລູກຄ້າແລ້ວ");
   }
 }
 
