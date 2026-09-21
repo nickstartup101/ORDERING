@@ -2,6 +2,9 @@
 // CART, GUEST CHECKOUT & PAYMENT ENGINE
 // =======================================================
 
+let selectedBankMethodId = null;
+let uploadedSlipDataUrl = null;
+
 function confirmAddToCart() {
   if (!activeCustomizingItem) return;
   const unitPrice = activeCustomizingItem.variants?.[selectedVariant] || 35000;
@@ -109,7 +112,6 @@ function handleSlipSelected(e) {
   reader.readAsDataURL(file);
 }
 
-// Guest Modal Handlers
 function handleStartCheckout() {
   if (cart.length === 0) { showToast("ກະຕ່າຫວ່າງເປົ່າ!"); return; }
   if (!selectedBankMethodId) { showToast("ກະລຸນາເລືອກທະນາຄານກ່ອນ!"); return; }
@@ -147,7 +149,8 @@ function executeOrderCreation(customerName, customerPhone) {
     subtotal: subtotal,
     total: subtotal * 1.08,
     slipUrl: uploadedSlipDataUrl || null,
-    status: "pending"
+    status: "pending",
+    delayNotice: null
   };
 
   orders.unshift(newOrder);
