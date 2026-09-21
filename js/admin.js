@@ -1,14 +1,13 @@
 // =======================================================
-// SUPERADMIN CONTROL CENTER (100% FULLY FUNCTIONAL ENGINE)
+// SUPERADMIN CONTROL CENTER (FULL AUDIT & STORE SETTINGS)
 // =======================================================
 
 let editingItemId = null;
 let editingModId = null;
 let currentUploadedMenuImageBase64 = null;
 let currentUploadedBankQRBase64 = null;
-let salesFilterPeriod = 'day'; // 'day' | 'week' | 'month'
+let salesFilterPeriod = 'day';
 
-// 1. Router ສະຫຼັບ Panel ທັງ 5 ແທັບ
 function switchAdminPanelTab(tab) {
   const tabs = [
     { id: 'analytics', icon: 'bar_chart', label: 'ຍອດຂາຍ & ລາຍງານ' },
@@ -38,7 +37,6 @@ function switchAdminPanelTab(tab) {
     activeBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">${activeItem.icon}</span><span>${activeItem.label}</span>`;
   }
 
-  // Render ຂໍ້ມູນສະເພາະແຕ່ລະ Panel
   if (tab === 'analytics') renderAnalytics();
   if (tab === 'menu') renderAdminMenu();
   if (tab === 'modifiers') renderModifierSettings();
@@ -46,9 +44,7 @@ function switchAdminPanelTab(tab) {
   if (tab === 'users') renderUsersList();
 }
 
-// =======================================================
-// PANEL 1: ANALYTICS & REPORTS (ຍອດຂາຍ ແລະ ສະຖິຕິ)
-// =======================================================
+// 1. 🔥 ລາຍງານການຂາຍຄົບວົງຈອນ: ເຫັນທຸກ Transaction & ສະຫຼຸບແຍກປະເພດ
 function setSalesFilter(period) {
   salesFilterPeriod = period;
   renderAnalytics();
@@ -56,11 +52,17 @@ function setSalesFilter(period) {
 
 function renderAnalytics() {
   const metricEl = document.getElementById('metricTotalSales');
+  const metricOrdersCount = document.getElementById('metricTotalOrdersCount');
+  const metricQrRevenue = document.getElementById('metricQrRevenue');
+  const metricCashRevenue = document.getElementById('metricCashRevenue');
+  const tableBody = document.getElementById('analyticsTransactionsTableBody');
+
   if (!metricEl) return;
 
   const now = new Date();
   const completedOrders = orders.filter(o => o.status === 'completed');
 
+  // ກັ່ນຕອງຕາມຊ່ວງເວລາ
   let filtered = completedOrders.filter(o => {
     if (!o.createdAt) return false;
     const oDate = new Date(o.createdAt);
@@ -75,13 +77,43 @@ function renderAnalytics() {
     return true;
   });
 
-  const revenue = filtered.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-  metricEl.textContent = formatLAK(revenue);
+  const totalRevenue = filtered.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  const qrTotal = filtered.filter(o => o.slipUrl).reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  const cashTotal = totalRevenue - qrTotal;
+
+  metricEl.textContent = formatLAK(totalRevenue);
+  if (metricOrdersCount) metricOrdersCount.textContent = `${filtered.length} ອໍເດີ້`;
+  if (metricQrRevenue) metricQrRevenue.textContent = formatLAK(qrTotal);
+  if (metricCashRevenue) metricCashRevenue.textContent = formatLAK(cashTotal);
+
+  // ສະແດງຕາຕະລາງ Transaction Audit Log ທັງໝົດ
+  if (tableBody) {
+    if (filtered.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-taupe">ບໍ່ມີລາຍການຂາຍໃນຊ່ວງເວລານີ້</td></tr>`;
+      return;
+    }
+
+    tableBody.innerHTML = filtered.map(o => `
+      <tr class="hover:bg-surface/50 transition-colors">
+        <td class="p-2.5 font-mono font-bold text-forest-emerald">${o.id}</td>
+        <td class="p-2.5 text-taupe text-[11px]">${new Date(o.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</td>
+        <td class="p-2.5">
+          <span class="font-bold block">${o.customerName}</span>
+          <span class="text-[10px] text-taupe font-mono">${o.customerPhone}</span>
+        </td>
+        <td class="p-2.5 text-[11px] max-w-xs truncate">${o.items.map(i => `${i.quantity}× ${i.name}`).join(', ')}</td>
+        <td class="p-2.5">
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold ${o.slipUrl ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-gray-100 text-gray-700'}">
+            ${o.slipUrl ? 'ໂອນ QR' : 'ເງິນສົດ'}
+          </span>
+        </td>
+        <td class="p-2.5 text-right font-mono font-bold text-forest-emerald">${formatLAK(o.total)}</td>
+      </tr>
+    `).join('');
+  }
 }
 
-// =======================================================
-// PANEL 2: MENU MANAGEMENT (ຈັດການເມນູ, ຮູບ, OPTION TOGGLES)
-// =======================================================
+// 2. ຈັດການເມນູ & Layout Card
 function renderAdminMenu() {
   const container = document.getElementById('adminMenuListGrid');
   if (!container) return;
@@ -331,9 +363,7 @@ async function deleteMenuItem(id) {
   showToast("ລຶບເມນູແລ້ວ");
 }
 
-// =======================================================
-// PANEL 3: MODIFIERS POP-UP MODAL (ຈັດການຕົວເລືອກເສີມ)
-// =======================================================
+// 3. 🔥 MODIFIERS MODAL (ແກ້ໄຂ Extra Shot & Toppings ຜ່ານ Pop-up ງາມໆ)
 function renderModifierSettings() {
   const list = document.getElementById('modifierAdminList');
   if (!list) return;
@@ -345,10 +375,10 @@ function renderModifierSettings() {
         <span class="text-[10px] text-taupe font-mono">[${m.group}] +${formatLAK(m.price)}</span>
       </div>
       <div class="flex items-center gap-1">
-        <button type="button" onclick="openModifierModal('${m.id}')" class="w-7 h-7 rounded-lg bg-surface-pure border border-hairline text-forest-emerald flex items-center justify-center">
+        <button type="button" onclick="openModifierModal('${m.id}')" title="ແກ້ໄຂລາຄາ" class="w-7 h-7 rounded-lg bg-surface-pure border border-hairline text-forest-emerald flex items-center justify-center">
           <span class="material-symbols-outlined text-[15px]">edit</span>
         </button>
-        <button type="button" onclick="deleteModifier('${m.id}')" class="w-7 h-7 rounded-lg bg-surface-pure border border-hairline text-red-600 flex items-center justify-center">
+        <button type="button" onclick="deleteModifier('${m.id}')" title="ລຶບ" class="w-7 h-7 rounded-lg bg-surface-pure border border-hairline text-red-600 flex items-center justify-center">
           <span class="material-symbols-outlined text-[15px]">delete</span>
         </button>
       </div>
@@ -372,7 +402,7 @@ function openModifierModal(id = null) {
     }
   } else {
     if (title) title.textContent = "ເພີ່ມຕົວເລືອກໃໝ່";
-    document.getElementById('inputModPrice').value = 15000;
+    document.getElementById('inputModPrice').value = 12000;
   }
 
   document.getElementById('modifierModal')?.classList.remove('hidden');
@@ -384,9 +414,9 @@ function closeModifierModal() {
 
 function saveModifierFromModal(e) {
   if (e) e.preventDefault();
-  const name = document.getElementById('inputModName').value.trim();
-  const group = document.getElementById('inputModGroup').value;
-  const price = parseFloat(document.getElementById('inputModPrice').value) || 0;
+  const name = document.getElementById('inputModName')?.value.trim();
+  const group = document.getElementById('inputModGroup')?.value || 'topping';
+  const price = parseFloat(document.getElementById('inputModPrice')?.value) || 0;
 
   if (!name) return;
 
@@ -413,9 +443,7 @@ function deleteModifier(id) {
   showToast("ລຶບຕົວເລືອກແລ້ວ");
 }
 
-// =======================================================
-// PANEL 4: PAYMENTS (ຈັດການ QR ທະນາຄານ)
-// =======================================================
+// 4. Payments
 function renderPaymentSettings() {
   const list = document.getElementById('paymentMethodsAdminList');
   if (!list) return;
@@ -476,9 +504,7 @@ function deletePaymentMethod(id) {
   renderPaymentSettings();
 }
 
-// =======================================================
-// PANEL 5: USERS & ACCESS CONTROL (ຈັດການສິດຜູ້ໃຊ້ FIRESTORE)
-// =======================================================
+// 5. User Roles
 async function renderUsersList() {
   const tbody = document.getElementById('adminUsersTableBody');
   if (!tbody) return;
@@ -520,7 +546,21 @@ async function updateUserRole(email, newRole) {
   }
 }
 
-// Store Open/Close
+// 6. 🔥 TAX RATE SETTINGS (ຕັ້ງຄ່າ % ອາກອນໄດ້ເອງ)
+function updateTaxSettings() {
+  const newRate = parseFloat(prompt("ປ້ອນອັດຕາອາກອນ Tax (%): ໃສ່ 0 ຖ້າບໍ່ມີ Tax:", storeSettings.taxRatePercent || 0));
+  if (isNaN(newRate) || newRate < 0) return;
+
+  storeSettings.taxRatePercent = newRate;
+  localStorage.setItem('ladolce_store_settings', JSON.stringify(storeSettings));
+  
+  const taxBadge = document.getElementById('taxSettingsDisplay');
+  if (taxBadge) taxBadge.textContent = `Tax: ${newRate}%`;
+  
+  if (typeof renderCartList === 'function') renderCartList();
+  showToast(`ອັບເດດອັດຕາ Tax ເປັນ ${newRate}% ແລ້ວ`);
+}
+
 function toggleStoreStatus() {
   storeSettings.isStoreOpen = !storeSettings.isStoreOpen;
   localStorage.setItem('ladolce_store_settings', JSON.stringify(storeSettings));
