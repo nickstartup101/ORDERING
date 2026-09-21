@@ -1,7 +1,54 @@
 // =======================================================
-// APPLICATION ORCHESTRATION & CLOUD STREAM ENGINE
+// APPLICATION ROUTER & TAB SWITCHING CONTROLLER
 // =======================================================
 
+function switchCustomerTab(tabName) {
+  console.log("Navigating to:", tabName);
+
+  // 1. ເຊື່ອງທຸກແທັບ
+  const tabs = ['menu', 'cart', 'ticket', 'profile'];
+  tabs.forEach(t => {
+    const el = document.getElementById(`tab-customer-${t}`);
+    const btn = document.getElementById(`nav-btn-${t}`);
+    if (el) el.classList.add('hidden');
+    if (btn) {
+      btn.classList.remove('text-forest-emerald', 'font-semibold');
+      btn.classList.add('text-taupe');
+    }
+  });
+
+  // 2. ເປີດສະເພາະແທັບທີ່ເລືອກ
+  const activeTab = document.getElementById(`tab-customer-${tabName}`);
+  const activeBtn = document.getElementById(`nav-btn-${tabName}`);
+
+  if (activeTab) {
+    activeTab.classList.remove('hidden');
+  }
+
+  if (activeBtn) {
+    activeBtn.classList.add('text-forest-emerald', 'font-semibold');
+    activeBtn.classList.remove('text-taupe');
+  }
+
+  // 3. Render ຂໍ້ມູນແຕ່ລະແທັບ
+  if (tabName === 'menu' && typeof renderMenu === 'function') {
+    renderMenu();
+  }
+  if (tabName === 'cart') {
+    if (typeof renderCartList === 'function') renderCartList();
+    if (typeof renderCustomerPaymentOptions === 'function') renderCustomerPaymentOptions();
+  }
+  if (tabName === 'ticket' && typeof renderCustomerTicket === 'function') {
+    renderCustomerTicket();
+  }
+  if (tabName === 'profile' && typeof renderCustomerProfile === 'function') {
+    renderCustomerProfile();
+  }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Global Toast
 function showToast(msg) {
   const toast = document.getElementById('atelierToast');
   const text = document.getElementById('toastMsg');
@@ -15,11 +62,11 @@ function showToast(msg) {
   }, 1800);
 }
 
-// Real-time Cloud Firestore Listener (Instant 0.05s)
+// Cloud Real-time Listener
 function initCloudStream() {
   if (!isFirebaseReady || !db) return;
 
-  // 1. Sync Menu Items ແທ້ຈາກ Firestore
+  // 1. Sync Menu
   db.collection("menu_items").onSnapshot(snapshot => {
     if (!snapshot.empty) {
       const remoteMenu = [];
@@ -29,9 +76,9 @@ function initCloudStream() {
       if (typeof renderMenu === 'function') renderMenu();
       if (typeof renderAdminMenu === 'function') renderAdminMenu();
     }
-  }, err => console.warn("Menu stream issue:", err));
+  }, err => console.warn(err));
 
-  // 2. Sync Orders & Repeating Alarm ສຳລັບ Staff
+  // 2. Sync Orders & Staff Alarm
   db.collection("orders").orderBy("createdAt", "desc").onSnapshot(snapshot => {
     if (!snapshot.empty) {
       const remote = [];
@@ -39,7 +86,6 @@ function initCloudStream() {
       orders = remote;
       localStorage.setItem('ladolce_orders', JSON.stringify(orders));
 
-      // ດັກສຽງເຕືອນ Barista
       if (currentUser && (currentUser.role === 'staff' || currentUser.role === 'superadmin')) {
         const hasPending = orders.some(o => o.status === 'pending');
         if (hasPending) {
@@ -50,7 +96,6 @@ function initCloudStream() {
         if (typeof renderStaffOrders === 'function') renderStaffOrders();
       }
 
-      // Sync ປີ້ລູກຄ້າ Real-time
       if (currentActiveOrder) {
         const live = orders.find(o => o.id === currentActiveOrder.id);
         if (live && live.status !== currentActiveOrder.status) {
@@ -61,12 +106,11 @@ function initCloudStream() {
         }
       }
 
-      // ຍອດຂາຍ
       const total = orders.filter(o => o.status === 'completed').reduce((s, o) => s + o.total, 0);
       const totalSalesEl = document.getElementById('metricTotalSales');
       if (totalSalesEl) totalSalesEl.textContent = formatLAK(total);
     }
-  }, err => console.warn("Orders stream issue:", err));
+  }, err => console.warn(err));
 }
 
 // Fast App Bootstrap
