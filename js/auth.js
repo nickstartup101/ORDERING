@@ -1,11 +1,12 @@
 // =======================================================
-// AUTHENTICATION, ROLES & DROPDOWN ENGINE
+// AUTHENTICATION, ROLE DISPATCHER & DYNAMIC DROPDOWN
 // =======================================================
 
 let isRegisterMode = false;
 let sessionTimer = null;
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 ນາທີ
 
+// 1. ເປີດ-ປິດ Login Modal
 function openAuthModal() {
   const modal = document.getElementById('authModal');
   if (modal) modal.classList.remove('hidden');
@@ -23,6 +24,7 @@ function toggleAuthMode() {
   document.getElementById('btnAuthSubmit').textContent = isRegisterMode ? "Sign Up" : "Sign In";
 }
 
+// 2. ລະບົບ Session Timeout 30 ນາທີ
 function resetSessionTimer() {
   if (sessionTimer) clearTimeout(sessionTimer);
   if (currentUser) {
@@ -45,6 +47,7 @@ function autoLogoutSession() {
   alert("ໝົດເວລາເຊດຊັນ 30 ນາທີ ລະບົບໄດ້ອອກຈາກລະບົບອັດຕະໂນມັດ");
 }
 
+// 3. Login & Register ກວດສອບກົງກັບ Cloud Firestore
 async function handleAuthSubmit() {
   const email = document.getElementById('authEmail')?.value.trim();
   const pass = document.getElementById('authPassword')?.value.trim();
@@ -85,6 +88,7 @@ async function handleAuthSubmit() {
   } else {
     let authenticatedUser = null;
 
+    // 1. ກວດສອບກົງກັບ Firestore Collection 'users'
     if (isFirebaseReady && db) {
       try {
         const doc = await db.collection("users").doc(email).get();
@@ -95,10 +99,11 @@ async function handleAuthSubmit() {
           }
         }
       } catch (cloudErr) {
-        console.warn("Firestore fetch issue:", cloudErr);
+        console.warn("Firestore fetch error:", cloudErr);
       }
     }
 
+    // 2. Fallback Built-in Accounts (Elena, Mateo, Sengsavanh)
     if (!authenticatedUser && typeof REGISTERED_ACCOUNTS !== 'undefined') {
       const matched = REGISTERED_ACCOUNTS.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass);
       if (matched) authenticatedUser = matched;
@@ -126,6 +131,7 @@ function logoutUser() {
   showToast("ອອກຈາກລະບົບແລ້ວ");
 }
 
+// 4. ນຳທາງໜ້າຈໍຕາມ Role (Customer, Staff, Superadmin)
 function dispatchRoleView(role) {
   document.getElementById('customerAppView')?.classList.toggle('hidden', role !== 'customer');
   document.getElementById('adminStaffAppView')?.classList.toggle('hidden', role !== 'staff');
@@ -147,9 +153,11 @@ function dispatchRoleView(role) {
   }
 }
 
+// 5. ອັບເດດ Dropdown Menu ມຸມຂວາເທິງ ຕາມ Role ຂອງຜູ້ໃຊ້
 function updateUserSessionUI() {
   const btnLogin = document.getElementById('btnLoginHeader');
   const userChip = document.getElementById('userProfileChip');
+  const roleLinksContainer = document.getElementById('dropdownRoleLinks');
 
   if (currentUser) {
     if (btnLogin) btnLogin.classList.add('hidden');
@@ -164,13 +172,57 @@ function updateUserSessionUI() {
     if (uName) uName.textContent = currentUser.name;
     if (uEmail) uEmail.textContent = currentUser.email;
     if (uRole) uRole.textContent = currentUser.role || 'customer';
+
+    // ສ້າງເມນູ Dropdown ສະເພາະແຕ່ລະ Role
+    if (roleLinksContainer) {
+      if (currentUser.role === 'superadmin') {
+        roleLinksContainer.innerHTML = `
+          <button type="button" onclick="dispatchRoleView('superadmin'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-bold text-forest-emerald hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
+            <span class="material-symbols-outlined text-[17px]">admin_panel_settings</span>
+            <span>ສູນຄວບຄຸມ (Control Center)</span>
+          </button>
+          <button type="button" onclick="dispatchRoleView('staff'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
+            <span class="material-symbols-outlined text-[17px]">coffee_maker</span>
+            <span>ໜ້າຈໍຄົວ (Kitchen Display)</span>
+          </button>
+          <button type="button" onclick="dispatchRoleView('customer'); switchCustomerTab('ticket'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
+            <span class="material-symbols-outlined text-[17px]">receipt_long</span>
+            <span>ບິນສັ່ງຊື້ (Orders Audit)</span>
+          </button>
+        `;
+      } else if (currentUser.role === 'staff') {
+        roleLinksContainer.innerHTML = `
+          <button type="button" onclick="dispatchRoleView('staff'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-bold text-forest-emerald hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
+            <span class="material-symbols-outlined text-[17px]">coffee_maker</span>
+            <span>ໜ້າຈໍຄົວ (Kitchen Display)</span>
+          </button>
+          <button type="button" onclick="dispatchRoleView('customer'); switchCustomerTab('ticket'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
+            <span class="material-symbols-outlined text-[17px]">receipt_long</span>
+            <span>ບິນຮັບເຄື່ອງ (Ticket)</span>
+          </button>
+        `;
+      } else {
+        // Customer Role
+        roleLinksContainer.innerHTML = `
+          <button type="button" onclick="switchCustomerTab('profile'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
+            <span class="material-symbols-outlined text-[17px] text-forest-emerald">account_circle</span>
+            <span>ໂປຣໄຟລ໌ຂອງຂ້ອຍ</span>
+          </button>
+          <button type="button" onclick="switchCustomerTab('ticket'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
+            <span class="material-symbols-outlined text-[17px] text-forest-emerald">receipt_long</span>
+            <span>ປີ້ຮັບເຄື່ອງ (My Ticket)</span>
+          </button>
+        `;
+      }
+    }
+
   } else {
     if (btnLogin) btnLogin.classList.remove('hidden');
     if (userChip) userChip.classList.add('hidden');
   }
 }
 
-// Slide-down Profile Dropdown
+// 6. Slide-down Profile Dropdown Handlers
 function toggleProfileDropdown(e) {
   if (e) e.stopPropagation();
   const menu = document.getElementById('profileDropdownMenu');
