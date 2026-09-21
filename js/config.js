@@ -1,8 +1,7 @@
 // =======================================================
-// LA DOLCE — CONFIGURATION & CORE DATA STRUCTURES
+// LA DOLCE — CORE CONFIGURATION & CONSTANTS
 // =======================================================
 
-// 1. Firebase SDK Config
 const firebaseConfig = {
   apiKey: "AIzaSyA7wNI6iwyqcv1gwKkzZ_1YEEGNMnYqABc",
   authDomain: "ladolceordering.firebaseapp.com",
@@ -26,23 +25,20 @@ try {
     console.log("✅ Cloud Firestore Initialized Successfully");
   }
 } catch (e) {
-  console.warn("Firestore initialization fallback:", e);
+  console.warn("Firestore fallback mode:", e);
 }
 
-// 2. ບັນຊີລະບົບເລີ່ມຕົ້ນ
 const REGISTERED_ACCOUNTS = [
   { email: "customer@ladolce.com", password: "123", name: "Elena Rostova", role: "customer", phone: "+856 20 5512 8899" },
   { email: "staff@ladolce.com", password: "123", name: "Mateo (Barista)", role: "staff", phone: "+856 20 7788 9900" },
   { email: "owner@ladolce.com", password: "123", name: "Sengsavanh (Superadmin)", role: "superadmin", phone: "+856 20 9900 1122" }
 ];
 
-// 3. ທະນາຄານ ແລະ QR Code
 const DEFAULT_PAYMENTS = [
   { id: "pay_bcel", bankName: "BCEL One", accountNumber: "010-12-00-12345678", borderColor: "#DC2626", qrImage: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=BCEL_ONEPAY_LADOLCE" },
   { id: "pay_ldb", bankName: "LDB Bank", accountNumber: "030-01-22-98765432", borderColor: "#2563EB", qrImage: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=LDB_PAY_LADOLCE" }
 ];
 
-// 4. ຕົວເລືອກເສີມ Modifiers
 const DEFAULT_MODIFIERS = [
   { id: "mod_whole", group: "milk", name: "Whole Milk (ນົມສົດແທ້)", price: 0 },
   { id: "mod_oat", group: "milk", name: "Oatly Barista (ນົມເຂົ້າໂອດ)", price: 15000 },
@@ -50,14 +46,13 @@ const DEFAULT_MODIFIERS = [
   { id: "mod_shot", group: "topping", name: "Extra Double Ristretto Shot", price: 12000 }
 ];
 
-// 5. ເມນູເລີ່ມຕົ້ນ (ລາຄາເປັນກີບ LAK)
 const DEFAULT_MENU = [
-  { id: "item_cortado", name: "Double Shot Cortado", category: "coffee", image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80", desc: "Single-origin double espresso with velvety micro-foam", variants: { standard: 35000, hot: 35000, iced: 40000 } },
-  { id: "item_pistachio", name: "Iced Pistachio Spanish Latte", category: "coffee", image: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=600&auto=format&fit=crop&q=80", desc: "Espresso layered with Bronte pistachio cream", variants: { standard: 45000, hot: 45000, iced: 50000 } },
-  { id: "item_croissant", name: "Almond Croissant", category: "bakery", image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&auto=format&fit=crop&q=80", desc: "Twice-baked almond frangipane butter croissant", variants: { standard: 32000 } }
+  { id: "item_cortado", name: "Double Shot Cortado", type: "drink", category: "coffee", image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80", desc: "Single-origin double espresso with micro-foam", variants: { standard: 35000, hot: 35000, iced: 40000 }, avgPrepMinutes: 3.8, isAvailable: true },
+  { id: "item_pistachio", name: "Iced Pistachio Spanish Latte", type: "drink", category: "coffee", image: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=600&auto=format&fit=crop&q=80", desc: "Espresso with hand-ground Bronte pistachio cream", variants: { standard: 45000, hot: 45000, iced: 50000 }, avgPrepMinutes: 8.5, isAvailable: true },
+  { id: "item_croissant", name: "Almond Croissant", type: "food", category: "bakery", image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&auto=format&fit=crop&q=80", desc: "Twice-baked almond frangipane butter croissant", variants: { standard: 32000 }, avgPrepMinutes: 3.0, isAvailable: true }
 ];
 
-// Global States
+// Persistent State
 let storeSettings = JSON.parse(localStorage.getItem('ladolce_store_settings')) || { isStoreOpen: true };
 let menuItems = JSON.parse(localStorage.getItem('ladolce_menu')) || DEFAULT_MENU;
 let paymentMethods = JSON.parse(localStorage.getItem('ladolce_payment_methods')) || DEFAULT_PAYMENTS;
@@ -67,6 +62,7 @@ let cart = JSON.parse(localStorage.getItem('ladolce_cart')) || [];
 let currentUser = JSON.parse(localStorage.getItem('ladolce_user')) || null;
 let currentActiveOrder = JSON.parse(localStorage.getItem('ladolce_active_order')) || null;
 let userAccounts = JSON.parse(localStorage.getItem('ladolce_accounts')) || REGISTERED_ACCOUNTS;
+let cloudUsers = [];
 
 // Helper: Format ເງິນກີບ LAK
 function formatLAK(amount) {
