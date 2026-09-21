@@ -39,41 +39,56 @@
       }
     };
   </script>
-
-  <style>
-    @layer base {
-      html, body {
-        width: 100vw;
-        margin: 0;
-        padding: 0;
-        background-color: #FAF9F6;
-        color: #141A17;
-        font-family: 'Noto Sans Lao', 'DM Sans', sans-serif !important;
-        -webkit-font-smoothing: antialiased;
-      }
-      .font-serif-title { font-family: 'Playfair Display', 'Noto Sans Lao', serif; }
-      body { overscroll-behavior-y: none; }
-      .pb-safe { padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px); }
-      .pt-safe { padding-top: max(env(safe-area-inset-top, 0px), 14px); }
-    }
-    ::-webkit-scrollbar { display: none; }
-    .barcode-pattern {
-      background: repeating-linear-gradient(90deg, #11241C 0, #11241C 2.5px, transparent 2.5px, transparent 5px, #0A3A2A 5px, #0A3A2A 8.5px, transparent 8.5px, transparent 11px);
-    }
-    .bg-forest-gradient {
-      background: linear-gradient(135deg, #11241C 0%, #0D2E22 50%, #06402B 100%);
-    }
-    @keyframes slideDown {
-      from { opacity: 0; transform: translateY(-8px) scale(0.96); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    .animate-slide-down { animation: slideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-  </style>
+  <link rel="stylesheet" href="css/style.css"/>
 
   <!-- Firebase Web SDK (Compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- 🔥 Global Head Router: ແກ້ໄຂ switchCustomerTab is not defined 100% -->
+  <script>
+    function switchCustomerTab(tabName) {
+      const tabs = ['menu', 'cart', 'ticket', 'profile'];
+      tabs.forEach(t => {
+        const el = document.getElementById(`tab-customer-${t}`);
+        const btn = document.getElementById(`nav-btn-${t}`);
+        if (el) el.classList.add('hidden');
+        if (btn) {
+          btn.classList.remove('text-forest-emerald', 'font-semibold');
+          btn.classList.add('text-taupe');
+        }
+      });
+
+      const activeTab = document.getElementById(`tab-customer-${tabName}`);
+      const activeBtn = document.getElementById(`nav-btn-${tabName}`);
+
+      if (activeTab) activeTab.classList.remove('hidden');
+      if (activeBtn) {
+        activeBtn.classList.add('text-forest-emerald', 'font-semibold');
+        activeBtn.classList.remove('text-taupe');
+      }
+
+      if (tabName === 'menu' && typeof renderMenu === 'function') renderMenu();
+      if (tabName === 'cart') {
+        if (typeof renderCartList === 'function') renderCartList();
+        if (typeof renderCustomerPaymentOptions === 'function') renderCustomerPaymentOptions();
+      }
+      if (tabName === 'ticket' && typeof renderCustomerTicket === 'function') renderCustomerTicket();
+      if (tabName === 'profile' && typeof renderCustomerProfile === 'function') renderCustomerProfile();
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openAuthModal() {
+      const m = document.getElementById('authModal');
+      if (m) m.classList.remove('hidden');
+    }
+    function closeAuthModal() {
+      const m = document.getElementById('authModal');
+      if (m) m.classList.add('hidden');
+    }
+  </script>
 </head>
 
 <body class="bg-surface text-charcoal min-h-screen flex flex-col antialiased selection:bg-forest-leaf selection:text-white font-lao">
@@ -89,7 +104,7 @@
         </div>
       </div>
 
-      <!-- Staff Repeating Alarm Indicator -->
+      <!-- Staff Alarm Ringing Indicator -->
       <div id="staffRingingIndicator" class="hidden items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-full animate-pulse">
         <span class="w-2 h-2 rounded-full bg-red-600"></span>
         <span class="text-[11px] font-medium text-red-700">ມີອໍເດີ້ໃໝ່ເຂົ້າມາ!</span>
@@ -142,13 +157,13 @@
             </span>
             <div>
               <div class="flex items-center gap-2">
-                <h2 class="font-serif-title text-[16px] text-primary font-medium">Namphou Branch</h2>
+                <h2 class="font-serif-title text-[16px] text-primary font-medium">Downtown Flagship Roastery</h2>
                 <span id="customerStoreOpenBadge" class="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold">ເປີດບໍລິການ</span>
               </div>
               <p class="text-[12px] text-taupe">ສັ່ງລ່ວງໜ້າ • ຮັບທີ່ເຄົາເຕີ້ພາຍໃນ 8–15 ນາທີ</p>
             </div>
           </div>
-          <button onclick="switchCustomerTab('cart')" class="relative self-end md:self-center flex items-center gap-2 px-4 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-medium shadow-xs">
+          <button type="button" onclick="switchCustomerTab('cart')" class="relative self-end md:self-center flex items-center gap-2 px-4 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-medium shadow-xs">
             <span class="material-symbols-outlined text-[17px]">shopping_bag</span>
             <span>ກະຕ່າສັ່ງຊື້</span>
             <span id="cartBadgeCount" class="w-5 h-5 rounded-full bg-white text-forest-emerald text-[10px] font-bold flex items-center justify-center">0</span>
@@ -157,10 +172,10 @@
 
         <!-- Filter Categories -->
         <div class="flex items-center gap-2 overflow-x-auto pb-1" id="categoryFilterContainer">
-          <button onclick="filterCategory('all')" class="cat-pill active-cat px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-forest-emerald text-white">ທັງໝົດ</button>
-          <button onclick="filterCategory('coffee')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal">ກາເຟ</button>
-          <button onclick="filterCategory('tea')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal">ຊາ & ມັດຊະ</button>
-          <button onclick="filterCategory('bakery')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal">ເບເກີຣີ່ & ອາຫານ</button>
+          <button type="button" onclick="filterCategory('all')" class="cat-pill active-cat px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-forest-emerald text-white">ທັງໝົດ</button>
+          <button type="button" onclick="filterCategory('coffee')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal">ກາເຟ</button>
+          <button type="button" onclick="filterCategory('tea')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal">ຊາ & ມັດຊະ</button>
+          <button type="button" onclick="filterCategory('bakery')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal">ເບເກີຣີ່ & ອາຫານ</button>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="menuGrid"></div>
@@ -246,10 +261,10 @@
       </div>
 
       <div class="flex gap-2 border-b border-hairline pb-2">
-        <button onclick="switchStaffSubTab('active')" id="staff-tab-active" class="px-4 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold">
+        <button type="button" onclick="switchStaffSubTab('active')" id="staff-tab-active" class="px-4 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold">
           ຄິວທີ່ກຳລັງດຳເນີນການ (Active Queue)
         </button>
-        <button onclick="switchStaffSubTab('history')" id="staff-tab-history" class="px-4 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px]">
+        <button type="button" onclick="switchStaffSubTab('history')" id="staff-tab-history" class="px-4 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px]">
           ປະຫວັດທີ່ສຳເລັດແລ້ວ (Completed History)
         </button>
       </div>
@@ -313,7 +328,7 @@
         </div>
       </div>
 
-      <!-- Panel 2: Menu Management (Clean Boutique Row Layout) -->
+      <!-- Panel 2: Menu Management -->
       <div id="adm-panel-menu" class="hidden space-y-3">
         <div class="flex items-center justify-between">
           <h4 class="font-serif-title text-[17px] text-primary font-medium">ລາຍການເມນູທັງໝົດໃນຮ້ານ (Firestore Synced)</h4>
@@ -322,11 +337,14 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="adminMenuListGrid"></div>
       </div>
 
-      <!-- Panel 3: Modifiers -->
+      <!-- Panel 3: Modifiers (Modal Triggered) -->
       <div id="adm-panel-modifiers" class="hidden p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
         <div class="flex items-center justify-between border-b border-hairline pb-3">
-          <h4 class="font-serif-title text-[16px] text-primary font-medium">ຕົວເລືອກເສີມພິເສດ</h4>
-          <button onclick="addNewModifier()" class="px-3 py-1.5 rounded-lg border border-forest-emerald text-forest-emerald text-[11px] font-medium">+ ເພີ່ມຕົວເລືອກ</button>
+          <div>
+            <h4 class="font-serif-title text-[16px] text-primary font-medium">ຕົວເລືອກເສີມພິເສດ</h4>
+            <p class="text-[11px] text-taupe">ກຳນົດປະເພດນົມ, ທ໊ອບປີ້ງ</p>
+          </div>
+          <button type="button" onclick="openModifierModal()" class="px-3 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-bold">+ ເພີ່ມຕົວເລືອກໃໝ່</button>
         </div>
         <div id="modifierAdminList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5"></div>
       </div>
@@ -334,7 +352,10 @@
       <!-- Panel 4: Payments -->
       <div id="adm-panel-payments" class="hidden p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
         <div class="flex items-center justify-between border-b border-hairline pb-3">
-          <h4 class="font-serif-title text-[16px] text-primary font-medium">ບັນຊີຮັບເງິນ & QR Code ທະນາຄານ</h4>
+          <div>
+            <h4 class="font-serif-title text-[16px] text-primary font-medium">ບັນຊີຮັບເງິນ & QR Code ທະນາຄານ</h4>
+            <p class="text-[11px] text-taupe">ເພີ່ມ QR ໄດ້ຫຼາຍທະນາຄານ ພ້ອມກຳນົດສີຂອບ</p>
+          </div>
           <button onclick="openAddPaymentModal()" class="px-3 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-medium">+ ເພີ່ມທະນາຄານໃໝ່</button>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" id="paymentMethodsAdminList"></div>
@@ -389,7 +410,7 @@
     </div>
   </nav>
 
-  <!-- ================= MODALS & POP-UPS ================= -->
+  <!-- ================= MODALS ================= -->
 
   <!-- 1. CUSTOMIZE MODAL -->
   <div id="customizeModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end sm:items-center justify-center hidden">
@@ -597,7 +618,7 @@
     </div>
   </div>
 
-  <!-- 8. SUPERADMIN ADD/EDIT MENU MODAL (ມີ Checkbox Option Toggles) -->
+  <!-- 8. SUPERADMIN ADD/EDIT MENU MODAL -->
   <div id="addMenuModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-lg rounded-2xl border border-hairline overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
       <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
@@ -621,12 +642,12 @@
             </select>
           </div>
           <div id="standardPriceBox">
-            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ລາຄາມາດຕະຖານ (LAK ₭):</label>
+            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ລາຄາມາດຕະຖານ (LAK):</label>
             <input id="priceStandard" type="number" step="1000" placeholder="35000" class="w-full rounded-lg border border-hairline p-2.5 text-[12px]"/>
           </div>
         </div>
 
-        <!-- ຕັ້ງຄ່າຮູບແບບ: ຮ້ອນ / ເຢັນ / ປັ່ນ ພ້ອມລາຄາແຍກ -->
+        <!-- ຕັ້ງຄ່າຮູບແບບ: ຮ້ອນ / ເຢັນ / ປັ່ນ -->
         <div class="p-3.5 bg-surface rounded-xl border border-hairline space-y-2.5">
           <span class="block text-[11px] font-bold text-forest-emerald uppercase tracking-wider">ຮູບແບບເຄື່ອງດື່ມ & ລາຄາແຍກ:</span>
           <div class="grid grid-cols-3 gap-2">
@@ -654,7 +675,7 @@
           </div>
         </div>
 
-        <!-- ຕັ້ງຄ່າ Option Toggles: ນົມ, ຄວາມຫວານ, Topping -->
+        <!-- Option Toggles -->
         <div class="p-3.5 bg-surface rounded-xl border border-hairline space-y-2">
           <span class="block text-[11px] font-bold text-forest-emerald uppercase tracking-wider">ຕັ້ງຄ່າຕົວເລືອກພິເສດສຳລັບເມນູນີ້:</span>
           
@@ -704,7 +725,39 @@
     </div>
   </div>
 
-  <!-- 9. ADD PAYMENT MODAL -->
+  <!-- 9. SUPERADMIN MODIFIER POP-UP MODAL (ໃໝ່! ແທນ prompt ຂາວໆ) -->
+  <div id="modifierModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
+    <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-hairline pb-2">
+        <h3 class="font-serif-title text-[17px] text-primary font-medium" id="modifierModalTitle">ເພີ່ມ / ແກ້ໄຂຕົວເລືອກ</h3>
+        <button type="button" onclick="closeModifierModal()" class="w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-taupe"><span class="material-symbols-outlined text-[16px]">close</span></button>
+      </div>
+
+      <form id="modifierForm" onsubmit="saveModifierFromModal(event)" class="space-y-3 text-[12px]">
+        <div>
+          <label class="block text-taupe mb-1">ຊື່ຕົວເລືອກເສີມ:</label>
+          <input required id="inputModName" type="text" placeholder="ເຊັ່ນ: Oatly Barista, Extra Shot" class="w-full rounded-lg border border-hairline p-2"/>
+        </div>
+        <div>
+          <label class="block text-taupe mb-1">ໝວດກຸ່ມ:</label>
+          <select id="inputModGroup" class="w-full rounded-lg border border-hairline p-2 text-[12px]">
+            <option value="milk">ປະເພດນົມ (Milk)</option>
+            <option value="topping">ທ໊ອບປີ້ງ (Topping)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-taupe mb-1">ລາຄາບວກເພີ່ມ (LAK ₭):</label>
+          <input required id="inputModPrice" type="number" step="1000" placeholder="15000" class="w-full rounded-lg border border-hairline p-2 font-mono"/>
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-hairline">
+          <button type="button" onclick="closeModifierModal()" class="px-3 py-1.5 border border-hairline rounded-lg text-taupe">ຍົກເລີກ</button>
+          <button type="submit" class="px-4 py-1.5 rounded-lg bg-forest-emerald text-white font-medium">ບັນທຶກ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 10. ADD PAYMENT MODAL -->
   <div id="addPaymentModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-5 shadow-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-hairline pb-2">
@@ -737,13 +790,13 @@
     </div>
   </div>
 
-  <!-- 10. FAST BOUTIQUE TOAST -->
+  <!-- 11. FAST BOUTIQUE TOAST -->
   <div id="atelierToast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-2 px-4 py-2.5 rounded-full bg-forest-gradient text-white text-[12px] font-medium shadow-xl flex items-center gap-2 border border-white/20">
     <span class="material-symbols-outlined text-[18px] text-emerald-400" id="toastIcon">check_circle</span>
     <span id="toastMsg">Action completed</span>
   </div>
 
-  <!-- ================= SCRIPTS ================= -->
+  <!-- ================= LOAD SCRIPTS ================= -->
   <script src="js/config.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/auth.js"></script>
