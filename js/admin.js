@@ -1,18 +1,88 @@
 // =======================================================
-// SUPERADMIN CONTROL CENTER (MENU, MODIFIERS, PAYMENTS, USERS)
+// SUPERADMIN CONTROL CENTER (WITH MENU AVAILABILITY TOGGLE)
 // =======================================================
 
+let editingItemId = null;
+let currentUploadedMenuImageBase64 = null;
+let currentUploadedBankQRBase64 = null;
+
 function switchAdminPanelTab(tab) {
-  ['analytics', 'menu', 'modifiers', 'payments', 'users'].forEach(t => {
-    const btn = document.getElementById(`adm-tab-${t}`);
-    const pnl = document.getElementById(`adm-panel-${t}`);
+  const tabs = [
+    { id: 'analytics', icon: 'bar_chart', label: 'ຍອດຂາຍ & ລາຍງານ' },
+    { id: 'menu', icon: 'restaurant_menu', label: 'ຈັດການເມນູທັງໝົດ' },
+    { id: 'modifiers', icon: 'tune', label: 'ຕົວເລືອກເສີມ' },
+    { id: 'payments', icon: 'qr_code_scanner', label: 'QR ທະນາຄານ' },
+    { id: 'users', icon: 'group', label: 'ຈັດການຜູ້ໃຊ້' }
+  ];
+
+  tabs.forEach(t => {
+    const btn = document.getElementById(`adm-tab-${t.id}`);
+    const pnl = document.getElementById(`adm-panel-${t.id}`);
     if (pnl) pnl.classList.add('hidden');
-    if (btn) btn.className = "px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0";
+    if (btn) {
+      btn.className = "px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0 flex items-center gap-1.5 hover:text-charcoal transition-colors";
+      btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">${t.icon}</span><span>${t.label}</span>`;
+    }
   });
+
   const activeBtn = document.getElementById(`adm-tab-${tab}`);
   const activePnl = document.getElementById(`adm-panel-${tab}`);
+  const activeItem = tabs.find(t => t.id === tab);
+
   if (activePnl) activePnl.classList.remove('hidden');
-  if (activeBtn) activeBtn.className = "px-3.5 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold shrink-0";
+  if (activeBtn && activeItem) {
+    activeBtn.className = "px-3.5 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold shrink-0 flex items-center gap-1.5";
+    activeBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">${activeItem.icon}</span><span>${activeItem.label}</span>`;
+  }
+}
+
+// 1. ຈັດການເມນູ ພ້ອມ Toggle Switch ເປີດ-ປິດເມນູທີ່ໝົດ
+function renderAdminMenu() {
+  const container = document.getElementById('adminMenuListGrid');
+  if (!container) return;
+
+  container.innerHTML = menuItems.map(item => {
+    const isAvail = item.isAvailable !== false;
+    return `
+      <div class="p-3 bg-surface-pure border border-hairline rounded-xl flex justify-between items-center shadow-xs">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="${item.image}" class="w-12 h-12 rounded-lg object-cover border border-hairline shrink-0 ${!isAvail ? 'grayscale opacity-60' : ''}"/>
+          <div class="min-w-0">
+            <h5 class="font-serif-title font-bold text-[14px] truncate">${item.name}</h5>
+            <span class="text-[10px] text-taupe block">${item.category} • ${formatLAK(item.variants?.standard || 35000)}</span>
+            <span class="inline-block mt-0.5 px-2 py-0.2 rounded text-[9px] font-bold ${isAvail ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">
+              ${isAvail ? '✓ ພ້ອມຂາຍ' : '✕ ສິນຄ້າໝົດ'}
+            </span>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <!-- Toggle Switch ເປີດ-ປິດເມນູນີ້ -->
+          <button onclick="toggleItemAvailability('${item.id}')" title="${isAvail ? 'ກົດເພື່ອປິດເມນູນີ້ (ໝົດ)' : 'ກົດເພື່ອເປີດເມນູນີ້'}" class="px-2 py-1 rounded-lg border text-[11px] font-bold transition-all ${isAvail ? 'border-amber-400 bg-amber-50 text-amber-900 hover:bg-amber-100' : 'border-emerald-500 bg-emerald-50 text-emerald-900 hover:bg-emerald-100'}">
+            ${isAvail ? 'ປິດ (ໝົດ)' : 'ເປີດຂາຍ'}
+          </button>
+          <button onclick="openAddMenuModal('${item.id}')" class="w-8 h-8 rounded-lg bg-surface border border-hairline text-forest-emerald flex items-center justify-center"><span class="material-symbols-outlined text-[16px]">edit</span></button>
+          <button onclick="deleteMenuItem('${item.id}')" class="w-8 h-8 rounded-lg bg-surface border border-hairline text-red-600 flex items-center justify-center"><span class="material-symbols-outlined text-[16px]">delete</span></button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function toggleItemAvailability(itemId) {
+  const item = menuItems.find(i => i.id === itemId);
+  if (!item) return;
+
+  item.isAvailable = item.isAvailable === false ? true : false;
+  localStorage.setItem('ladolce_menu', JSON.stringify(menuItems));
+
+  // Sync to Cloud Firestore Realtime
+  if (isFirebaseReady && db) {
+    await db.collection("menu_items").doc(itemId).update({ isAvailable: item.isAvailable });
+  }
+
+  renderMenu();
+  renderAdminMenu();
+  showToast(item.isAvailable ? `ເປີດຂາຍເມນູ "${item.name}" ແລ້ວ` : `ປິດເມນູ "${item.name}" (ສິນຄ້າໝົດ)`);
 }
 
 function openAddMenuModal(id = null) {
@@ -24,7 +94,7 @@ function openAddMenuModal(id = null) {
     if (item) {
       document.getElementById('inputItemName').value = item.name;
       document.getElementById('inputItemCategory').value = item.category;
-      document.getElementById('inputItemPrice').value = item.variants?.standard || item.variants?.hot || 35000;
+      document.getElementById('inputItemPrice').value = item.variants?.standard || 35000;
       document.getElementById('inputItemDesc').value = item.desc || '';
       currentUploadedMenuImageBase64 = item.image;
     }
@@ -63,7 +133,8 @@ async function saveMenuItem(e) {
     category: cat,
     variants: { standard: price, hot: price, iced: price + 5000 },
     desc: desc,
-    image: currentUploadedMenuImageBase64 || "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600"
+    image: currentUploadedMenuImageBase64 || "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600",
+    isAvailable: true
   };
 
   if (editingItemId) {
@@ -75,7 +146,6 @@ async function saveMenuItem(e) {
 
   localStorage.setItem('ladolce_menu', JSON.stringify(menuItems));
 
-  // Sync to Cloud Firestore Real-time
   if (isFirebaseReady && db) {
     await db.collection("menu_items").doc(itemPayload.id).set(itemPayload, { merge: true });
   }
@@ -84,26 +154,6 @@ async function saveMenuItem(e) {
   renderAdminMenu();
   closeAddMenuModal();
   showToast("ບັນທຶກເມນູຮຽບຮ້ອຍ!");
-}
-
-function renderAdminMenu() {
-  const container = document.getElementById('adminMenuListGrid');
-  if (!container) return;
-  container.innerHTML = menuItems.map(item => `
-    <div class="p-3 bg-surface-pure border border-hairline rounded-xl flex justify-between items-center shadow-xs">
-      <div class="flex items-center gap-3">
-        <img src="${item.image}" class="w-12 h-12 rounded-lg object-cover border border-hairline"/>
-        <div>
-          <h5 class="font-serif-title font-bold text-[14px]">${item.name}</h5>
-          <span class="text-[10px] text-taupe block">${item.category} • ${formatLAK(item.variants?.standard || 35000)}</span>
-        </div>
-      </div>
-      <div class="flex gap-1">
-        <button onclick="openAddMenuModal('${item.id}')" class="w-8 h-8 rounded-lg bg-surface border border-hairline text-forest-emerald flex items-center justify-center"><span class="material-symbols-outlined text-[16px]">edit</span></button>
-        <button onclick="deleteMenuItem('${item.id}')" class="w-8 h-8 rounded-lg bg-surface border border-hairline text-red-600 flex items-center justify-center"><span class="material-symbols-outlined text-[16px]">delete</span></button>
-      </div>
-    </div>
-  `).join('');
 }
 
 async function deleteMenuItem(id) {
@@ -116,7 +166,7 @@ async function deleteMenuItem(id) {
   showToast("ລຶບເມນູແລ້ວ");
 }
 
-// Modifiers
+// 2. Modifiers
 function renderModifierSettings() {
   const list = document.getElementById('modifierAdminList');
   if (!list) return;
@@ -144,7 +194,7 @@ function deleteModifier(id) {
   renderModifierSettings();
 }
 
-// Payments
+// 3. Payments
 function renderPaymentSettings() {
   const list = document.getElementById('paymentMethodsAdminList');
   if (!list) return;
@@ -205,7 +255,7 @@ function deletePaymentMethod(id) {
   renderPaymentSettings();
 }
 
-// User Roles Management
+// 4. Users Management
 async function renderUsersList() {
   const tbody = document.getElementById('adminUsersTableBody');
   if (!tbody) return;
