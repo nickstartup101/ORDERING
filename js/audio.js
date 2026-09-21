@@ -1,21 +1,16 @@
 // =======================================================
-// AUDIO ENGINE (NOTIFICATIONS & BARISTA REPEATING ALARM)
+// AUDIO ENGINE (NOTIFICATIONS & REPEATING ALARM)
 // =======================================================
 
 let audioCtx = null;
 let staffAlarmInterval = null;
 
 function getAudioContext() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 
-// ສຽງແຈ້ງເຕືອນລູກຄ້າ ເມື່ອເຄື່ອງດື່ມພ້ອມຮັບ
 function playChime(isReady = false) {
   try {
     const ctx = getAudioContext();
@@ -32,13 +27,11 @@ function playChime(isReady = false) {
 
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     osc.start(now);
     osc.stop(now + 0.8);
   } catch (e) {}
 }
 
-// ສຽງເຕືອນ Staff ເມື່ອມີອໍເດີ້ໃໝ່ເຂົ້າມາ
 function playStaffPulseTone() {
   try {
     const ctx = getAudioContext();
@@ -56,7 +49,6 @@ function playStaffPulseTone() {
 
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     osc.start(now);
     osc.stop(now + 0.6);
   } catch (e) {}
@@ -71,7 +63,7 @@ function startStaffAlarm() {
   playStaffPulseTone();
   staffAlarmInterval = setInterval(() => {
     playStaffPulseTone();
-  }, 3500); // ດັງຊ້ຳທຸກ 3.5 ວິນາທີ
+  }, 3500);
 }
 
 function stopStaffAlarm() {
