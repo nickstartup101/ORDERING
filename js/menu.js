@@ -211,3 +211,37 @@ function updateModalPrice() {
   document.getElementById('modalItemBasePrice').textContent = formatLAK(unitPrice);
   document.getElementById('modalDynamicTotal').textContent = formatLAK(unitPrice * modalQuantity);
 }
+// ໃນ js/menu.js:
+function updateModalPrice() {
+  if (!activeCustomizingItem) return;
+  const v = activeCustomizingItem.variants || {};
+  let unitPrice = 35000;
+
+  if (typeof v === 'number') {
+    unitPrice = v;
+  } else if (v[selectedVariant]) {
+    unitPrice = v[selectedVariant];
+  } else if (v.standard) {
+    unitPrice = v.standard;
+  }
+
+  // 1. ບວກຄ່ານົມຈາກ Modifiers
+  if (activeCustomizingItem.allowMilk !== false) {
+    const milkRadio = document.querySelector('input[name="milkOption"]:checked');
+    if (milkRadio && (milkRadio.value.includes('Oat') || milkRadio.value.includes('Almond'))) {
+      // ດຶງລາຄານົມຈາກ modifiers ທີ່ admin ຕັ້ງໄວ້
+      const oatMod = modifiers.find(m => m.id === 'mod_oat');
+      unitPrice += (oatMod ? oatMod.price : 15000);
+    }
+  }
+
+  // 2. 🔥 ບວກຄ່າ Extra Shot ຈາກ Modifiers ທີ່ Admin ຕັ້ງໄວ້ແທ້ໆ
+  const extraShot = document.getElementById('addonExtraShot')?.checked;
+  if (extraShot && activeCustomizingItem.allowTopping !== false) {
+    const shotMod = modifiers.find(m => m.id === 'mod_shot') || modifiers.find(m => m.group === 'topping');
+    unitPrice += (shotMod ? shotMod.price : 12000);
+  }
+
+  document.getElementById('modalItemBasePrice').textContent = formatLAK(unitPrice);
+  document.getElementById('modalDynamicTotal').textContent = formatLAK(unitPrice * modalQuantity);
+}
