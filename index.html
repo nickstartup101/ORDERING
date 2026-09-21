@@ -327,7 +327,64 @@
           </div>
         </div>
       </div>
+<!-- Panel 1: Analytics & Full Transaction Audit -->
+      <div id="adm-panel-analytics" class="space-y-4">
+        <!-- Metric Summary Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="p-4 rounded-xl bg-surface-pure border border-hairline shadow-xs">
+            <span class="text-[10px] uppercase font-bold text-taupe block">ຍອດຂາຍລວມ</span>
+            <span id="metricTotalSales" class="font-serif-title text-[24px] font-bold text-forest-emerald">0 LAK</span>
+            <div class="flex items-center gap-1 mt-1">
+              <button onclick="setSalesFilter('day')" class="text-[9px] px-1.5 py-0.5 rounded bg-forest-emerald text-white">ມື້ນີ້</button>
+              <button onclick="setSalesFilter('week')" class="text-[9px] px-1.5 py-0.5 rounded border border-hairline text-taupe">ອາທິດ</button>
+              <button onclick="setSalesFilter('month')" class="text-[9px] px-1.5 py-0.5 rounded border border-hairline text-taupe">ເດືອນ</button>
+            </div>
+          </div>
+          <div class="p-4 rounded-xl bg-surface-pure border border-hairline shadow-xs">
+            <span class="text-[10px] uppercase font-bold text-taupe block">ຈຳນວນອໍເດີ້</span>
+            <span id="metricTotalOrdersCount" class="font-serif-title text-[24px] font-bold text-primary">0 ອໍເດີ້</span>
+          </div>
+          <div class="p-4 rounded-xl bg-surface-pure border border-hairline shadow-xs">
+            <span class="text-[10px] uppercase font-bold text-taupe block">ເງິນໂອນ QR</span>
+            <span id="metricQrRevenue" class="font-serif-title text-[22px] font-bold text-blue-700">0 LAK</span>
+          </div>
+          <div class="p-4 rounded-xl bg-surface-pure border border-hairline shadow-xs">
+            <span class="text-[10px] uppercase font-bold text-taupe block">ເງິນສົດໜ້າຮ້ານ</span>
+            <span id="metricCashRevenue" class="font-serif-title text-[22px] font-bold text-charcoal">0 LAK</span>
+          </div>
+        </div>
 
+        <!-- ຕາຕະລາງ Transaction Audit Log ທັງໝົດ -->
+        <div class="p-5 rounded-xl bg-surface-pure border border-hairline space-y-3 shadow-xs">
+          <div class="flex justify-between items-center border-b border-hairline pb-2">
+            <div>
+              <h4 class="font-serif-title font-bold text-[16px] text-primary">ລາຍການທຸລະກຳຂາຍທັງໝົດ (Transaction Audit Log)</h4>
+              <p class="text-[11px] text-taupe">ສະແດງທຸກອໍເດີ້ທີ່ສຳເລັດ ພ້ອມລາຍລະອຽດການຊຳລະ</p>
+            </div>
+            <!-- ປຸ່ມຕັ້ງຄ່າ Tax ປັດຈຸບັນ -->
+            <button type="button" onclick="updateTaxSettings()" class="px-2.5 py-1 rounded-lg border border-hairline bg-surface hover:bg-forest-emerald hover:text-white text-[11px] font-bold transition-colors">
+              <span id="taxSettingsDisplay">Tax: 0% (ປັບປ່ຽນ)</span>
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-[12px]">
+              <thead class="bg-surface text-taupe uppercase text-[10px] tracking-wider border-y border-hairline">
+                <tr>
+                  <th class="p-2.5">Order ID</th>
+                  <th class="p-2.5">ເວລາ</th>
+                  <th class="p-2.5">ລູກຄ້າ</th>
+                  <th class="p-2.5">ລາຍການທີ່ສັ່ງ</th>
+                  <th class="p-2.5">ຊ່ອງທາງຊຳລະ</th>
+                  <th class="p-2.5 text-right">ຍອດເງິນ</th>
+                </tr>
+              </thead>
+              <tbody id="analyticsTransactionsTableBody" class="divide-y divide-hairline">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
       <!-- Panel 2: Menu Management -->
       <div id="adm-panel-menu" class="hidden space-y-3">
         <div class="flex items-center justify-between">
