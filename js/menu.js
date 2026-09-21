@@ -2,6 +2,7 @@
 // MENU CURATION & CUSTOMIZATION MODAL ENGINE
 // =======================================================
 
+let currentCategoryFilter = 'all';
 let activeCustomizingItem = null;
 let selectedVariant = 'standard';
 let modalQuantity = 1;
@@ -33,6 +34,8 @@ function renderMenu() {
   }
 
   filtered.forEach(item => {
+    const isAvail = item.isAvailable !== false; // Default true
+
     let minPrice = 35000;
     if (item.variants) {
       const valid = Object.values(item.variants).filter(v => typeof v === 'number' && v > 0);
@@ -40,19 +43,24 @@ function renderMenu() {
     }
 
     const card = document.createElement('div');
-    card.className = 'bg-surface-pure border border-hairline rounded-xl p-3.5 flex flex-col justify-between hover:border-forest-leaf transition-all shadow-xs';
+    card.className = `bg-surface-pure border border-hairline rounded-xl p-3.5 flex flex-col justify-between transition-all shadow-xs ${isAvail ? 'hover:border-forest-leaf' : 'opacity-60 bg-gray-50'}`;
     card.innerHTML = `
       <div>
         <div class="relative w-full aspect-[4/3] rounded-lg bg-surface-dim overflow-hidden mb-3">
-          <img src="${item.image || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600'}" class="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500"/>
+          <img src="${item.image || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600'}" class="w-full h-full object-cover ${!isAvail ? 'grayscale' : 'transform hover:scale-105 transition-transform duration-500'}"/>
           <span class="absolute top-2 left-2 px-2 py-0.5 rounded bg-surface/90 text-[9px] uppercase font-bold border border-hairline">${item.category}</span>
+          ${!isAvail ? `<span class="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-[12px] font-bold font-lao">ສິນຄ້າໝົດຊົ່ວຄາວ</span>` : ''}
         </div>
         <h4 class="font-serif-title text-[15px] text-primary font-medium mb-1">${item.name}</h4>
         <p class="text-[12px] text-taupe line-clamp-2 mb-3 leading-relaxed">${item.desc || ''}</p>
       </div>
       <div class="flex items-center justify-between pt-2.5 border-t border-hairline">
-        <span class="font-serif-title text-[15px] font-bold text-forest-emerald">${formatLAK(minPrice)}</span>
-        <button onclick="openCustomizeModal('${item.id}')" class="px-3.5 py-1.5 rounded-lg bg-surface hover:bg-forest-emerald hover:text-white border border-hairline text-[11px] font-medium transition-all">ເລືອກ</button>
+        <span class="font-serif-title text-[15px] font-bold ${isAvail ? 'text-forest-emerald' : 'text-gray-400'}">${formatLAK(minPrice)}</span>
+        ${isAvail ? `
+          <button onclick="openCustomizeModal('${item.id}')" class="px-3.5 py-1.5 rounded-lg bg-surface hover:bg-forest-emerald hover:text-white border border-hairline text-[11px] font-medium transition-all">ເລືອກ</button>
+        ` : `
+          <span class="px-3 py-1 text-[11px] text-gray-400 bg-gray-100 rounded-lg">ໝົດ</span>
+        `}
       </div>
     `;
     grid.appendChild(card);
@@ -61,7 +69,7 @@ function renderMenu() {
 
 function openCustomizeModal(itemId) {
   activeCustomizingItem = menuItems.find(i => i.id === itemId);
-  if (!activeCustomizingItem) return;
+  if (!activeCustomizingItem || activeCustomizingItem.isAvailable === false) return;
 
   modalQuantity = 1;
   document.getElementById('modalQtyDisplay').textContent = modalQuantity;
