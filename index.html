@@ -39,7 +39,36 @@
       }
     };
   </script>
-  <link rel="stylesheet" href="css/style.css"/>
+
+  <style>
+    @layer base {
+      html, body {
+        width: 100vw;
+        margin: 0;
+        padding: 0;
+        background-color: #FAF9F6;
+        color: #141A17;
+        font-family: 'Noto Sans Lao', 'DM Sans', sans-serif !important;
+        -webkit-font-smoothing: antialiased;
+      }
+      .font-serif-title { font-family: 'Playfair Display', 'Noto Sans Lao', serif; }
+      body { overscroll-behavior-y: none; }
+      .pb-safe { padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px); }
+      .pt-safe { padding-top: max(env(safe-area-inset-top, 0px), 14px); }
+    }
+    ::-webkit-scrollbar { display: none; }
+    .barcode-pattern {
+      background: repeating-linear-gradient(90deg, #11241C 0, #11241C 2.5px, transparent 2.5px, transparent 5px, #0A3A2A 5px, #0A3A2A 8.5px, transparent 8.5px, transparent 11px);
+    }
+    .bg-forest-gradient {
+      background: linear-gradient(135deg, #11241C 0%, #0D2E22 50%, #06402B 100%);
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-slide-down { animation: slideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  </style>
 
   <!-- Firebase Web SDK (Compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -79,16 +108,14 @@
             <span class="material-symbols-outlined text-[16px] text-taupe pr-1">expand_more</span>
           </button>
 
-          <!-- Slide-down Dropdown Box (Dynamic by Role) -->
+          <!-- Slide-down Dropdown Menu Box -->
           <div id="profileDropdownMenu" class="hidden absolute right-0 top-12 w-60 bg-surface-pure rounded-2xl border border-hairline shadow-2xl p-2 z-50 animate-slide-down">
             <div class="p-3 border-b border-hairline">
               <span class="font-serif-title font-bold text-[14px] text-primary block truncate" id="dropdownUserName">Elena</span>
               <span class="text-[10px] text-taupe font-mono block truncate" id="dropdownUserEmail">customer@ladolce.com</span>
               <span class="inline-block mt-1 px-2 py-0.5 rounded bg-emerald-50 text-forest-emerald text-[9px] font-bold uppercase tracking-wider" id="dropdownUserRole">Customer</span>
             </div>
-            
             <div class="py-1 space-y-0.5" id="dropdownRoleLinks"></div>
-
             <div class="pt-1 border-t border-hairline">
               <button type="button" onclick="logoutUser(); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-red-700 hover:bg-red-50 flex items-center gap-2 transition-colors cursor-pointer">
                 <span class="material-symbols-outlined text-[17px]">logout</span>
@@ -115,7 +142,7 @@
             </span>
             <div>
               <div class="flex items-center gap-2">
-                <h2 class="font-serif-title text-[16px] text-primary font-medium">Downtown Flagship Roastery</h2>
+                <h2 class="font-serif-title text-[16px] text-primary font-medium">Namphou Branch</h2>
                 <span id="customerStoreOpenBadge" class="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold">ເປີດບໍລິການ</span>
               </div>
               <p class="text-[12px] text-taupe">ສັ່ງລ່ວງໜ້າ • ຮັບທີ່ເຄົາເຕີ້ພາຍໃນ 8–15 ນາທີ</p>
@@ -286,13 +313,13 @@
         </div>
       </div>
 
-      <!-- Panel 2: Menu Management -->
+      <!-- Panel 2: Menu Management (Clean Boutique Row Layout) -->
       <div id="adm-panel-menu" class="hidden space-y-3">
         <div class="flex items-center justify-between">
           <h4 class="font-serif-title text-[17px] text-primary font-medium">ລາຍການເມນູທັງໝົດໃນຮ້ານ (Firestore Synced)</h4>
           <button onclick="openAddMenuModal()" class="px-3 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-bold">+ ເພີ່ມເມນູ</button>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5" id="adminMenuListGrid"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="adminMenuListGrid"></div>
       </div>
 
       <!-- Panel 3: Modifiers -->
@@ -364,7 +391,7 @@
 
   <!-- ================= MODALS & POP-UPS ================= -->
 
-  <!-- 1. CUSTOMIZE DRINK/FOOD MODAL -->
+  <!-- 1. CUSTOMIZE MODAL -->
   <div id="customizeModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end sm:items-center justify-center hidden">
     <div class="bg-surface-pure w-full max-w-lg rounded-t-2xl sm:rounded-2xl border border-hairline max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
       <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
@@ -416,7 +443,7 @@
           </div>
         </div>
 
-        <div class="space-y-2">
+        <div id="toppingSelectorGroup" class="space-y-2">
           <label class="block text-[11px] uppercase tracking-wider font-semibold text-charcoal">04. ເພີ່ມເຕີມ / Topping</label>
           <div class="rounded-xl border border-hairline divide-y divide-hairline bg-surface">
             <label class="flex items-center justify-between p-3 cursor-pointer">
@@ -465,7 +492,7 @@
     </div>
   </div>
 
-  <!-- 3. NEW ORDER INCOMING POP-UP FOR STAFF (ແຈ້ງເຕືອນອໍເດີ້ໃໝ່ສຳລັບ Staff) -->
+  <!-- 3. STAFF INCOMING ORDER MODAL -->
   <div id="staffNewOrderModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border-2 border-forest-emerald p-6 shadow-2xl text-center space-y-4 animate-scale-up">
       <div class="w-16 h-16 rounded-full bg-emerald-50 text-forest-emerald border border-emerald-200 mx-auto flex items-center justify-center animate-bounce">
@@ -488,7 +515,7 @@
     </div>
   </div>
 
-  <!-- 4. CUSTOMER DRINK READY POP-UP (ແຈ້ງເຕືອນລູກຄ້າມາຮັບເຄື່ອງດື່ມ) -->
+  <!-- 4. CUSTOMER DRINK READY MODAL -->
   <div id="customerReadyModal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border-2 border-emerald-500 p-6 shadow-2xl text-center space-y-4 animate-scale-up">
       <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 mx-auto flex items-center justify-center">
@@ -570,18 +597,18 @@
     </div>
   </div>
 
-  <!-- 8. SUPERADMIN ADD/EDIT MENU MODAL (ມີ Checkbox Option ຄົບຖ້ວນ) -->
+  <!-- 8. SUPERADMIN ADD/EDIT MENU MODAL (ມີ Checkbox Option Toggles) -->
   <div id="addMenuModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-lg rounded-2xl border border-hairline overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
       <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
-        <h3 class="font-serif-title text-[18px] text-primary font-medium" id="addMenuModalHeading">ເພີ່ມ / ແກ້ໄຂເມນູ</h3>
+        <h3 class="font-serif-title text-[18px] text-primary font-medium">ເພີ່ມ / ແກ້ໄຂເມນູ</h3>
         <button type="button" onclick="closeAddMenuModal()" class="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-taupe"><span class="material-symbols-outlined text-[18px]">close</span></button>
       </div>
 
       <form id="menuForm" class="p-5 overflow-y-auto space-y-4 text-[13px] flex-1">
         <div>
           <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ຊື່ເມນູ:</label>
-          <input required id="inputItemName" type="text" placeholder="ເຊັ່ນ: Americano, Cappuccino" class="w-full rounded-lg border border-hairline p-2.5"/>
+          <input required id="inputItemName" type="text" placeholder="ເຊັ່ນ: Americano, Spanish Latte" class="w-full rounded-lg border border-hairline p-2.5"/>
         </div>
 
         <div class="grid grid-cols-2 gap-2.5">
@@ -593,9 +620,8 @@
               <option value="bakery">ເບເກີຣີ່ (Bakery)</option>
             </select>
           </div>
-          <!-- ຊ່ອງລາຄາມາດຕະຖານ: ຈະຖືກເຊື່ອງອັດຕະໂນມັດຖ້າມີ ຮ້ອນ/ເຢັນ -->
           <div id="standardPriceBox">
-            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ລາຄາມາດຕະຖານ (LAK):</label>
+            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ລາຄາມາດຕະຖານ (LAK ₭):</label>
             <input id="priceStandard" type="number" step="1000" placeholder="35000" class="w-full rounded-lg border border-hairline p-2.5 text-[12px]"/>
           </div>
         </div>
@@ -628,7 +654,7 @@
           </div>
         </div>
 
-        <!-- ຕັ້ງຄ່າ Option Toggles: ນົມ, ຄວາມຫວານ, ແລະ Option 4 Topping -->
+        <!-- ຕັ້ງຄ່າ Option Toggles: ນົມ, ຄວາມຫວານ, Topping -->
         <div class="p-3.5 bg-surface rounded-xl border border-hairline space-y-2">
           <span class="block text-[11px] font-bold text-forest-emerald uppercase tracking-wider">ຕັ້ງຄ່າຕົວເລືອກພິເສດສຳລັບເມນູນີ້:</span>
           
@@ -648,7 +674,6 @@
             <input type="checkbox" id="toggleAllowSweetness" checked class="w-4 h-4 rounded text-forest-emerald focus:ring-0 cursor-pointer"/>
           </label>
 
-          <!-- Option 4: Topping -->
           <label class="flex items-center justify-between p-2 bg-surface-pure rounded-lg border border-hairline cursor-pointer hover:border-forest-leaf">
             <span class="text-[12px] font-medium text-charcoal flex items-center gap-1.5">
               <span class="material-symbols-outlined text-[16px] text-forest-emerald">add_circle</span>
