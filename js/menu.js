@@ -202,3 +202,12 @@ function updateModalPrice() {
   document.getElementById('modalItemBasePrice').textContent = formatLAK(unitPrice);
   document.getElementById('modalDynamicTotal').textContent = formatLAK(unitPrice * modalQuantity);
 }
+// 4. ສະແດງ ຫຼື ເຊື່ອງ "Option 4 Topping" ຕາມທີ່ Superadmin ຕັ້ງຄ່າ
+  const toppingSection = document.getElementById('addonExtraShot')?.closest('.space-y-2');
+  if (toppingSection) {
+    if (activeCustomizingItem.allowTopping === false || activeCustomizingItem.category === 'bakery') {
+      toppingSection.classList.add('hidden');
+    } else {
+      toppingSection.classList.remove('hidden');
+    }
+  }
