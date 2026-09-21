@@ -1,5 +1,5 @@
 // =======================================================
-// CART, GUEST CHECKOUT & PAYMENT ENGINE
+// CART, GUEST CHECKOUT & PAYMENT ENGINE (LAK CURRENCY)
 // =======================================================
 
 let selectedBankMethodId = null;
@@ -7,9 +7,18 @@ let uploadedSlipDataUrl = null;
 
 function confirmAddToCart() {
   if (!activeCustomizingItem) return;
-  const unitPrice = activeCustomizingItem.variants?.[selectedVariant] || 35000;
+  let unitPrice = activeCustomizingItem.variants?.[selectedVariant] || 35000;
   const milkRadio = document.querySelector('input[name="milkOption"]:checked');
   const milk = milkRadio ? milkRadio.value : 'Standard';
+
+  if (milk.includes('Oat') || milk.includes('Almond')) {
+    unitPrice += 15000;
+  }
+
+  const extraShot = document.getElementById('addonExtraShot')?.checked;
+  if (extraShot) {
+    unitPrice += 12000;
+  }
 
   cart.push({
     cartId: 'c_' + Date.now(),
@@ -17,6 +26,8 @@ function confirmAddToCart() {
     name: activeCustomizingItem.name,
     variant: selectedVariant,
     milk: milk,
+    sweetness: selectedSweetnessLevel || '100%',
+    extraShot: extraShot,
     unitPrice: unitPrice,
     quantity: modalQuantity,
     total: unitPrice * modalQuantity,
@@ -44,8 +55,9 @@ function renderCartList() {
 
   if (cart.length === 0) {
     container.innerHTML = `<div class="p-8 bg-surface-pure border border-hairline rounded-2xl text-center"><p class="text-taupe text-[13px]">ບໍ່ມີລາຍການໃນກະຕ່າ</p></div>`;
-    document.getElementById('summarySubtotal').textContent = "0 ₭";
-    document.getElementById('summaryTotal').textContent = "0 ₭";
+    document.getElementById('summarySubtotal').textContent = "0 LAK";
+    document.getElementById('summaryTax').textContent = "0 LAK";
+    document.getElementById('summaryTotal').textContent = "0 LAK";
     return;
   }
 
@@ -58,18 +70,19 @@ function renderCartList() {
           <img src="${item.image}" class="w-12 h-12 rounded-lg object-cover border border-hairline"/>
           <div>
             <h4 class="font-serif-title text-[14px] font-medium">${item.name}</h4>
-            <p class="text-[11px] text-taupe">[${item.variant.toUpperCase()}] • ${item.milk}</p>
-            <span class="font-mono text-[12px] font-bold">${formatLAK(item.unitPrice)} × ${item.quantity}</span>
+            <p class="text-[11px] text-taupe">[${item.variant.toUpperCase()}] • ${item.milk} • ຫວານ ${item.sweetness} ${item.extraShot ? '• +Shot' : ''}</p>
+            <span class="font-mono text-[12px] font-bold text-forest-emerald">${formatLAK(item.unitPrice)} × ${item.quantity}</span>
           </div>
         </div>
-        <button onclick="cart.splice(${idx},1); localStorage.setItem('ladolce_cart',JSON.stringify(cart)); updateCartBadges();" class="text-red-600 p-2"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+        <button type="button" onclick="cart.splice(${idx},1); localStorage.setItem('ladolce_cart',JSON.stringify(cart)); updateCartBadges();" class="text-red-600 p-2"><span class="material-symbols-outlined text-[18px]">delete</span></button>
       </div>
     `;
   }).join('');
 
-  const total = subtotal * 1.08;
+  const tax = subtotal * 0.08;
+  const total = subtotal + tax;
   document.getElementById('summarySubtotal').textContent = formatLAK(subtotal);
-  document.getElementById('summaryTax').textContent = formatLAK(subtotal * 0.08);
+  document.getElementById('summaryTax').textContent = formatLAK(tax);
   document.getElementById('summaryTotal').textContent = formatLAK(total);
 }
 
