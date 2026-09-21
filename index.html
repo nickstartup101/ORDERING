@@ -204,11 +204,10 @@
         <div class="max-w-md mx-auto" id="activeTicketContainer"></div>
       </section>
 
-      <!-- TAB: PROFILE -->
+      <!-- TAB: PROFILE (ແກ້ໄຂໃຫ້ສະແດງຜົນ 100%) -->
       <section id="tab-customer-profile" class="hidden space-y-6">
         <div id="profileTabContent"></div>
       </section>
-    </div>
 
     <!-- 2. BARISTA STAFF VIEW -->
     <div id="adminStaffAppView" class="hidden space-y-6">
@@ -423,7 +422,30 @@
       </div>
     </div>
   </div>
+<!-- Sweetness Selection -->
+        <div class="space-y-2">
+          <label class="block text-[11px] uppercase tracking-wider font-semibold text-charcoal">03. ລະດັບຄວາມຫວານ (Sweetness)</label>
+          <div class="grid grid-cols-4 gap-1.5 p-1 rounded-lg bg-surface border border-hairline">
+            <button type="button" onclick="selectSweetness(this, '0%')" class="sweet-btn py-1.5 rounded text-[11px] text-taupe font-medium">0%</button>
+            <button type="button" onclick="selectSweetness(this, '50%')" class="sweet-btn py-1.5 rounded text-[11px] text-taupe font-medium">50%</button>
+            <button type="button" onclick="selectSweetness(this, '100%')" class="sweet-btn py-1.5 rounded text-[11px] bg-forest-emerald text-white font-medium">100%</button>
+            <button type="button" onclick="selectSweetness(this, '120%')" class="sweet-btn py-1.5 rounded text-[11px] text-taupe font-medium">120%</button>
+          </div>
+        </div>
 
+        <!-- Extra Shot Topping -->
+        <div class="space-y-2">
+          <label class="block text-[11px] uppercase tracking-wider font-semibold text-charcoal">04. ເພີ່ມເຕີມ / Topping</label>
+          <div class="rounded-xl border border-hairline divide-y divide-hairline bg-surface">
+            <label class="flex items-center justify-between p-3 cursor-pointer">
+              <span class="flex items-center gap-2">
+                <input type="checkbox" id="addonExtraShot" onchange="updateModalPrice()" class="rounded text-forest-emerald focus:ring-0"/>
+                <span>Extra Double Ristretto Shot</span>
+              </span>
+              <span class="font-medium text-charcoal text-[11px]">+12,000 LAK</span>
+            </label>
+          </div>
+        </div>
   <!-- 2. GUEST CONTACT MODAL -->
   <div id="guestContactModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-6 shadow-2xl space-y-4">
