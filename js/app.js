@@ -115,3 +115,48 @@ window.addEventListener('DOMContentLoaded', () => {
 
   initCloudStream();
 });
+// 🔥 ດັກຈັບສະເພາະ Staff ເທົ່ານັ້ນ (ຕັດ Superadmin ອອກ 100% ຕາມຄຳສັ່ງ)
+      if (currentUser && currentUser.role === 'staff') {
+        const pendingOrders = orders.filter(o => o.status === 'pending');
+        
+        if (pendingOrders.length > previousPendingCount) {
+          const latest = pendingOrders[0];
+          if (typeof triggerStaffIncomingModal === 'function') {
+            triggerStaffIncomingModal(latest); // Pop-up ເດັ້ງສະເພາະ Staff
+          }
+          if (typeof startStaffAlarm === 'function') {
+            startStaffAlarm(); // ສຽງ Alarm ດັງວົນຊ້ຳສະເພາະ Staff
+          }
+        } else if (pendingOrders.length === 0) {
+          if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
+        }
+        
+        previousPendingCount = pendingOrders.length;
+        if (typeof renderStaffOrders === 'function') renderStaffOrders();
+      }
+
+      // Sync ປີ້ລູກຄ້າ Real-time
+      if (currentActiveOrder) {
+        const live = orders.find(o => o.id === currentActiveOrder.id);
+        if (live) {
+          if (live.status !== currentActiveOrder.status || live.delayNotice !== currentActiveOrder.delayNotice) {
+            currentActiveOrder = live;
+            localStorage.setItem('ladolce_active_order', JSON.stringify(currentActiveOrder));
+            
+            if (live.status === 'ready') {
+              if (typeof playChime === 'function') playChime(true);
+              if (typeof showCustomerReadyModal === 'function') showCustomerReadyModal();
+            }
+
+            if (live.status === 'completed') {
+              currentActiveOrder = null;
+              localStorage.removeItem('ladolce_active_order');
+            }
+
+            if (typeof renderCustomerTicket === 'function') renderCustomerTicket();
+          }
+        }
+      }
+
+      // ອັບເດດຍອດຂາຍສຳລັບ Superadmin
+      if (typeof renderAnalytics === 'function') renderAnalytics();
