@@ -1,5 +1,5 @@
 // =======================================================
-// DIGITAL TICKET PASS & LIVE PROGRESSION STATUS
+// DIGITAL TICKET PASS & LIVE REALTIME PROGRESSION
 // =======================================================
 
 function renderCustomerTicket() {
@@ -23,14 +23,14 @@ function renderCustomerTicket() {
 
   if (status === 'crafting') {
     statusTitle = "Crafting in Progress ☕";
-    statusDesc = "ບາຣິສຕ້າກຳລັງສະກັດກາເຟ ແລະ ປຸງແຕ່ງ";
+    statusDesc = "ບາຣິສຕ້າກຳລັງສະກັດກາເຟ ແລະ ປຸງແຕ່ງຢ່າງພິຖີພິຖັນ";
   } else if (status === 'ready') {
     statusTitle = "Ready for Pick-up! 🎉";
     statusDesc = "ເຄື່ອງດື່ມພ້ອມແລ້ວ! ເຊີນຮັບໄດ້ທີ່ Counter 02";
     bgClass = "bg-emerald-800";
   } else if (status === 'completed') {
     statusTitle = "Order Complete ✨";
-    statusDesc = "ຂອບໃຈທີ່ມາອຸດໜູນ LA DOLCE";
+    statusDesc = "ຂອບໃຈທີ່ມາອຸດໜູນ LA DOLCE Atelier";
   } else if (status === 'cancelled') {
     statusTitle = "Order Cancelled ⚠️";
     statusDesc = currentActiveOrder.cancelReason || "ອໍເດີ້ຖືກຍົກເລີກ";
@@ -46,14 +46,23 @@ function renderCustomerTicket() {
         </div>
         <h3 class="font-serif-title text-[22px] font-bold leading-snug">${statusTitle}</h3>
         <p class="text-[12px] opacity-85 mt-0.5">${statusDesc}</p>
+
+        <!-- Delay Notice Alert Banner -->
+        ${currentActiveOrder.delayNotice ? `
+          <div class="mt-3 p-2.5 rounded-xl bg-amber-500/20 border border-amber-300/40 text-[11px] text-amber-200 font-medium flex items-center gap-2">
+            <span class="material-symbols-outlined text-[16px]">hourglass_top</span>
+            <span>${currentActiveOrder.delayNotice}</span>
+          </div>
+        ` : ''}
       </div>
 
+      <!-- Realtime Stepper with Pulse -->
       ${status !== 'cancelled' ? `
         <div class="px-5">
           <div class="grid grid-cols-4 gap-1.5 py-1">
-            <div class="h-1.5 rounded-full bg-forest-emerald"></div>
-            <div class="h-1.5 rounded-full ${status === 'crafting' || status === 'ready' || status === 'completed' ? 'bg-forest-emerald' : 'bg-hairline'}"></div>
-            <div class="h-1.5 rounded-full ${status === 'ready' || status === 'completed' ? 'bg-emerald-600' : 'bg-hairline'}"></div>
+            <div class="h-1.5 rounded-full ${status === 'pending' ? 'bg-forest-emerald animate-pulse' : 'bg-forest-emerald'}"></div>
+            <div class="h-1.5 rounded-full ${status === 'crafting' ? 'bg-forest-emerald animate-pulse' : (status === 'ready' || status === 'completed' ? 'bg-forest-emerald' : 'bg-hairline')}"></div>
+            <div class="h-1.5 rounded-full ${status === 'ready' ? 'bg-emerald-600 animate-pulse' : (status === 'completed' ? 'bg-emerald-600' : 'bg-hairline')}"></div>
             <div class="h-1.5 rounded-full ${status === 'completed' ? 'bg-forest-emerald' : 'bg-hairline'}"></div>
           </div>
           <div class="flex justify-between text-[10px] text-taupe uppercase tracking-wider pt-1">
