@@ -37,7 +37,7 @@ function renderMenu() {
   filtered.forEach(item => {
     const isAvail = item.isAvailable !== false;
 
-    // 🔥 ດຶງລາຄາແບບປອດໄພ (ຮອງຮັບທັງ Object ແລະ Number)
+    // ດຶງລາຄາເລີ່ມຕົ້ນແບບປອດໄພ 100%
     let minPrice = 35000;
     if (typeof item.price === 'number') {
       minPrice = item.price;
@@ -119,7 +119,7 @@ function openCustomizeModal(itemId) {
     container.appendChild(btn);
   });
 
-  // 2. ສະແດງ ຫຼື ເຊື່ອງ "ຕົວເລືອກນົມ" (ຖ້າ Americano ປິດນົມ ຈະເຊື່ອງທັນທີ)
+  // 2. ເຊື່ອງ "ຕົວເລືອກນົມ" ຖ້າ Superadmin ປິດຕົວເລືອກນີ້ (ເຊັ່ນ Americano)
   const milkSection = document.getElementById('milkSelectorGroup');
   if (milkSection) {
     if (activeCustomizingItem.allowMilk === false || activeCustomizingItem.category === 'bakery') {
@@ -129,7 +129,7 @@ function openCustomizeModal(itemId) {
     }
   }
 
-  // 3. ສະແດງ ຫຼື ເຊື່ອງ "ຄວາມຫວານ"
+  // 3. ເຊື່ອງ "ຄວາມຫວານ" ຖ້າປິດ
   const sweetSection = document.getElementById('sweetnessSelectorGroup');
   if (sweetSection) {
     if (activeCustomizingItem.allowSweetness === false || activeCustomizingItem.category === 'bakery') {
