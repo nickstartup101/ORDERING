@@ -139,6 +139,16 @@ function openCustomizeModal(itemId) {
     }
   }
 
+  // 4. ເຊື່ອງ "Topping" ຖ້າປິດ
+  const toppingSection = document.getElementById('toppingSelectorGroup');
+  if (toppingSection) {
+    if (activeCustomizingItem.allowTopping === false || activeCustomizingItem.category === 'bakery') {
+      toppingSection.classList.add('hidden');
+    } else {
+      toppingSection.classList.remove('hidden');
+    }
+  }
+
   updateModalPrice();
   document.getElementById('customizeModal')?.classList.remove('hidden');
 }
@@ -186,7 +196,6 @@ function updateModalPrice() {
     unitPrice = v.standard;
   }
 
-  // ບວກຄ່ານົມສະເພາະເມນູທີ່ເປີດໃຫ້ນົມ
   if (activeCustomizingItem.allowMilk !== false) {
     const milkRadio = document.querySelector('input[name="milkOption"]:checked');
     if (milkRadio && (milkRadio.value.includes('Oat') || milkRadio.value.includes('Almond'))) {
@@ -195,19 +204,10 @@ function updateModalPrice() {
   }
 
   const extraShot = document.getElementById('addonExtraShot')?.checked;
-  if (extraShot) {
+  if (extraShot && activeCustomizingItem.allowTopping !== false) {
     unitPrice += 12000;
   }
 
   document.getElementById('modalItemBasePrice').textContent = formatLAK(unitPrice);
   document.getElementById('modalDynamicTotal').textContent = formatLAK(unitPrice * modalQuantity);
 }
-// 4. ສະແດງ ຫຼື ເຊື່ອງ "Option 4 Topping" ຕາມທີ່ Superadmin ຕັ້ງຄ່າ
-  const toppingSection = document.getElementById('addonExtraShot')?.closest('.space-y-2');
-  if (toppingSection) {
-    if (activeCustomizingItem.allowTopping === false || activeCustomizingItem.category === 'bakery') {
-      toppingSection.classList.add('hidden');
-    } else {
-      toppingSection.classList.remove('hidden');
-    }
-  }
