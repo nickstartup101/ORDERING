@@ -5,7 +5,6 @@
 let selectedBankMethodId = null;
 let uploadedSlipDataUrl = null;
 
-// 1. ເພີ່ມສິນຄ້າເຂົ້າກະຕ່າ
 function confirmAddToCart() {
   if (!activeCustomizingItem) {
     showToast("ກະລຸນາເລືອກເມນູກ່ອນ!");
@@ -114,7 +113,6 @@ function renderCartList() {
   if (tot) tot.textContent = formatLAK(total);
 }
 
-// 2. ລະບົບເລືອກທະນາຄານ ແລະ QR Code
 function renderCustomerPaymentOptions() {
   const container = document.getElementById('customerBankSelectorGrid');
   const display = document.getElementById('activeBankQRDisplay');
@@ -126,7 +124,6 @@ function renderCustomerPaymentOptions() {
     return;
   }
 
-  // ຕັ້ງຄ່າເລີ່ມຕົ້ນຖ້າຍັງບໍ່ເລືອກ
   if (!selectedBankMethodId && paymentMethods.length > 0) {
     selectedBankMethodId = paymentMethods[0].id;
   }
@@ -178,14 +175,13 @@ function handleSlipSelected(e) {
   reader.readAsDataURL(file);
 }
 
-// 3. 🚀 ລະບົບກົດຢືນຢັນສັ່ງຊື້ (Member & Guest Bulletproof Flow)
 function handleStartCheckout() {
   if (cart.length === 0) {
     showToast("ກະຕ່າຂອງທ່ານຍັງຫວ່າງເປົ່າ!");
     return;
   }
 
-  // ຖ້າເປັນ Member (Login ແລ້ວ) -> ສັ່ງຊື້ທັນທີ
+  // ຖ້າເປັນ Member -> ສັ່ງຊື້ທັນທີ
   if (currentUser && currentUser.name) {
     executeOrderCreation(currentUser.name, currentUser.phone || "+856 20 5512 8899");
   } else {
@@ -194,7 +190,6 @@ function handleStartCheckout() {
     if (modal) {
       modal.classList.remove('hidden');
     } else {
-      // Fallback ຖ້າບໍ່ມີ Modal
       const name = prompt("ກະລຸນາໃສ່ຊື່ຂອງທ່ານ (ສຳລັບຮຽກຮັບເຄື່ອງດື່ມ):", "Elena");
       if (!name) return;
       const phone = prompt("ກະລຸນາໃສ່ເບີໂທລະສັບ:", "+856 20 ");
@@ -225,16 +220,13 @@ function submitGuestOrder() {
   executeOrderCreation(name, phone);
 }
 
-// 4. ສ້າງ Order Payload ແລະ ບັນທຶກລົງ Firestore + LocalStorage
-async function executeOrderCreation(customerName, customerPhone) {
+// 4. ສົ່ງອໍເດີ້ (Null-Safe 100% ບໍ່ມີ Crash ແນ່ນອນ)
+function executeOrderCreation(customerName, customerPhone) {
   showToast("ກຳລັງສົ່ງອໍເດີ້...");
 
   const subtotal = cart.reduce((s, i) => s + (i.total || 0), 0);
   const tax = subtotal * 0.08;
   const grandTotal = subtotal + tax;
-
-  const noteInput = document.getElementById('checkoutCustomerNote');
-  const note = noteInput ? noteInput.value.trim() : "None";
 
   const newOrder = {
     id: 'LD-' + Math.floor(1000 + Math.random() * 9000),
@@ -246,51 +238,40 @@ async function executeOrderCreation(customerName, customerPhone) {
     subtotal: subtotal,
     tax: tax,
     total: grandTotal,
-    note: note || "None",
+    note: "None",
     selectedBank: selectedBankMethodId || "pay_bcel",
     slipUrl: uploadedSlipDataUrl || null,
     status: "pending",
     delayNotice: null
   };
 
-  console.log("Submitting Order Payload:", newOrder);
+  console.log("Order Created:", newOrder);
 
-  // 1. ບັນທຶກລົງ LocalStorage ທັນທີ (Zero-lag)
+  // 1. ບັນທຶກລົງ LocalStorage ທັນທີ
   orders.unshift(newOrder);
   localStorage.setItem('ladolce_orders', JSON.stringify(orders));
 
   currentActiveOrder = newOrder;
   localStorage.setItem('ladolce_active_order', JSON.stringify(currentActiveOrder));
 
-  // 2. ສົ່ງຂຶ້ນ Cloud Firestore Real-time
-  if (isFirebaseReady && db) {
-    try {
-      await db.collection("orders").doc(newOrder.id).set(newOrder);
-      console.log("✅ Order successfully synced to Firestore:", newOrder.id);
-    } catch (err) {
-      console.warn("Firestore order sync warning (Saved locally):", err);
-    }
-  }
-
-  // 3. ລ້າງກະຕ່າ
+  // 2. ລ້າງກະຕ່າ
   cart = [];
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
   uploadedSlipDataUrl = null;
-
-  const preview = document.getElementById('slipImagePreview');
-  const box = document.getElementById('slipPreviewContainer');
-  const txt = document.getElementById('slipStatusText');
-  const fileInput = document.getElementById('slipFileInput');
-  if (preview) preview.src = '';
-  if (box) box.classList.add('hidden');
-  if (txt) txt.textContent = "ອັບໂຫຼດຮູບໃບໂອນເງິນ (Slip)";
-  if (fileInput) fileInput.value = '';
-
   updateCartBadges();
 
-  // 4. ແຈ້ງເຕືອນສຳເລັດ ແລະ ພາໄປໜ້າປີ້ຮັບເຄື່ອງທັນທີ
+  // 3. Sync ຂຶ້ນ Firestore
+  if (isFirebaseReady && db) {
+    db.collection("orders").doc(newOrder.id).set(newOrder)
+      .then(() => console.log("Order pushed to Firestore:", newOrder.id))
+      .catch(err => console.warn("Firestore sync issue (Saved locally):", err));
+  }
+
+  // 4. ສັ່ງໃຫ້ Staff ໄດ້ຍິນສຽງເຕືອນ
+  if (typeof startStaffAlarm === 'function') startStaffAlarm();
+
+  // 5. ພາໄປໜ້າປີ້ຮັບເຄື່ອງ (My Ticket) ທັນທີ 100%!
   showToast("ສັ່ງຊື້ສຳເລັດແລ້ວ! 🎉");
-  
   if (typeof switchCustomerTab === 'function') {
     switchCustomerTab('ticket');
   }
