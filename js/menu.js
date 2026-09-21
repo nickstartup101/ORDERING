@@ -1,10 +1,11 @@
 // =======================================================
-// MENU CURATION & CUSTOMIZATION MODAL ENGINE
+// MENU CURATION & CUSTOMIZATION MODAL (FIXED SELECTION)
 // =======================================================
 
 let currentCategoryFilter = 'all';
 let activeCustomizingItem = null;
 let selectedVariant = 'standard';
+let selectedSweetnessLevel = '100%';
 let modalQuantity = 1;
 
 function filterCategory(cat) {
@@ -34,7 +35,7 @@ function renderMenu() {
   }
 
   filtered.forEach(item => {
-    const isAvail = item.isAvailable !== false; // Default true
+    const isAvail = item.isAvailable !== false;
 
     let minPrice = 35000;
     if (item.variants) {
@@ -57,7 +58,7 @@ function renderMenu() {
       <div class="flex items-center justify-between pt-2.5 border-t border-hairline">
         <span class="font-serif-title text-[15px] font-bold ${isAvail ? 'text-forest-emerald' : 'text-gray-400'}">${formatLAK(minPrice)}</span>
         ${isAvail ? `
-          <button onclick="openCustomizeModal('${item.id}')" class="px-3.5 py-1.5 rounded-lg bg-surface hover:bg-forest-emerald hover:text-white border border-hairline text-[11px] font-medium transition-all">ເລືອກ</button>
+          <button type="button" onclick="openCustomizeModal('${item.id}')" class="px-3.5 py-1.5 rounded-lg bg-surface hover:bg-forest-emerald hover:text-white border border-hairline text-[11px] font-medium transition-all">ເລືອກ</button>
         ` : `
           <span class="px-3 py-1 text-[11px] text-gray-400 bg-gray-100 rounded-lg">ໝົດ</span>
         `}
@@ -72,11 +73,13 @@ function openCustomizeModal(itemId) {
   if (!activeCustomizingItem || activeCustomizingItem.isAvailable === false) return;
 
   modalQuantity = 1;
+  selectedSweetnessLevel = '100%';
   document.getElementById('modalQtyDisplay').textContent = modalQuantity;
   document.getElementById('modalItemTitle').textContent = activeCustomizingItem.name;
   document.getElementById('modalItemDesc').textContent = activeCustomizingItem.desc || '';
   document.getElementById('modalItemImage').src = activeCustomizingItem.image;
 
+  // Render Variants List
   const container = document.getElementById('variantButtonsGrid');
   container.innerHTML = '';
   const v = activeCustomizingItem.variants || {};
@@ -88,19 +91,50 @@ function openCustomizeModal(itemId) {
   if (list.length === 0) list.push({ key: 'standard', label: 'ມາດຕະຖານ', price: 35000 });
 
   selectedVariant = list[0].key;
+
   list.forEach(varItem => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = `p-2.5 rounded-lg border text-left flex flex-col justify-between ${varItem.key === selectedVariant ? 'border-forest-emerald bg-forest-emerald/10 font-bold' : 'border-hairline bg-surface-pure'}`;
-    btn.onclick = () => { selectedVariant = varItem.key; openCustomizeModal(itemId); };
+    btn.className = `variant-btn p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all ${varItem.key === selectedVariant ? 'border-forest-emerald bg-forest-emerald/10 font-bold' : 'border-hairline bg-surface-pure'}`;
+    btn.dataset.key = varItem.key;
+    btn.onclick = function() {
+      selectVariantOption(varItem.key);
+    };
     btn.innerHTML = `<span class="text-[11px]">${varItem.label}</span><span class="font-serif-title font-bold text-forest-emerald">${formatLAK(varItem.price)}</span>`;
     container.appendChild(btn);
   });
 
-  const price = activeCustomizingItem.variants?.[selectedVariant] || 35000;
-  document.getElementById('modalItemBasePrice').textContent = formatLAK(price);
-  document.getElementById('modalDynamicTotal').textContent = formatLAK(price * modalQuantity);
+  // Reset Sweetness Buttons
+  document.querySelectorAll('.sweet-btn').forEach(btn => {
+    btn.className = 'sweet-btn py-1.5 rounded text-[11px] text-taupe font-medium';
+    if (btn.textContent.trim() === '100%') {
+      btn.className = 'sweet-btn py-1.5 rounded text-[11px] bg-forest-emerald text-white font-medium';
+    }
+  });
+
+  updateModalPrice();
   document.getElementById('customizeModal').classList.remove('hidden');
+}
+
+// 🔥 ຟັງຊັນເລືອກ Variant ໂດຍບໍ່ Refresh Modal (ເລືອກໄດ້ທັນທີ)
+function selectVariantOption(key) {
+  selectedVariant = key;
+  document.querySelectorAll('.variant-btn').forEach(btn => {
+    if (btn.dataset.key === key) {
+      btn.className = 'variant-btn p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all border-forest-emerald bg-forest-emerald/10 font-bold';
+    } else {
+      btn.className = 'variant-btn p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all border-hairline bg-surface-pure';
+    }
+  });
+  updateModalPrice();
+}
+
+function selectSweetness(btn, level) {
+  selectedSweetnessLevel = level;
+  document.querySelectorAll('.sweet-btn').forEach(b => {
+    b.className = 'sweet-btn py-1.5 rounded text-[11px] text-taupe font-medium';
+  });
+  btn.className = 'sweet-btn py-1.5 rounded text-[11px] bg-forest-emerald text-white font-medium';
 }
 
 function closeCustomizeModal() {
@@ -110,6 +144,23 @@ function closeCustomizeModal() {
 function adjustModalQty(delta) {
   modalQuantity = Math.max(1, modalQuantity + delta);
   document.getElementById('modalQtyDisplay').textContent = modalQuantity;
-  const price = activeCustomizingItem.variants?.[selectedVariant] || 35000;
-  document.getElementById('modalDynamicTotal').textContent = formatLAK(price * modalQuantity);
+  updateModalPrice();
+}
+
+function updateModalPrice() {
+  if (!activeCustomizingItem) return;
+  let unitPrice = activeCustomizingItem.variants?.[selectedVariant] || 35000;
+
+  const milkRadio = document.querySelector('input[name="milkOption"]:checked');
+  if (milkRadio && (milkRadio.value.includes('Oat') || milkRadio.value.includes('Almond'))) {
+    unitPrice += 15000;
+  }
+
+  const extraShot = document.getElementById('addonExtraShot')?.checked;
+  if (extraShot) {
+    unitPrice += 12000;
+  }
+
+  document.getElementById('modalItemBasePrice').textContent = formatLAK(unitPrice);
+  document.getElementById('modalDynamicTotal').textContent = formatLAK(unitPrice * modalQuantity);
 }
