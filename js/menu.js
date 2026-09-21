@@ -245,3 +245,13 @@ function updateModalPrice() {
   document.getElementById('modalItemBasePrice').textContent = formatLAK(unitPrice);
   document.getElementById('modalDynamicTotal').textContent = formatLAK(unitPrice * modalQuantity);
 }
+// ໃນ js/menu.js ສ່ວນ openCustomizeModal:
+  const milkSection = document.getElementById('milkSelectorGroup');
+  if (milkSection) {
+    // ຖ້າເປັນ Bakery ຫຼື Refresher ໃຫ້ເຊື່ອງຕົວເລືອກນົມອັດຕະໂນມັດ
+    if (activeCustomizingItem.allowMilk === false || activeCustomizingItem.category === 'bakery' || activeCustomizingItem.category === 'refresher') {
+      milkSection.classList.add('hidden');
+    } else {
+      milkSection.classList.remove('hidden');
+    }
+  }
