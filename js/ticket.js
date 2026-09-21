@@ -1,5 +1,5 @@
 // =======================================================
-// DIGITAL TICKET PASS & LIVE REALTIME PROGRESSION
+// DIGITAL TICKET PASS & LIVE REALTIME PROGRESSION (LAK)
 // =======================================================
 
 function renderCustomerTicket() {
@@ -16,14 +16,14 @@ function renderCustomerTicket() {
     return;
   }
 
-  const status = currentActiveOrder.status;
+  const status = currentActiveOrder.status || 'pending';
   let statusTitle = "Order Received";
   let statusDesc = "ລໍຖ້າບາຣິສຕ້າກວດສະລິບ ແລະ ຮັບອໍເດີ້";
   let bgClass = "bg-forest-emerald";
 
   if (status === 'crafting') {
     statusTitle = "Crafting in Progress ☕";
-    statusDesc = "ບາຣິສຕ້າກຳລັງສະກັດກາເຟ ແລະ ປຸງແຕ່ງຢ່າງພິຖີພິຖັນ";
+    statusDesc = "ບາຣິສຕ້າກຳລັງສະກັດກາເຟ ແລະ ປຸງແຕ່ງ";
   } else if (status === 'ready') {
     statusTitle = "Ready for Pick-up! 🎉";
     statusDesc = "ເຄື່ອງດື່ມພ້ອມແລ້ວ! ເຊີນຮັບໄດ້ທີ່ Counter 02";
@@ -47,7 +47,6 @@ function renderCustomerTicket() {
         <h3 class="font-serif-title text-[22px] font-bold leading-snug">${statusTitle}</h3>
         <p class="text-[12px] opacity-85 mt-0.5">${statusDesc}</p>
 
-        <!-- Delay Notice Alert Banner -->
         ${currentActiveOrder.delayNotice ? `
           <div class="mt-3 p-2.5 rounded-xl bg-amber-500/20 border border-amber-300/40 text-[11px] text-amber-200 font-medium flex items-center gap-2">
             <span class="material-symbols-outlined text-[16px]">hourglass_top</span>
@@ -56,7 +55,6 @@ function renderCustomerTicket() {
         ` : ''}
       </div>
 
-      <!-- Realtime Stepper with Pulse -->
       ${status !== 'cancelled' ? `
         <div class="px-5">
           <div class="grid grid-cols-4 gap-1.5 py-1">
@@ -76,7 +74,7 @@ function renderCustomerTicket() {
           <span>ລາຍການ: ${currentActiveOrder.customerName} (${currentActiveOrder.customerPhone})</span>
           <span class="font-mono font-bold">${formatLAK(currentActiveOrder.total)}</span>
         </div>
-        ${currentActiveOrder.items.map(i => `
+        ${(currentActiveOrder.items || []).map(i => `
           <div class="flex justify-between py-0.5 text-taupe">
             <span>${i.quantity}× ${i.name}</span>
             <span class="font-mono">${formatLAK(i.total)}</span>
