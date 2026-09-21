@@ -42,14 +42,13 @@ const DEFAULT_PAYMENTS = [
 const DEFAULT_MODIFIERS = [
   { id: "mod_whole", group: "milk", name: "Whole Milk (ນົມສົດແທ້)", price: 0 },
   { id: "mod_oat", group: "milk", name: "Oatly Barista (ນົມເຂົ້າໂອດ)", price: 15000 },
-  { id: "mod_almond", group: "milk", name: "Almond Milk (ນົມອານມອນດ໌)", price: 15000 },
-  { id: "mod_shot", group: "topping", name: "Extra Double Ristretto Shot", price: 12000 }
+  { id: "mod_almond", group: "milk", name: "Almond Milk (ນົມອານມອນດ໌)", price: 15000 }
 ];
 
 const DEFAULT_MENU = [
-  { id: "item_cortado", name: "Double Shot Cortado", type: "drink", category: "coffee", image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80", desc: "Single-origin double espresso with micro-foam", variants: { standard: 35000, hot: 35000, iced: 40000 }, avgPrepMinutes: 3.8, isAvailable: true },
-  { id: "item_pistachio", name: "Iced Pistachio Spanish Latte", type: "drink", category: "coffee", image: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=600&auto=format&fit=crop&q=80", desc: "Espresso with hand-ground Bronte pistachio cream", variants: { standard: 45000, hot: 45000, iced: 50000 }, avgPrepMinutes: 8.5, isAvailable: true },
-  { id: "item_croissant", name: "Almond Croissant", type: "food", category: "bakery", image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&auto=format&fit=crop&q=80", desc: "Twice-baked almond frangipane butter croissant", variants: { standard: 32000 }, avgPrepMinutes: 3.0, isAvailable: true }
+  { id: "item_cortado", name: "Double Shot Cortado", type: "drink", category: "coffee", image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80", desc: "Single-origin double espresso with micro-foam", variants: { standard: 35000, hot: 35000, iced: 40000 }, isAvailable: true },
+  { id: "item_pistachio", name: "Iced Pistachio Spanish Latte", type: "drink", category: "coffee", image: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=600&auto=format&fit=crop&q=80", desc: "Espresso with hand-ground Bronte pistachio cream", variants: { standard: 45000, hot: 45000, iced: 50000 }, isAvailable: true },
+  { id: "item_croissant", name: "Almond Croissant", type: "food", category: "bakery", image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&auto=format&fit=crop&q=80", desc: "Twice-baked almond frangipane butter croissant", variants: { standard: 32000 }, isAvailable: true }
 ];
 
 // Persistent State
@@ -64,8 +63,8 @@ let currentActiveOrder = JSON.parse(localStorage.getItem('ladolce_active_order')
 let userAccounts = JSON.parse(localStorage.getItem('ladolce_accounts')) || REGISTERED_ACCOUNTS;
 let cloudUsers = [];
 
-// Helper: Format ເງິນກີບ LAK
+// 🔥 Helper Format ສະກຸນເງິນ LAK ຢ່າງເປັນທາງການ
 function formatLAK(amount) {
   const val = Math.round(Number(amount) || 0);
-  return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " ₭";
+  return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " LAK";
 }
