@@ -1,10 +1,11 @@
 // =======================================================
-// SUPERADMIN CONTROL CENTER (CLEAN ROW LAYOUT & LOCKED PRICE)
+// SUPERADMIN CONTROL CENTER (CLEAN ROW LAYOUT & OPTION TOGGLES)
 // =======================================================
 
 let editingItemId = null;
 let currentUploadedMenuImageBase64 = null;
 let currentUploadedBankQRBase64 = null;
+let salesFilterPeriod = 'day';
 
 function switchAdminPanelTab(tab) {
   const tabs = [
@@ -36,18 +37,17 @@ function switchAdminPanelTab(tab) {
   }
 }
 
-// 1. 🔥 ປັບ Layout Card ຈັດການເມນູໃໝ່ທັງໝົດ (Row Layout ກວ້າງຂວາງ ງາມ ບໍ່ຊ້ອນທັບ)
+// 1. 🔥 ປັບ Card ໃຫ້ເປັນແຖວນອນ (Row) ຂະໜາດຮູບ 70px ພໍດີງາມ ບໍ່ມີທາງລົ້ນຈໍ
 function renderAdminMenu() {
   const container = document.getElementById('adminMenuListGrid');
   if (!container) return;
 
-  container.className = "grid grid-cols-1 md:grid-cols-2 gap-4"; // ປັບ Grid ໃຫ້ກວ້າງ ບໍ່ບຽດກັນ
+  container.className = "grid grid-cols-1 md:grid-cols-2 gap-4";
 
   container.innerHTML = menuItems.map(item => {
     const isAvail = item.isAvailable !== false;
     const v = item.variants || {};
     
-    // ສະແດງລາຄາ
     let priceText = "";
     if (v.hot || v.iced || v.frappe) {
       priceText = `${v.hot ? 'ຮ້ອນ: ' + formatLAK(v.hot) : ''} ${v.iced ? '| ເຢັນ: ' + formatLAK(v.iced) : ''} ${v.frappe ? '| ປັ່ນ: ' + formatLAK(v.frappe) : ''}`;
@@ -58,13 +58,13 @@ function renderAdminMenu() {
     return `
       <div class="p-4 bg-surface-pure border border-hairline rounded-2xl flex items-center justify-between gap-4 shadow-xs hover:border-forest-leaf transition-all ${!isAvail ? 'opacity-60 bg-gray-50' : ''}">
         
-        <!-- ຮູບພາບ -->
-        <div class="relative w-18 h-18 rounded-xl overflow-hidden bg-surface-dim shrink-0 border border-hairline">
+        <!-- ຮູບພາບຂະໜາດ 70x70px ແນ່ນອນ ບໍ່ລົ້ນຈໍ -->
+        <div class="relative w-[70px] h-[70px] rounded-xl overflow-hidden bg-surface-dim shrink-0 border border-hairline">
           <img src="${item.image || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600'}" class="w-full h-full object-cover ${!isAvail ? 'grayscale' : ''}"/>
           ${!isAvail ? `<span class="absolute inset-0 bg-black/60 flex items-center justify-center text-[10px] font-bold text-white uppercase">ໝົດ</span>` : ''}
         </div>
 
-        <!-- ຂໍ້ມູນເມນູກາງ Card -->
+        <!-- ຂໍ້ມູນເມນູ -->
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
             <h5 class="font-serif-title font-bold text-[15px] text-primary truncate">${item.name}</h5>
@@ -75,7 +75,7 @@ function renderAdminMenu() {
 
           <p class="text-[11px] text-taupe truncate mt-0.5">${item.category || 'coffee'} • <span class="font-mono font-bold text-forest-emerald">${priceText}</span></p>
 
-          <!-- Badges Google Material Symbols -->
+          <!-- Badges ສະແດງ Option -->
           <div class="flex items-center gap-1.5 mt-2 flex-wrap text-[10px]">
             ${item.allowMilk !== false ? `
               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface text-forest-emerald border border-hairline">
@@ -101,7 +101,7 @@ function renderAdminMenu() {
           </div>
         </div>
 
-        <!-- ປຸ່ມຈັດການຂວາ Card -->
+        <!-- ປຸ່ມຈັດການ -->
         <div class="flex flex-col items-end gap-1.5 shrink-0 border-l border-hairline pl-3">
           <button type="button" onclick="toggleItemAvailability('${item.id}')" class="px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all ${isAvail ? 'border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-900' : 'border-emerald-500 bg-emerald-50 hover:bg-emerald-100 text-emerald-900'}">
             ${isAvail ? 'ປິດ (ໝົດ)' : 'ເປີດຂາຍ'}
@@ -137,7 +137,6 @@ async function toggleItemAvailability(itemId) {
   showToast(item.isAvailable ? `ເປີດຂາຍ "${item.name}" ແລ້ວ` : `ປິດ "${item.name}" (ສິນຄ້າໝົດ)`);
 }
 
-// 2. 🔥 ເປີດ Modal ພ້ອມກວດສອບ: ຖ້າມີຫຼາຍກວ່າ 1 ລາຄາ (ຮ້ອນ/ເຢັນ) ໃຫ້ເຊື່ອງລາຄາມາດຕະຖານ
 function openAddMenuModal(id = null) {
   editingItemId = id;
   const form = document.getElementById('menuForm');
@@ -159,10 +158,9 @@ function openAddMenuModal(id = null) {
       document.getElementById('priceIced').value = v.iced || '';
       document.getElementById('priceFrappe').value = v.frappe || '';
 
-      // Toggles
       document.getElementById('toggleAllowMilk').checked = item.allowMilk !== false;
       document.getElementById('toggleAllowSweetness').checked = item.allowSweetness !== false;
-      document.getElementById('toggleAllowTopping').checked = item.allowTopping !== false; // Option 4
+      document.getElementById('toggleAllowTopping').checked = item.allowTopping !== false;
       document.getElementById('toggleAllowHot').checked = item.allowHot !== false && Boolean(v.hot);
       document.getElementById('toggleAllowIced').checked = item.allowIced !== false && Boolean(v.iced);
       document.getElementById('toggleAllowFrappe').checked = Boolean(v.frappe);
@@ -174,7 +172,6 @@ function openAddMenuModal(id = null) {
       }
     }
   } else {
-    // ເພີ່ມໃໝ່
     document.getElementById('priceStandard').value = 35000;
     document.getElementById('priceHot').value = 35000;
     document.getElementById('priceIced').value = 40000;
@@ -187,13 +184,10 @@ function openAddMenuModal(id = null) {
     document.getElementById('toggleAllowFrappe').checked = false;
   }
 
-  // ກວດສອບເຊື່ອງ/ສະແດງ ລາຄາມາດຕະຖານ
   autoCheckStandardPriceVisibility();
-
   document.getElementById('addMenuModal')?.classList.remove('hidden');
 }
 
-// ຖ້າຕິກເລືອກ ຮ້ອນ ຫຼື ເຢັນ ຫຼື ປັ່ນ -> ໃຫ້ເຊື່ອງຊ່ອງ "ລາຄາມາດຕະຖານ"
 function autoCheckStandardPriceVisibility() {
   const hot = document.getElementById('toggleAllowHot')?.checked;
   const iced = document.getElementById('toggleAllowIced')?.checked;
@@ -202,9 +196,9 @@ function autoCheckStandardPriceVisibility() {
 
   if (stdBox) {
     if (hot || iced || frappe) {
-      stdBox.classList.add('hidden'); // ເຊື່ອງລາຄາມາດຕະຖານຖິ້ມ
+      stdBox.classList.add('hidden');
     } else {
-      stdBox.classList.remove('hidden'); // ສະແດງສະເພາະເມນູທີ່ບໍ່ມີຮ້ອນ/ເຢັນ (ເຊັ່ນ ເບເກີຣີ່)
+      stdBox.classList.remove('hidden');
     }
   }
 }
@@ -225,7 +219,6 @@ function handleMenuImageUpload(e) {
   reader.readAsDataURL(file);
 }
 
-// 3. ບັນທຶກເມນູ ພ້ອມ Option 4 Topping
 async function saveMenuItem(e) {
   if (e) e.preventDefault();
   const name = document.getElementById('inputItemName')?.value.trim();
@@ -246,7 +239,6 @@ async function saveMenuItem(e) {
   const pFrappe = parseFloat(document.getElementById('priceFrappe')?.value) || null;
   const pStd = parseFloat(document.getElementById('priceStandard')?.value) || (pHot || pIced || 35000);
 
-  // ຖ້າມີຮ້ອນ/ເຢັນ/ປັ່ນ ບໍ່ຕ້ອງບັນທຶກ standard ເພື່ອບໍ່ໃຫ້ຕີກັນ
   const variantsPayload = (allowHot || allowIced || allowFrappe) ? {
     hot: allowHot ? pHot : null,
     iced: allowIced ? pIced : null,
@@ -262,7 +254,7 @@ async function saveMenuItem(e) {
     variants: variantsPayload,
     allowMilk: allowMilk,
     allowSweetness: allowSweetness,
-    allowTopping: allowTopping, // Option 4
+    allowTopping: allowTopping,
     allowHot: allowHot,
     allowIced: allowIced,
     allowFrappe: allowFrappe,
@@ -301,7 +293,6 @@ async function deleteMenuItem(id) {
   showToast("ລຶບເມນູແລ້ວ");
 }
 
-// Modifiers & Payments & Users
 function renderModifierSettings() {
   const list = document.getElementById('modifierAdminList');
   if (!list) return;
@@ -431,6 +422,7 @@ async function updateUserRole(email, newRole) {
 }
 
 function setSalesFilter(period) {
+  salesFilterPeriod = period;
   renderAnalytics();
 }
 
