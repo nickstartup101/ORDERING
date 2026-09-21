@@ -60,14 +60,14 @@
         </div>
       </div>
 
-      <!-- Staff Alarm Ringing Indicator -->
+      <!-- Center Staff Alarm Ringing Indicator -->
       <div id="staffRingingIndicator" class="hidden items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-full animate-pulse">
         <span class="w-2 h-2 rounded-full bg-red-600"></span>
         <span class="text-[11px] font-medium text-red-700">ມີອໍເດີ້ໃໝ່ເຂົ້າມາ!</span>
         <button onclick="stopStaffAlarm()" class="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded uppercase font-bold">ປິດສຽງ</button>
       </div>
 
-      <!-- Right Auth Area with Role-Based Dropdown Menu -->
+      <!-- Right Auth Area with Slide-down Dropdown Menu -->
       <div class="flex items-center gap-2.5 relative">
         <button onclick="openAuthModal()" id="btnLoginHeader" class="text-[11px] uppercase tracking-wider font-semibold border-2 border-forest-emerald text-forest-emerald px-3 py-1.5 rounded-lg hover:bg-forest-emerald hover:text-white transition-all shadow-2xs">
           Sign In
@@ -79,17 +79,16 @@
             <span class="material-symbols-outlined text-[16px] text-taupe pr-1">expand_more</span>
           </button>
 
-          <!-- Slide-down Dropdown Menu (Dynamic based on Role) -->
-          <div id="profileDropdownMenu" class="hidden absolute right-0 top-12 w-64 bg-surface-pure rounded-2xl border border-hairline shadow-2xl p-2 z-50 animate-slide-down">
+          <!-- Slide-down Dropdown Box (Dynamic by Role) -->
+          <div id="profileDropdownMenu" class="hidden absolute right-0 top-12 w-60 bg-surface-pure rounded-2xl border border-hairline shadow-2xl p-2 z-50 animate-slide-down">
             <div class="p-3 border-b border-hairline">
               <span class="font-serif-title font-bold text-[14px] text-primary block truncate" id="dropdownUserName">Elena</span>
               <span class="text-[10px] text-taupe font-mono block truncate" id="dropdownUserEmail">customer@ladolce.com</span>
               <span class="inline-block mt-1 px-2 py-0.5 rounded bg-emerald-50 text-forest-emerald text-[9px] font-bold uppercase tracking-wider" id="dropdownUserRole">Customer</span>
             </div>
             
-            <!-- Dynamic Navigation Links depending on Role -->
             <div class="py-1 space-y-0.5" id="dropdownRoleLinks">
-              <!-- Rendered dynamically by updateDropdownRoleLinks() -->
+              <!-- Rendered dynamically by auth.js based on Role -->
             </div>
 
             <div class="pt-1 border-t border-hairline">
@@ -187,7 +186,7 @@
                 </div>
               </div>
 
-              <button onclick="handleStartCheckout()" class="w-full h-12 rounded-lg bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] uppercase tracking-wider font-medium flex items-center justify-center gap-2 transition-all shadow-xs">
+              <button type="button" onclick="handleStartCheckout()" class="w-full h-12 rounded-lg bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] uppercase tracking-wider font-medium flex items-center justify-center gap-2 transition-all shadow-xs">
                 ຢືນຢັນການສັ່ງຊື້ (Confirm Order)
               </button>
             </div>
@@ -234,7 +233,7 @@
       <div id="staffHistoryContainer" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
     </div>
 
-    <!-- 3. SUPERADMIN SUITE -->
+    <!-- 3. SUPERADMIN SUITE (CONTROL CENTER) -->
     <div id="superAdminAppView" class="hidden space-y-6">
       <div class="p-5 rounded-xl bg-surface-pure border border-hairline flex flex-wrap items-center justify-between gap-4 shadow-xs">
         <div>
@@ -367,7 +366,7 @@
 
   <!-- ================= MODALS ================= -->
 
-  <!-- 1. CUSTOMIZE MODAL (ລວມເອົາ Sweetness & Toppings ໄວ້ພາຍໃນ Modal ຢ່າງຖືກຕ້ອງ) -->
+  <!-- 1. CUSTOMIZE MODAL (ລວມເອົາ Sweetness & Toppings ໄວ້ພາຍໃນ Modal ຢ່າງເປັນລະບຽບ) -->
   <div id="customizeModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end sm:items-center justify-center hidden">
     <div class="bg-surface-pure w-full max-w-lg rounded-t-2xl sm:rounded-2xl border border-hairline max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
       <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
@@ -410,7 +409,7 @@
         </div>
 
         <!-- Sweetness Selection ຢູ່ພາຍໃນ Modal -->
-        <div class="space-y-2">
+        <div id="sweetnessSelectorGroup" class="space-y-2">
           <label class="block text-[11px] uppercase tracking-wider font-semibold text-charcoal">03. ລະດັບຄວາມຫວານ (Sweetness)</label>
           <div class="grid grid-cols-4 gap-1.5 p-1 rounded-lg bg-surface border border-hairline">
             <button type="button" onclick="selectSweetness(this, '0%')" class="sweet-btn py-1.5 rounded text-[11px] text-taupe font-medium">0%</button>
@@ -535,17 +534,17 @@
     </div>
   </div>
 
-  <!-- 6. SUPERADMIN ADD MENU MODAL -->
+  <!-- 6. SUPERADMIN ADD/EDIT MENU MODAL (ພ້ອມ Checkbox Option Toggles) -->
   <div id="addMenuModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-lg rounded-2xl border border-hairline overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
       <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
         <h3 class="font-serif-title text-[18px] text-primary font-medium">ເພີ່ມ / ແກ້ໄຂເມນູ</h3>
-        <button onclick="closeAddMenuModal()" class="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-taupe"><span class="material-symbols-outlined text-[18px]">close</span></button>
+        <button type="button" onclick="closeAddMenuModal()" class="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-taupe"><span class="material-symbols-outlined text-[18px]">close</span></button>
       </div>
       <form id="menuForm" class="p-5 overflow-y-auto space-y-4 text-[13px] flex-1">
         <div>
           <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ຊື່ເມນູ:</label>
-          <input required id="inputItemName" type="text" placeholder="ເຊັ່ນ: Iced Spanish Latte" class="w-full rounded-lg border border-hairline p-2.5"/>
+          <input required id="inputItemName" type="text" placeholder="ເຊັ່ນ: Americano, Spanish Latte" class="w-full rounded-lg border border-hairline p-2.5"/>
         </div>
         <div class="grid grid-cols-2 gap-2.5">
           <div>
@@ -557,10 +556,56 @@
             </select>
           </div>
           <div>
-            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ລາຄາ (LAK ₭):</label>
-            <input required id="inputItemPrice" type="number" step="1000" placeholder="35000" class="w-full rounded-lg border border-hairline p-2.5 text-[12px]"/>
+            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ລາຄາມາດຕະຖານ (LAK ₭):</label>
+            <input required id="priceStandard" type="number" step="1000" placeholder="35000" class="w-full rounded-lg border border-hairline p-2.5 text-[12px]"/>
           </div>
         </div>
+
+        <!-- Option Toggles: ນົມ, ຄວາມຫວານ -->
+        <div class="p-3 bg-surface rounded-xl border border-hairline space-y-2">
+          <span class="block text-[11px] font-bold text-forest-emerald">ຕັ້ງຄ່າຕົວເລືອກທີ່ອະນຸຍາດສຳລັບເມນູນີ້:</span>
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="toggleAllowMilk" checked class="rounded text-forest-emerald focus:ring-0"/>
+              <span class="text-[12px] font-medium">ອະນຸຍາດໃຫ້ເລືອກປະເພດນົມ (Oat/Almond)</span>
+            </label>
+          </div>
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="toggleAllowSweetness" checked class="rounded text-forest-emerald focus:ring-0"/>
+              <span class="text-[12px] font-medium">ອະນຸຍາດໃຫ້ປັບລະດັບຄວາມຫວານ (0%-120%)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- ຮູບແບບ: ຮ້ອນ / ເຢັນ / ປັ່ນ -->
+        <div class="p-3 bg-surface rounded-xl border border-hairline space-y-2.5">
+          <span class="block text-[11px] font-bold text-forest-emerald">ຮູບແບບເຄື່ອງດື່ມ & ລາຄາ:</span>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="flex items-center gap-1.5 text-[11px] font-medium mb-1 cursor-pointer">
+                <input type="checkbox" id="toggleAllowHot" checked class="rounded text-forest-emerald focus:ring-0"/>
+                <span>ຮ້ອນ</span>
+              </label>
+              <input id="priceHot" type="number" step="1000" placeholder="35000" class="w-full text-[12px] rounded-lg border border-hairline p-1.5"/>
+            </div>
+            <div>
+              <label class="flex items-center gap-1.5 text-[11px] font-medium mb-1 cursor-pointer">
+                <input type="checkbox" id="toggleAllowIced" checked class="rounded text-forest-emerald focus:ring-0"/>
+                <span>ເຢັນ</span>
+              </label>
+              <input id="priceIced" type="number" step="1000" placeholder="40000" class="w-full text-[12px] rounded-lg border border-hairline p-1.5"/>
+            </div>
+            <div>
+              <label class="flex items-center gap-1.5 text-[11px] font-medium mb-1 cursor-pointer">
+                <input type="checkbox" id="toggleAllowFrappe" class="rounded text-forest-emerald focus:ring-0"/>
+                <span>ປັ່ນ</span>
+              </label>
+              <input id="priceFrappe" type="number" step="1000" placeholder="45000" class="w-full text-[12px] rounded-lg border border-hairline p-1.5"/>
+            </div>
+          </div>
+        </div>
+
         <div>
           <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ອັບໂຫຼດຮູບພາບສິນຄ້າ (ບໍ່ເກີນ 1MB):</label>
           <input type="file" id="menuImageFileInput" accept="image/*" class="w-full text-[12px] border border-hairline rounded-lg p-2" onchange="handleMenuImageUpload(event)"/>
@@ -617,7 +662,7 @@
     <span id="toastMsg">Action completed</span>
   </div>
 
-  <!-- ================= SCRIPTS ================= -->
+  <!-- ================= LOAD MODULAR SCRIPTS IN ORDER ================= -->
   <script src="js/config.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/auth.js"></script>
