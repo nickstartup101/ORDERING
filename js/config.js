@@ -1,5 +1,5 @@
 // =======================================================
-// LA DOLCE — CORE CONFIGURATION & CONSTANTS
+// LA DOLCE — CORE CONFIGURATION & STORE SETTINGS
 // =======================================================
 
 const firebaseConfig = {
@@ -22,7 +22,7 @@ try {
     db = firebase.firestore();
     auth = firebase.auth();
     isFirebaseReady = true;
-    console.log("✅ Cloud Firestore Initialized Successfully");
+    console.log("✅ Cloud Firestore Ready");
   }
 } catch (e) {
   console.warn("Firestore fallback mode:", e);
@@ -39,10 +39,12 @@ const DEFAULT_PAYMENTS = [
   { id: "pay_ldb", bankName: "LDB Bank", accountNumber: "030-01-22-98765432", borderColor: "#2563EB", qrImage: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=LDB_PAY_LADOLCE" }
 ];
 
+// ຕົວເລືອກເສີມເລີ່ມຕົ້ນ (ລວມທັງ Extra Shot ທີ່ Admin ແກ້ໄຂລາຄາໄດ້)
 const DEFAULT_MODIFIERS = [
   { id: "mod_whole", group: "milk", name: "Whole Milk (ນົມສົດແທ້)", price: 0 },
   { id: "mod_oat", group: "milk", name: "Oatly Barista (ນົມເຂົ້າໂອດ)", price: 15000 },
-  { id: "mod_almond", group: "milk", name: "Almond Milk (ນົມອານມອນດ໌)", price: 15000 }
+  { id: "mod_almond", group: "milk", name: "Almond Milk (ນົມອານມອນດ໌)", price: 15000 },
+  { id: "mod_shot", group: "topping", name: "Extra Double Ristretto Shot", price: 12000 }
 ];
 
 const DEFAULT_MENU = [
@@ -51,8 +53,12 @@ const DEFAULT_MENU = [
   { id: "item_croissant", name: "Almond Croissant", type: "food", category: "bakery", image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&auto=format&fit=crop&q=80", desc: "Twice-baked almond frangipane butter croissant", variants: { standard: 32000 }, isAvailable: true }
 ];
 
-// Persistent State
-let storeSettings = JSON.parse(localStorage.getItem('ladolce_store_settings')) || { isStoreOpen: true };
+// 🔥 Store Settings: Tax Rate ເລີ່ມຕົ້ນຕັ້ງເປັນ 0% ຕາມທີ່ຕ້ອງການ
+let storeSettings = JSON.parse(localStorage.getItem('ladolce_store_settings')) || {
+  isStoreOpen: true,
+  taxRatePercent: 0 // ຕອນນີ້ຮ້ານຍັງບໍ່ມີ Tax = 0%
+};
+
 let menuItems = JSON.parse(localStorage.getItem('ladolce_menu')) || DEFAULT_MENU;
 let paymentMethods = JSON.parse(localStorage.getItem('ladolce_payment_methods')) || DEFAULT_PAYMENTS;
 let modifiers = JSON.parse(localStorage.getItem('ladolce_modifiers')) || DEFAULT_MODIFIERS;
@@ -63,7 +69,6 @@ let currentActiveOrder = JSON.parse(localStorage.getItem('ladolce_active_order')
 let userAccounts = JSON.parse(localStorage.getItem('ladolce_accounts')) || REGISTERED_ACCOUNTS;
 let cloudUsers = [];
 
-// 🔥 Helper Format ສະກຸນເງິນ LAK ຢ່າງເປັນທາງການ
 function formatLAK(amount) {
   const val = Math.round(Number(amount) || 0);
   return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " LAK";
