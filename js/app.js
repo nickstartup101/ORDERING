@@ -24,13 +24,13 @@ function closeCustomerReadyModal() {
   document.getElementById('customerReadyModal')?.classList.add('hidden');
 }
 
-// Real-time Cloud Firestore Listener (Instant 0.05s)
 let previousPendingCount = 0;
 
+// Real-time Cloud Firestore Listener
 function initCloudStream() {
   if (!isFirebaseReady || !db) return;
 
-  // 1. Sync Menu Items ແທ້ຈາກ Firestore
+  // 1. Sync Menu Items
   db.collection("menu_items").onSnapshot(snapshot => {
     if (!snapshot.empty) {
       const remoteMenu = [];
@@ -40,9 +40,9 @@ function initCloudStream() {
       if (typeof renderMenu === 'function') renderMenu();
       if (typeof renderAdminMenu === 'function') renderAdminMenu();
     }
-  }, err => console.warn("Menu stream issue:", err));
+  }, err => console.warn("Menu stream:", err));
 
-  // 2. Sync Orders (ສຽງ & Pop-up ແຍກ Staff vs Customer 100%)
+  // 2. Sync Orders (ສຽງ & Pop-up ແຍກຢ່າງເຂັ້ມງວດ 100%)
   db.collection("orders").orderBy("createdAt", "desc").onSnapshot(snapshot => {
     if (!snapshot.empty) {
       const remote = [];
@@ -50,18 +50,19 @@ function initCloudStream() {
       orders = remote;
       localStorage.setItem('ladolce_orders', JSON.stringify(orders));
 
-      // 🔥 ດັກຈັບສະເພາະເຄື່ອງຂອງ Staff / Admin:
-      if (currentUser && (currentUser.role === 'staff' || currentUser.role === 'superadmin')) {
+      // 🔥 1. ສຽງ & Pop-up ເຮັດວຽກສະເພາະເຄື່ອງຂອງ STAFF (BARISTA) ເທົ່ານັ້ນ!
+      if (currentUser && currentUser.role === 'staff') {
         const pendingOrders = orders.filter(o => o.status === 'pending');
         
-        // ຖ້າມີອໍເດີ້ pending ໃໝ່ເພີ່ມຂຶ້ນມາ
         if (pendingOrders.length > previousPendingCount) {
           const latest = pendingOrders[0];
+          // Pop-up ເດັ້ງເຕັມຈໍ Staff
           if (typeof triggerStaffIncomingModal === 'function') {
-            triggerStaffIncomingModal(latest); // ເດັ້ງ Pop-up ສຳລັບ Staff
+            triggerStaffIncomingModal(latest);
           }
+          // ສຽງ Alarm ດັງວົນຊ້ຳສະເພາະ Staff
           if (typeof startStaffAlarm === 'function') {
-            startStaffAlarm(); // ສຽງ Alarm ດັງວົນຊ້ຳສະເພາະ Staff
+            startStaffAlarm();
           }
         } else if (pendingOrders.length === 0) {
           if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
@@ -71,22 +72,22 @@ function initCloudStream() {
         if (typeof renderStaffOrders === 'function') renderStaffOrders();
       }
 
-      // 🔥 ດັກຈັບສະເພາະປີ້ຂອງລູກຄ້າ:
+      // 🔥 2. ສຽງ & Pop-up ເຮັດວຽກສະເພາະເຄື່ອງຂອງ ລູກຄ້າ:
       if (currentActiveOrder) {
         const live = orders.find(o => o.id === currentActiveOrder.id);
         if (live) {
-          // ອໍເດີ້ມີການປ່ຽນແປງສະຖານະ
+          // ເມື່ອມີການປ່ຽນແປງສະຖານະ ຫຼື ມີ Delay Alert
           if (live.status !== currentActiveOrder.status || live.delayNotice !== currentActiveOrder.delayNotice) {
             currentActiveOrder = live;
             localStorage.setItem('ladolce_active_order', JSON.stringify(currentActiveOrder));
             
-            // ຖ້າ Barista ກົດພ້ອມຮັບ (Ready) -> ເດັ້ງ Pop-up ພ້ອມສຽງກະດິ່ງຫາລູກຄ້າ!
+            // ☕ ເຄື່ອງດື່ມພ້ອມຮັບ -> ເດັ້ງ Pop-up ພ້ອມສຽງກະດິ່ງຫາລູກຄ້າ!
             if (live.status === 'ready') {
               if (typeof playChime === 'function') playChime(true);
               showCustomerReadyModal();
             }
 
-            // ຖ້າສຳເລັດແລ້ວ (Completed) -> Clear ປີ້ອອກເພື່ອຍ້າຍໄປ Profile
+            // ✨ ສຳເລັດແລ້ວ -> Clear ປີ້ອອກເພື່ອຍ້າຍໄປ Profile
             if (live.status === 'completed') {
               currentActiveOrder = null;
               localStorage.removeItem('ladolce_active_order');
@@ -97,13 +98,12 @@ function initCloudStream() {
         }
       }
 
-      // ອັບເດດຍອດຂາຍປະຈຳວັນ
       if (typeof renderAnalytics === 'function') renderAnalytics();
     }
-  }, err => console.warn("Orders stream issue:", err));
+  }, err => console.warn("Orders stream:", err));
 }
 
-// Fast App Bootstrap
+// App Bootstrap
 window.addEventListener('DOMContentLoaded', () => {
   if (typeof renderMenu === 'function') renderMenu();
   if (typeof updateCartBadges === 'function') updateCartBadges();
@@ -115,48 +115,3 @@ window.addEventListener('DOMContentLoaded', () => {
 
   initCloudStream();
 });
-// 🔥 ດັກຈັບສະເພາະ Staff ເທົ່ານັ້ນ (ຕັດ Superadmin ອອກ 100% ຕາມຄຳສັ່ງ)
-      if (currentUser && currentUser.role === 'staff') {
-        const pendingOrders = orders.filter(o => o.status === 'pending');
-        
-        if (pendingOrders.length > previousPendingCount) {
-          const latest = pendingOrders[0];
-          if (typeof triggerStaffIncomingModal === 'function') {
-            triggerStaffIncomingModal(latest); // Pop-up ເດັ້ງສະເພາະ Staff
-          }
-          if (typeof startStaffAlarm === 'function') {
-            startStaffAlarm(); // ສຽງ Alarm ດັງວົນຊ້ຳສະເພາະ Staff
-          }
-        } else if (pendingOrders.length === 0) {
-          if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
-        }
-        
-        previousPendingCount = pendingOrders.length;
-        if (typeof renderStaffOrders === 'function') renderStaffOrders();
-      }
-
-      // Sync ປີ້ລູກຄ້າ Real-time
-      if (currentActiveOrder) {
-        const live = orders.find(o => o.id === currentActiveOrder.id);
-        if (live) {
-          if (live.status !== currentActiveOrder.status || live.delayNotice !== currentActiveOrder.delayNotice) {
-            currentActiveOrder = live;
-            localStorage.setItem('ladolce_active_order', JSON.stringify(currentActiveOrder));
-            
-            if (live.status === 'ready') {
-              if (typeof playChime === 'function') playChime(true);
-              if (typeof showCustomerReadyModal === 'function') showCustomerReadyModal();
-            }
-
-            if (live.status === 'completed') {
-              currentActiveOrder = null;
-              localStorage.removeItem('ladolce_active_order');
-            }
-
-            if (typeof renderCustomerTicket === 'function') renderCustomerTicket();
-          }
-        }
-      }
-
-      // ອັບເດດຍອດຂາຍສຳລັບ Superadmin
-      if (typeof renderAnalytics === 'function') renderAnalytics();
