@@ -574,14 +574,14 @@
   <div id="addMenuModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-lg rounded-2xl border border-hairline overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
       <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
-        <h3 class="font-serif-title text-[18px] text-primary font-medium">ເພີ່ມ / ແກ້ໄຂເມນູ</h3>
+        <h3 class="font-serif-title text-[18px] text-primary font-medium" id="addMenuModalHeading">ເພີ່ມ / ແກ້ໄຂເມນູ</h3>
         <button type="button" onclick="closeAddMenuModal()" class="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-taupe"><span class="material-symbols-outlined text-[18px]">close</span></button>
       </div>
 
       <form id="menuForm" class="p-5 overflow-y-auto space-y-4 text-[13px] flex-1">
         <div>
           <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ຊື່ເມນູ:</label>
-          <input required id="inputItemName" type="text" placeholder="ເຊັ່ນ: Americano, Spanish Latte" class="w-full rounded-lg border border-hairline p-2.5"/>
+          <input required id="inputItemName" type="text" placeholder="ເຊັ່ນ: Americano, Cappuccino" class="w-full rounded-lg border border-hairline p-2.5"/>
         </div>
 
         <div class="grid grid-cols-2 gap-2.5">
@@ -593,20 +593,49 @@
               <option value="bakery">ເບເກີຣີ່ (Bakery)</option>
             </select>
           </div>
-          <div>
-            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ລາຄາມາດຕະຖານ (LAK ₭):</label>
-            <input required id="priceStandard" type="number" step="1000" placeholder="35000" class="w-full rounded-lg border border-hairline p-2.5 text-[12px]"/>
+          <!-- ຊ່ອງລາຄາມາດຕະຖານ: ຈະຖືກເຊື່ອງອັດຕະໂນມັດຖ້າມີ ຮ້ອນ/ເຢັນ -->
+          <div id="standardPriceBox">
+            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ລາຄາມາດຕະຖານ (LAK):</label>
+            <input id="priceStandard" type="number" step="1000" placeholder="35000" class="w-full rounded-lg border border-hairline p-2.5 text-[12px]"/>
           </div>
         </div>
 
-        <!-- Option Toggles: ນົມ, ຄວາມຫວານ -->
+        <!-- ຕັ້ງຄ່າຮູບແບບ: ຮ້ອນ / ເຢັນ / ປັ່ນ ພ້ອມລາຄາແຍກ -->
         <div class="p-3.5 bg-surface rounded-xl border border-hairline space-y-2.5">
-          <span class="block text-[11px] font-bold text-forest-emerald uppercase tracking-wider">ຕັ້ງຄ່າຕົວເລືອກທີ່ອະນຸຍາດ:</span>
+          <span class="block text-[11px] font-bold text-forest-emerald uppercase tracking-wider">ຮູບແບບເຄື່ອງດື່ມ & ລາຄາແຍກ:</span>
+          <div class="grid grid-cols-3 gap-2">
+            <div class="p-2 bg-surface-pure rounded-lg border border-hairline">
+              <label class="flex items-center gap-1.5 text-[11px] font-bold mb-1 cursor-pointer">
+                <input type="checkbox" id="toggleAllowHot" checked onchange="autoCheckStandardPriceVisibility()" class="rounded text-forest-emerald focus:ring-0"/>
+                <span>ຮ້ອນ</span>
+              </label>
+              <input id="priceHot" type="number" step="1000" placeholder="35000" class="w-full text-[11px] rounded border border-hairline p-1"/>
+            </div>
+            <div class="p-2 bg-surface-pure rounded-lg border border-hairline">
+              <label class="flex items-center gap-1.5 text-[11px] font-bold mb-1 cursor-pointer">
+                <input type="checkbox" id="toggleAllowIced" checked onchange="autoCheckStandardPriceVisibility()" class="rounded text-forest-emerald focus:ring-0"/>
+                <span>ເຢັນ</span>
+              </label>
+              <input id="priceIced" type="number" step="1000" placeholder="40000" class="w-full text-[11px] rounded border border-hairline p-1"/>
+            </div>
+            <div class="p-2 bg-surface-pure rounded-lg border border-hairline">
+              <label class="flex items-center gap-1.5 text-[11px] font-bold mb-1 cursor-pointer">
+                <input type="checkbox" id="toggleAllowFrappe" onchange="autoCheckStandardPriceVisibility()" class="rounded text-forest-emerald focus:ring-0"/>
+                <span>ປັ່ນ</span>
+              </label>
+              <input id="priceFrappe" type="number" step="1000" placeholder="45000" class="w-full text-[11px] rounded border border-hairline p-1"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- ຕັ້ງຄ່າ Option Toggles: ນົມ, ຄວາມຫວານ, ແລະ Option 4 Topping -->
+        <div class="p-3.5 bg-surface rounded-xl border border-hairline space-y-2">
+          <span class="block text-[11px] font-bold text-forest-emerald uppercase tracking-wider">ຕັ້ງຄ່າຕົວເລືອກພິເສດສຳລັບເມນູນີ້:</span>
           
           <label class="flex items-center justify-between p-2 bg-surface-pure rounded-lg border border-hairline cursor-pointer hover:border-forest-leaf">
             <span class="text-[12px] font-medium text-charcoal flex items-center gap-1.5">
               <span class="material-symbols-outlined text-[16px] text-forest-emerald">local_cafe</span>
-              <span>ອະນຸຍາດໃຫ້ເລືອກປະເພດນົມ (Whole, Oat, Almond)</span>
+              <span>02. ເປີດໃຫ້ເລືອກປະເພດນົມ (Whole, Oat, Almond)</span>
             </span>
             <input type="checkbox" id="toggleAllowMilk" checked class="w-4 h-4 rounded text-forest-emerald focus:ring-0 cursor-pointer"/>
           </label>
@@ -614,38 +643,19 @@
           <label class="flex items-center justify-between p-2 bg-surface-pure rounded-lg border border-hairline cursor-pointer hover:border-forest-leaf">
             <span class="text-[12px] font-medium text-charcoal flex items-center gap-1.5">
               <span class="material-symbols-outlined text-[16px] text-forest-emerald">water_drop</span>
-              <span>ອະນຸຍາດໃຫ້ປັບລະດັບຄວາມຫວານ (0% - 120%)</span>
+              <span>03. ເປີດໃຫ້ປັບລະດັບຄວາມຫວານ (0% - 120%)</span>
             </span>
             <input type="checkbox" id="toggleAllowSweetness" checked class="w-4 h-4 rounded text-forest-emerald focus:ring-0 cursor-pointer"/>
           </label>
-        </div>
 
-        <!-- ຮູບແບບ: ຮ້ອນ / ເຢັນ / ປັ່ນ -->
-        <div class="p-3.5 bg-surface rounded-xl border border-hairline space-y-2.5">
-          <span class="block text-[11px] font-bold text-forest-emerald uppercase tracking-wider">ຮູບແບບເຄື່ອງດື່ມ & ລາຄາແຍກ:</span>
-          <div class="grid grid-cols-3 gap-2">
-            <div class="p-2 bg-surface-pure rounded-lg border border-hairline">
-              <label class="flex items-center gap-1.5 text-[11px] font-bold mb-1 cursor-pointer">
-                <input type="checkbox" id="toggleAllowHot" checked class="rounded text-forest-emerald focus:ring-0"/>
-                <span>ຮ້ອນ (Hot)</span>
-              </label>
-              <input id="priceHot" type="number" step="1000" placeholder="35000" class="w-full text-[11px] rounded-lg border border-hairline p-1"/>
-            </div>
-            <div class="p-2 bg-surface-pure rounded-lg border border-hairline">
-              <label class="flex items-center gap-1.5 text-[11px] font-bold mb-1 cursor-pointer">
-                <input type="checkbox" id="toggleAllowIced" checked class="rounded text-forest-emerald focus:ring-0"/>
-                <span>ເຢັນ (Iced)</span>
-              </label>
-              <input id="priceIced" type="number" step="1000" placeholder="40000" class="w-full text-[11px] rounded-lg border border-hairline p-1"/>
-            </div>
-            <div class="p-2 bg-surface-pure rounded-lg border border-hairline">
-              <label class="flex items-center gap-1.5 text-[11px] font-bold mb-1 cursor-pointer">
-                <input type="checkbox" id="toggleAllowFrappe" class="rounded text-forest-emerald focus:ring-0"/>
-                <span>ປັ່ນ (Frappe)</span>
-              </label>
-              <input id="priceFrappe" type="number" step="1000" placeholder="45000" class="w-full text-[11px] rounded-lg border border-hairline p-1"/>
-            </div>
-          </div>
+          <!-- Option 4: Topping -->
+          <label class="flex items-center justify-between p-2 bg-surface-pure rounded-lg border border-hairline cursor-pointer hover:border-forest-leaf">
+            <span class="text-[12px] font-medium text-charcoal flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px] text-forest-emerald">add_circle</span>
+              <span>04. ເປີດໃຫ້ເລືອກ Topping (Extra Shot)</span>
+            </span>
+            <input type="checkbox" id="toggleAllowTopping" checked class="w-4 h-4 rounded text-forest-emerald focus:ring-0 cursor-pointer"/>
+          </label>
         </div>
 
         <div>
