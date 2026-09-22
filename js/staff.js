@@ -204,3 +204,34 @@ function acceptStaffNewOrderFromModal() {
   }
   closeStaffNewOrderModal();
 }
+// 🔥 ອັບເດດສະຖານະ ແລະ Sync ໄປຫາລູກຄ້າ Real-time ແທ້ 100%
+async function updateOrderStatus(id, status) {
+  if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
+
+  // 1. ອັບເດດ Memory Local
+  const order = orders.find(o => o.id === id);
+  if (order) {
+    order.status = status;
+    if (status === 'completed') {
+      order.completedAt = new Date().toISOString();
+    }
+    localStorage.setItem('ladolce_orders', JSON.stringify(orders));
+  }
+
+  renderStaffOrders();
+
+  // 2. 🔥 ຍິງກົງຂຶ້ນ Cloud Firestore ທັນທີ (ສັນຍາລັກ Ready ຈະແລ່ນໄປຫາລູກຄ້າ Real-time)
+  if (isFirebaseReady && db) {
+    try {
+      await db.collection("orders").doc(id).update({
+        status: status,
+        completedAt: status === 'completed' ? new Date().toISOString() : null
+      });
+      console.log("✅ [Firestore Updated] Order", id, "status set to:", status);
+    } catch (e) {
+      console.error("Firestore update error:", e);
+    }
+  }
+
+  showToast(`ອັບເດດ ${id} ເປັນ ${status}`);
+}
