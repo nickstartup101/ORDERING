@@ -46,7 +46,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-  <!-- 🔥 Global Head Router: ແກ້ໄຂ switchCustomerTab is not defined 100% -->
+  <!-- 🔥 Global Head Router: ແກ້ໄຂ switchCustomerTab ໃຫ້ກົດໄດ້ທັນທີ 100% -->
   <script>
     function switchCustomerTab(tabName) {
       const tabs = ['menu', 'cart', 'ticket', 'profile'];
@@ -104,7 +104,7 @@
         </div>
       </div>
 
-      <!-- Staff Alarm Ringing Indicator -->
+      <!-- Staff Alarm Indicator -->
       <div id="staffRingingIndicator" class="hidden items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-full animate-pulse">
         <span class="w-2 h-2 rounded-full bg-red-600"></span>
         <span class="text-[11px] font-medium text-red-700">ມີອໍເດີ້ໃໝ່ເຂົ້າມາ!</span>
@@ -130,7 +130,9 @@
               <span class="text-[10px] text-taupe font-mono block truncate" id="dropdownUserEmail">customer@ladolce.com</span>
               <span class="inline-block mt-1 px-2 py-0.5 rounded bg-emerald-50 text-forest-emerald text-[9px] font-bold uppercase tracking-wider" id="dropdownUserRole">Customer</span>
             </div>
+            
             <div class="py-1 space-y-0.5" id="dropdownRoleLinks"></div>
+
             <div class="pt-1 border-t border-hairline">
               <button type="button" onclick="logoutUser(); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-red-700 hover:bg-red-50 flex items-center gap-2 transition-colors cursor-pointer">
                 <span class="material-symbols-outlined text-[17px]">logout</span>
@@ -150,39 +152,40 @@
     <div id="customerAppView" class="space-y-6">
       <!-- TAB: MENU -->
       <section id="tab-customer-menu" class="space-y-6">
-        <div class="p-4 rounded-xl bg-surface-pure border border-hairline flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+        
+        <!-- 🔥 Store Banner + Cart Button (ລັອກ Layout ໃຫ້ຢູ່ເທິງສຸດ ບໍ່ມີຕົກລົງລຸ່ມ) -->
+        <div class="p-4 rounded-2xl bg-surface-pure border border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
           <div class="flex items-center gap-3">
-            <span class="w-10 h-10 rounded-lg bg-forest-emerald/10 text-forest-emerald flex items-center justify-center">
-              <span class="material-symbols-outlined text-[22px]">storefront</span>
+            <span class="w-10 h-10 rounded-xl bg-forest-emerald/10 text-forest-emerald flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[24px]">storefront</span>
             </span>
             <div>
-              <div class="flex items-center gap-2">
-                <h2 class="font-serif-title text-[16px] text-primary font-medium">Downtown Flagship Roastery</h2>
-                <span id="customerStoreOpenBadge" class="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold">ເປີດບໍລິການ</span>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h2 class="font-serif-title text-[16px] text-primary font-bold">Namphou Branch</h2>
+                <span id="customerStoreOpenBadge" class="px-2 py-0.5 rounded text-[9px] uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold">ເປີດບໍລິການ</span>
               </div>
-              <p class="text-[12px] text-taupe">ສັ່ງລ່ວງໜ້າ • ຮັບທີ່ເຄົາເຕີ້ພາຍໃນ 8–15 ນາທີ</p>
+              <p class="text-[12px] text-taupe mt-0.5">ສັ່ງລ່ວງໜ້າ • ຮັບທີ່ເຄົາເຕີ້ພາຍໃນ 8–15 ນາທີ</p>
             </div>
           </div>
+
           <!-- ປຸ່ມກະຕ່າສັ່ງຊື້ ພ້ອມ Animation Highlight -->
-          <button type="button" onclick="switchCustomerTab('cart')" class="relative self-end md:self-center flex items-center gap-2 px-4 py-2.5 rounded-xl bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] font-bold shadow-sm transition-all transform active:scale-95 cursor-pointer">
+          <button type="button" onclick="switchCustomerTab('cart')" class="self-stretch sm:self-auto flex items-center justify-center gap-2.5 px-5 py-2.5 rounded-xl bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] font-bold shadow-sm transition-all transform active:scale-95 cursor-pointer shrink-0">
             <span class="material-symbols-outlined text-[19px]">shopping_bag</span>
             <span>ກະຕ່າສັ່ງຊື້</span>
             <span id="cartBadgeCount" class="w-6 h-6 rounded-full bg-white text-forest-emerald text-[11px] font-bold flex items-center justify-center shadow-xs transition-transform duration-300">0</span>
           </button>
+        </div>
 
-        <!-- Filter Categories -->
-<div class="flex items-center gap-2 overflow-x-auto pb-1" id="categoryFilterContainer">
+        <!-- Filter Categories (ແຖບໝວດໝູ່) -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1" id="categoryFilterContainer">
           <button type="button" onclick="filterCategory('all')" class="cat-pill active-cat px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-forest-emerald text-white">ທັງໝົດ</button>
           <button type="button" onclick="filterCategory('coffee')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal">ກາເຟ</button>
           <button type="button" onclick="filterCategory('tea')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal">ຊາ & ມັດຊະ</button>
-          
-          <!-- 🔥 ປຸ່ມໝວດໝູ່ໃໝ່ Refresher -->
-          <button type="button" onclick="filterCategory('refresher')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal">
-            Refresher & ໂຊດາ
-          </button>
-          
+          <button type="button" onclick="filterCategory('refresher')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal">Refresher & ໂຊດາ</button>
           <button type="button" onclick="filterCategory('bakery')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal">ເບເກີຣີ່ & ອາຫານ</button>
         </div>
+
+        <!-- Grid ສະແດງເມນູສິນຄ້າ -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="menuGrid"></div>
       </section>
 
@@ -200,8 +203,8 @@
                   <span>ຍອດລວມ (Subtotal)</span>
                   <span id="summarySubtotal" class="font-medium text-charcoal">0 LAK</span>
                 </div>
-                <div class="flex justify-between text-taupe">
-                  <span>ອາກອນ (Tax 8%)</span>
+                <div id="taxRowContainer" class="flex justify-between text-taupe hidden">
+                  <span>ອາກອນ (Tax)</span>
                   <span id="summaryTax" class="font-medium text-charcoal">0 LAK</span>
                 </div>
                 <div class="h-px bg-hairline my-2"></div>
@@ -311,7 +314,7 @@
         </button>
         <button onclick="switchAdminPanelTab('modifiers')" id="adm-tab-modifiers" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0 flex items-center gap-1.5 hover:text-charcoal transition-colors">
           <span class="material-symbols-outlined text-[16px]">tune</span>
-          <span>ຕົວເລືອກເສີມ (Modifiers)</span>
+          <span>ຕົວເລືອກເສີມ</span>
         </button>
         <button onclick="switchAdminPanelTab('payments')" id="adm-tab-payments" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0 flex items-center gap-1.5 hover:text-charcoal transition-colors">
           <span class="material-symbols-outlined text-[16px]">qr_code_scanner</span>
@@ -325,19 +328,9 @@
 
       <!-- Panel 1: Analytics -->
       <div id="adm-panel-analytics" class="space-y-4">
-        <div class="p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
-          <div class="flex justify-between items-center">
-            <span class="text-[11px] uppercase tracking-wider font-semibold text-primary">ຍອດຂາຍສິນຄ້າປະຈຳວັນ (Daily LAK)</span>
-            <span id="metricTotalSales" class="font-serif-title text-[28px] text-forest-emerald font-bold">0 LAK</span>
-          </div>
-        </div>
-      </div>
-<!-- Panel 1: Analytics & Full Transaction Audit -->
-      <div id="adm-panel-analytics" class="space-y-4">
-        <!-- Metric Summary Cards -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div class="p-4 rounded-xl bg-surface-pure border border-hairline shadow-xs">
-            <span class="text-[10px] uppercase font-bold text-taupe block">ຍອດຂາຍລວມ</span>
+            <span class="text-[10px] uppercase font-bold text-taupe block">ຍອດຂາຍປະຈຳວັນ</span>
             <span id="metricTotalSales" class="font-serif-title text-[24px] font-bold text-forest-emerald">0 LAK</span>
             <div class="flex items-center gap-1 mt-1">
               <button onclick="setSalesFilter('day')" class="text-[9px] px-1.5 py-0.5 rounded bg-forest-emerald text-white">ມື້ນີ້</button>
@@ -359,14 +352,13 @@
           </div>
         </div>
 
-        <!-- ຕາຕະລາງ Transaction Audit Log ທັງໝົດ -->
+        <!-- ຕາຕະລາງ Transaction Audit Log -->
         <div class="p-5 rounded-xl bg-surface-pure border border-hairline space-y-3 shadow-xs">
           <div class="flex justify-between items-center border-b border-hairline pb-2">
             <div>
-              <h4 class="font-serif-title font-bold text-[16px] text-primary">ລາຍການທຸລະກຳຂາຍທັງໝົດ (Transaction Audit Log)</h4>
+              <h4 class="font-serif-title font-bold text-[16px] text-primary">ລາຍການທຸລະກຳຂາຍ (Transaction Audit Log)</h4>
               <p class="text-[11px] text-taupe">ສະແດງທຸກອໍເດີ້ທີ່ສຳເລັດ ພ້ອມລາຍລະອຽດການຊຳລະ</p>
             </div>
-            <!-- ປຸ່ມຕັ້ງຄ່າ Tax ປັດຈຸບັນ -->
             <button type="button" onclick="updateTaxSettings()" class="px-2.5 py-1 rounded-lg border border-hairline bg-surface hover:bg-forest-emerald hover:text-white text-[11px] font-bold transition-colors">
               <span id="taxSettingsDisplay">Tax: 0% (ປັບປ່ຽນ)</span>
             </button>
@@ -379,17 +371,16 @@
                   <th class="p-2.5">ເວລາ</th>
                   <th class="p-2.5">ລູກຄ້າ</th>
                   <th class="p-2.5">ລາຍການທີ່ສັ່ງ</th>
-                  <th class="p-2.5">ຊ່ອງທາງຊຳລະ</th>
+                  <th class="p-2.5">ຊ່ອງທາງ</th>
                   <th class="p-2.5 text-right">ຍອດເງິນ</th>
                 </tr>
               </thead>
-              <tbody id="analyticsTransactionsTableBody" class="divide-y divide-hairline">
-                <!-- Rendered dynamically -->
-              </tbody>
+              <tbody id="analyticsTransactionsTableBody" class="divide-y divide-hairline"></tbody>
             </table>
           </div>
         </div>
       </div>
+
       <!-- Panel 2: Menu Management -->
       <div id="adm-panel-menu" class="hidden space-y-3">
         <div class="flex items-center justify-between">
@@ -399,7 +390,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="adminMenuListGrid"></div>
       </div>
 
-      <!-- Panel 3: Modifiers (Modal Triggered) -->
+      <!-- Panel 3: Modifiers -->
       <div id="adm-panel-modifiers" class="hidden p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
         <div class="flex items-center justify-between border-b border-hairline pb-3">
           <div>
@@ -575,7 +566,7 @@
     </div>
   </div>
 
-  <!-- 3. STAFF INCOMING ORDER MODAL -->
+  <!-- 3. STAFF INCOMING ORDER MODAL (ສະເພາະ Staff) -->
   <div id="staffNewOrderModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border-2 border-forest-emerald p-6 shadow-2xl text-center space-y-4 animate-scale-up">
       <div class="w-16 h-16 rounded-full bg-emerald-50 text-forest-emerald border border-emerald-200 mx-auto flex items-center justify-center animate-bounce">
@@ -598,7 +589,7 @@
     </div>
   </div>
 
-  <!-- 4. CUSTOMER DRINK READY MODAL -->
+  <!-- 4. CUSTOMER DRINK READY MODAL (ສະເພາະ ລູກຄ້າ) -->
   <div id="customerReadyModal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border-2 border-emerald-500 p-6 shadow-2xl text-center space-y-4 animate-scale-up">
       <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 mx-auto flex items-center justify-center">
@@ -680,7 +671,7 @@
     </div>
   </div>
 
-  <!-- 8. SUPERADMIN ADD/EDIT MENU MODAL -->
+  <!-- 8. SUPERADMIN ADD/EDIT MENU MODAL (ມີ Checkbox Option Toggles) -->
   <div id="addMenuModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-lg rounded-2xl border border-hairline overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
       <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
@@ -705,7 +696,7 @@
             </select>
           </div>
           <div id="standardPriceBox">
-            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ລາຄາມາດຕະຖານ (LAK):</label>
+            <label class="block text-[11px] uppercase tracking-wider text-taupe mb-1">ລາຄາດຽວ (LAK ₭):</label>
             <input id="priceStandard" type="number" step="1000" placeholder="35000" class="w-full rounded-lg border border-hairline p-2.5 text-[12px]"/>
           </div>
         </div>
@@ -788,7 +779,7 @@
     </div>
   </div>
 
-  <!-- 9. SUPERADMIN MODIFIER POP-UP MODAL (ໃໝ່! ແທນ prompt ຂາວໆ) -->
+  <!-- 9. SUPERADMIN MODIFIER MODAL -->
   <div id="modifierModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-5 shadow-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-hairline pb-2">
@@ -853,7 +844,7 @@
     </div>
   </div>
 
-  <!-- 11. FAST BOUTIQUE TOAST --> <!-- Floating Toast ສູງສຸດ ບໍ່ມີຫຍັງບັງ -->
+  <!-- 11. FAST BOUTIQUE TOAST -->
   <div id="atelierToast" class="fixed top-6 left-1/2 -translate-x-1/2 z-[999] opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-4 px-5 py-3 rounded-full bg-forest-gradient text-white text-[12px] font-bold shadow-2xl flex items-center gap-2 border border-white/20">
     <span class="material-symbols-outlined text-[20px] text-emerald-400" id="toastIcon">check_circle</span>
     <span id="toastMsg">Action completed</span>
