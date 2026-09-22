@@ -1,9 +1,10 @@
 // =======================================================
-// SUPERADMIN CONTROL CENTER (FULL AUDIT & STORE SETTINGS)
+// SUPERADMIN ADVANCED CONTROL CENTER (COUPONS & BRANDING)
 // =======================================================
 
 let editingItemId = null;
 let editingModId = null;
+let editingCouponId = null;
 let currentUploadedMenuImageBase64 = null;
 let currentUploadedBankQRBase64 = null;
 let salesFilterPeriod = 'day';
@@ -12,6 +13,7 @@ function switchAdminPanelTab(tab) {
   const tabs = [
     { id: 'analytics', icon: 'bar_chart', label: 'ຍອດຂາຍ & ລາຍງານ' },
     { id: 'menu', icon: 'restaurant_menu', label: 'ຈັດການເມນູທັງໝົດ' },
+    { id: 'coupons', icon: 'confirmation_number', label: 'ຄູປອງ & ໂປຣໂມຊັ່ນ' }, // 🔥 ແທັບໃໝ່
     { id: 'modifiers', icon: 'tune', label: 'ຕົວເລືອກເສີມ' },
     { id: 'payments', icon: 'qr_code_scanner', label: 'QR ທະນາຄານ' },
     { id: 'users', icon: 'group', label: 'ຈັດການຜູ້ໃຊ້ & ສິດ' }
@@ -39,105 +41,206 @@ function switchAdminPanelTab(tab) {
 
   if (tab === 'analytics') renderAnalytics();
   if (tab === 'menu') renderAdminMenu();
+  if (tab === 'coupons') renderAdminCoupons();
   if (tab === 'modifiers') renderModifierSettings();
   if (tab === 'payments') renderPaymentSettings();
   if (tab === 'users') renderUsersList();
 }
 
-// 1. 🔥 ລາຍງານການຂາຍຄົບວົງຈອນ: ເຫັນທຸກ Transaction & ສະຫຼຸບແຍກປະເພດ
-function setSalesFilter(period) {
-  salesFilterPeriod = period;
-  renderAnalytics();
-}
-
-function renderAnalytics() {
-  const metricEl = document.getElementById('metricTotalSales');
-  const metricOrdersCount = document.getElementById('metricTotalOrdersCount');
-  const metricQrRevenue = document.getElementById('metricQrRevenue');
-  const metricCashRevenue = document.getElementById('metricCashRevenue');
-  const tableBody = document.getElementById('analyticsTransactionsTableBody');
-
-  if (!metricEl) return;
+// -------------------------------------------------------------
+// 🔥 1. ລະບົບສ້າງ ແລະ ຈັດການຄູປອງຂັ້ນສູງ (COUPON BUILDER)
+// -------------------------------------------------------------
+function renderAdminCoupons() {
+  const container = document.getElementById('adminCouponsListGrid');
+  if (!container) return;
 
   const now = new Date();
-  const completedOrders = orders.filter(o => o.status === 'completed');
 
-  // ກັ່ນຕອງຕາມຊ່ວງເວລາ
-  let filtered = completedOrders.filter(o => {
-    if (!o.createdAt) return false;
-    const oDate = new Date(o.createdAt);
-    const diffDays = Math.ceil(Math.abs(now - oDate) / (1000 * 60 * 60 * 24));
-    if (salesFilterPeriod === 'day') {
-      return oDate.getFullYear() === now.getFullYear() &&
-             oDate.getMonth() === now.getMonth() &&
-             oDate.getDate() === now.getDate();
-    }
-    if (salesFilterPeriod === 'week') return diffDays <= 7;
-    if (salesFilterPeriod === 'month') return diffDays <= 30;
-    return true;
-  });
+  container.innerHTML = activeCouponsList.map(c => {
+    const isExpiredDate = c.expiryDate && new Date(c.expiryDate) < now;
+    const isBudgetExceeded = c.totalBudget && c.budgetUsed >= c.totalBudget;
+    const isActive = c.isActive !== false && !isExpiredDate && !isBudgetExceeded;
 
-  const totalRevenue = filtered.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-  const qrTotal = filtered.filter(o => o.slipUrl).reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-  const cashTotal = totalRevenue - qrTotal;
+    return `
+      <div class="p-4 bg-surface-pure border-2 ${isActive ? 'border-emerald-300' : 'border-gray-200 opacity-60'} rounded-2xl space-y-3 shadow-xs">
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-mono font-bold text-forest-emerald text-[16px] tracking-wider">${c.code}</span>
+              <span class="px-2 py-0.2 rounded-full text-[9px] font-bold uppercase ${isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">
+                ${isActive ? '✓ Active' : (isBudgetExceeded ? '✕ ງົບໝົດ' : (isExpiredDate ? '✕ ໝົດອາຍຸ' : '✕ ປິດ'))}
+              </span>
+            </div>
+            <p class="text-[12px] text-charcoal font-medium mt-0.5">${c.desc || ''}</p>
+          </div>
+          <button type="button" onclick="deleteCoupon('${c.id}')" class="text-red-600 hover:text-red-700 p-1"><span class="material-symbols-outlined text-[17px]">delete</span></button>
+        </div>
 
-  metricEl.textContent = formatLAK(totalRevenue);
-  if (metricOrdersCount) metricOrdersCount.textContent = `${filtered.length} ອໍເດີ້`;
-  if (metricQrRevenue) metricQrRevenue.textContent = formatLAK(qrTotal);
-  if (metricCashRevenue) metricCashRevenue.textContent = formatLAK(cashTotal);
-
-  // ສະແດງຕາຕະລາງ Transaction Audit Log ທັງໝົດ
-  if (tableBody) {
-    if (filtered.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-taupe">ບໍ່ມີລາຍການຂາຍໃນຊ່ວງເວລານີ້</td></tr>`;
-      return;
-    }
-
-    tableBody.innerHTML = filtered.map(o => `
-      <tr class="hover:bg-surface/50 transition-colors">
-        <td class="p-2.5 font-mono font-bold text-forest-emerald">${o.id}</td>
-        <td class="p-2.5 text-taupe text-[11px]">${new Date(o.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</td>
-        <td class="p-2.5">
-          <span class="font-bold block">${o.customerName}</span>
-          <span class="text-[10px] text-taupe font-mono">${o.customerPhone}</span>
-        </td>
-        <td class="p-2.5 text-[11px] max-w-xs truncate">${o.items.map(i => `${i.quantity}× ${i.name}`).join(', ')}</td>
-        <td class="p-2.5">
-          <span class="px-2 py-0.5 rounded text-[10px] font-bold ${o.slipUrl ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-gray-100 text-gray-700'}">
-            ${o.slipUrl ? 'ໂອນ QR' : 'ເງິນສົດ'}
-          </span>
-        </td>
-        <td class="p-2.5 text-right font-mono font-bold text-forest-emerald">${formatLAK(o.total)}</td>
-      </tr>
-    `).join('');
-  }
+        <div class="p-2.5 rounded-xl bg-surface border border-hairline space-y-1 text-[11px] text-taupe font-mono">
+          <div class="flex justify-between">
+            <span>ສ່ວນຫຼຸດ:</span>
+            <strong class="text-charcoal">${c.type === 'percent' ? c.value + '%' : formatLAK(c.value)}</strong>
+          </div>
+          ${c.maxDiscount ? `
+            <div class="flex justify-between">
+              <span>ເພດານສູງສຸດ:</span>
+              <strong class="text-charcoal">${formatLAK(c.maxDiscount)}</strong>
+            </div>
+          ` : ''}
+          ${c.minOrder ? `
+            <div class="flex justify-between">
+              <span>ຍອດຂັ້ນຕ່ຳ:</span>
+              <strong class="text-charcoal">${formatLAK(c.minOrder)}</strong>
+            </div>
+          ` : ''}
+          ${c.totalBudget ? `
+            <div class="flex justify-between">
+              <span>ງົບປະມານທີ່ໃຊ້ໄປ:</span>
+              <strong class="text-forest-emerald">${formatLAK(c.budgetUsed || 0)} / ${formatLAK(c.totalBudget)}</strong>
+            </div>
+          ` : ''}
+          ${c.expiryDate ? `
+            <div class="flex justify-between">
+              <span>ໝົດອາຍຸ:</span>
+              <strong class="text-charcoal">${new Date(c.expiryDate).toLocaleDateString()}</strong>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
-// 2. ຈັດການເມນູ & Layout Card
+function openAddCouponModal() {
+  document.getElementById('couponForm').reset();
+  document.getElementById('addCouponModal')?.classList.remove('hidden');
+}
+
+function closeAddCouponModal() {
+  document.getElementById('addCouponModal')?.classList.add('hidden');
+}
+
+async function saveCouponFromModal(e) {
+  if (e) e.preventDefault();
+
+  const code = document.getElementById('inputCpnCode')?.value.trim().toUpperCase();
+  const type = document.getElementById('inputCpnType')?.value || 'percent';
+  const value = parseFloat(document.getElementById('inputCpnValue')?.value) || 0;
+  const maxDiscount = parseFloat(document.getElementById('inputCpnMaxDiscount')?.value) || null;
+  const minOrder = parseFloat(document.getElementById('inputCpnMinOrder')?.value) || 0;
+  const totalBudget = parseFloat(document.getElementById('inputCpnTotalBudget')?.value) || null;
+  const expiryDate = document.getElementById('inputCpnExpiry')?.value || null;
+  const desc = document.getElementById('inputCpnDesc')?.value.trim() || `ສ່ວນຫຼຸດ ${code}`;
+
+  if (!code || value <= 0) {
+    alert("ກະລຸນາປ້ອນລະຫັດໂຄດ ແລະ ມູນຄ່າສ່ວນຫຼຸດທີ່ຖືກຕ້ອງ!");
+    return;
+  }
+
+  const newCoupon = {
+    id: "cpn_" + code,
+    code: code,
+    type: type,
+    value: value,
+    maxDiscount: maxDiscount,
+    minOrder: minOrder,
+    totalBudget: totalBudget,
+    budgetUsed: 0,
+    expiryDate: expiryDate,
+    desc: desc,
+    isActive: true,
+    createdAt: new Date().toISOString()
+  };
+
+  // 1. ອັບເດດ Memory
+  const idx = activeCouponsList.findIndex(c => c.code === code);
+  if (idx !== -1) {
+    activeCouponsList[idx] = newCoupon;
+  } else {
+    activeCouponsList.unshift(newCoupon);
+  }
+
+  // 2. 🔥 Published ກົງຂຶ້ນ Cloud Firestore Real-time ລູກຄ້າໃຊ້ໄດ້ທັນທີ!
+  if (isFirebaseReady && db) {
+    try {
+      await db.collection("coupons").doc(newCoupon.code).set(newCoupon, { merge: true });
+      console.log("✅ Coupon Published to Cloud Firestore:", newCoupon.code);
+    } catch (err) {
+      console.warn(err);
+    }
+  }
+
+  renderAdminCoupons();
+  closeAddCouponModal();
+  showToast(`🎉 ປະກາດໃຊ້ຄູປອງ "${code}" ສຳເລັດແລ້ວ!`);
+}
+
+async function deleteCoupon(id) {
+  if (!confirm("ທ່ານຕ້ອງການລຶບຄູປອງນີ້ແທ້ບໍ່?")) return;
+  activeCouponsList = activeCouponsList.filter(c => c.id !== id);
+  if (isFirebaseReady && db) {
+    const code = id.replace("cpn_", "");
+    await db.collection("coupons").doc(code).delete();
+  }
+  renderAdminCoupons();
+  showToast("ລຶບຄູປອງແລ້ວ");
+}
+
+// -------------------------------------------------------------
+// 🔥 2. CAFE SUITE BRANDING (ຕັ້ງຊື່ຮ້ານ & SLOGAN ປ່ຽນທຸກຈຸດ)
+// -------------------------------------------------------------
+function openBrandModal() {
+  document.getElementById('inputCafeName').value = storeSettings.cafeName || "LA DOLCE";
+  document.getElementById('inputCafeBranch').value = storeSettings.cafeBranch || "Downtown Flagship Roastery";
+  document.getElementById('brandSettingsModal')?.classList.remove('hidden');
+}
+
+function closeBrandModal() {
+  document.getElementById('brandSettingsModal')?.classList.add('hidden');
+}
+
+async function saveBrandSettings(e) {
+  if (e) e.preventDefault();
+  const name = document.getElementById('inputCafeName')?.value.trim();
+  const branch = document.getElementById('inputCafeBranch')?.value.trim();
+
+  if (!name) { alert("ກະລຸນາໃສ່ຊື່ຮ້ານ!"); return; }
+
+  storeSettings.cafeName = name;
+  storeSettings.cafeBranch = branch || "Atelier Roastery";
+  localStorage.setItem('ladolce_store_settings', JSON.stringify(storeSettings));
+
+  // Sync Cloud Firestore
+  if (isFirebaseReady && db) {
+    await db.collection("store").doc("settings").set(storeSettings, { merge: true });
+  }
+
+  applyCafeBranding();
+  closeBrandModal();
+  showToast("ອັບເດດຊື່ຮ້ານ ແລະ ສາຂາທົ່ວລະບົບຮຽບຮ້ອຍ! 🏪");
+}
+
+// -------------------------------------------------------------
+// 3. MENU, MODIFIERS, PAYMENTS & USERS
+// -------------------------------------------------------------
 function renderAdminMenu() {
   const container = document.getElementById('adminMenuListGrid');
   if (!container) return;
-
   container.className = "grid grid-cols-1 md:grid-cols-2 gap-4";
 
   container.innerHTML = menuItems.map(item => {
     const isAvail = item.isAvailable !== false;
     const v = item.variants || {};
-    
-    let priceText = "";
-    if (v.hot || v.iced || v.frappe) {
-      priceText = `${v.hot ? 'ຮ້ອນ: ' + formatLAK(v.hot) : ''} ${v.iced ? '| ເຢັນ: ' + formatLAK(v.iced) : ''} ${v.frappe ? '| ປັ່ນ: ' + formatLAK(v.frappe) : ''}`;
-    } else {
-      priceText = formatLAK(v.standard || 35000);
-    }
+    let priceText = v.hot || v.iced || v.frappe 
+      ? `${v.hot ? 'H: ' + formatLAK(v.hot) : ''} ${v.iced ? '| I: ' + formatLAK(v.iced) : ''} ${v.frappe ? '| F: ' + formatLAK(v.frappe) : ''}`
+      : formatLAK(v.standard || 35000);
 
     return `
-      <div class="p-4 bg-surface-pure border border-hairline rounded-2xl flex items-center justify-between gap-4 shadow-xs hover:border-forest-leaf transition-all ${!isAvail ? 'opacity-60 bg-gray-50' : ''}">
+      <div class="p-4 bg-surface-pure border border-hairline rounded-2xl flex items-center justify-between gap-4 shadow-xs ${!isAvail ? 'opacity-60 bg-gray-50' : ''}">
         <div class="relative w-[70px] h-[70px] rounded-xl overflow-hidden bg-surface-dim shrink-0 border border-hairline">
           <img src="${item.image || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600'}" class="w-full h-full object-cover ${!isAvail ? 'grayscale' : ''}"/>
           ${!isAvail ? `<span class="absolute inset-0 bg-black/60 flex items-center justify-center text-[10px] font-bold text-white uppercase">ໝົດ</span>` : ''}
         </div>
-
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
             <h5 class="font-serif-title font-bold text-[15px] text-primary truncate">${item.name}</h5>
@@ -145,45 +248,20 @@ function renderAdminMenu() {
               ${isAvail ? 'ພ້ອມຂາຍ' : 'ສິນຄ້າໝົດ'}
             </span>
           </div>
-
-          <p class="text-[11px] text-taupe truncate mt-0.5">${item.category || 'coffee'} • <span class="font-mono font-bold text-forest-emerald">${priceText}</span></p>
-
+          <p class="text-[11px] text-taupe truncate mt-0.5">${item.category} • <span class="font-mono font-bold text-forest-emerald">${priceText}</span></p>
           <div class="flex items-center gap-1.5 mt-2 flex-wrap text-[10px]">
-            ${item.allowMilk !== false ? `
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface text-forest-emerald border border-hairline">
-                <span class="material-symbols-outlined text-[12px]">local_cafe</span> ນົມ
-              </span>
-            ` : `
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-gray-400">
-                <span class="material-symbols-outlined text-[12px]">block</span> ບໍ່ໃຊ້ນົມ
-              </span>
-            `}
-
-            ${item.allowSweetness !== false ? `
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface text-forest-emerald border border-hairline">
-                <span class="material-symbols-outlined text-[12px]">water_drop</span> ຄວາມຫວານ
-              </span>
-            ` : ''}
-
-            ${item.allowTopping !== false ? `
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface text-forest-emerald border border-hairline">
-                <span class="material-symbols-outlined text-[12px]">add_circle</span> Topping
-              </span>
-            ` : ''}
+            ${item.allowMilk !== false ? `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-surface text-forest-emerald border border-hairline"><span class="material-symbols-outlined text-[12px]">local_cafe</span> ນົມ</span>` : `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-gray-100 text-gray-400"><span class="material-symbols-outlined text-[12px]">block</span> ບໍ່ໃຊ້ນົມ</span>`}
+            ${item.allowSweetness !== false ? `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-surface text-forest-emerald border border-hairline"><span class="material-symbols-outlined text-[12px]">water_drop</span> ຫວານ</span>` : ''}
+            ${item.allowTopping !== false ? `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-surface text-forest-emerald border border-hairline"><span class="material-symbols-outlined text-[12px]">add_circle</span> Topping</span>` : ''}
           </div>
         </div>
-
         <div class="flex flex-col items-end gap-1.5 shrink-0 border-l border-hairline pl-3">
-          <button type="button" onclick="toggleItemAvailability('${item.id}')" class="px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all ${isAvail ? 'border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-900' : 'border-emerald-500 bg-emerald-50 hover:bg-emerald-100 text-emerald-900'}">
+          <button type="button" onclick="toggleItemAvailability('${item.id}')" class="px-2.5 py-1 rounded-lg border text-[11px] font-bold ${isAvail ? 'border-amber-400 bg-amber-50 text-amber-900' : 'border-emerald-500 bg-emerald-50 text-emerald-900'}">
             ${isAvail ? 'ປິດ (ໝົດ)' : 'ເປີດຂາຍ'}
           </button>
           <div class="flex gap-1">
-            <button type="button" onclick="openAddMenuModal('${item.id}')" class="w-8 h-8 rounded-lg bg-surface hover:bg-emerald-50 text-forest-emerald border border-hairline flex items-center justify-center">
-              <span class="material-symbols-outlined text-[16px]">edit</span>
-            </button>
-            <button type="button" onclick="deleteMenuItem('${item.id}')" class="w-8 h-8 rounded-lg bg-surface hover:bg-red-50 text-red-600 border border-hairline flex items-center justify-center">
-              <span class="material-symbols-outlined text-[16px]">delete</span>
-            </button>
+            <button type="button" onclick="openAddMenuModal('${item.id}')" class="w-8 h-8 rounded-lg bg-surface hover:bg-emerald-50 text-forest-emerald border border-hairline flex items-center justify-center"><span class="material-symbols-outlined text-[16px]">edit</span></button>
+            <button type="button" onclick="deleteMenuItem('${item.id}')" class="w-8 h-8 rounded-lg bg-surface hover:bg-red-50 text-red-600 border border-hairline flex items-center justify-center"><span class="material-symbols-outlined text-[16px]">delete</span></button>
           </div>
         </div>
       </div>
@@ -194,14 +272,10 @@ function renderAdminMenu() {
 async function toggleItemAvailability(itemId) {
   const item = menuItems.find(i => i.id === itemId);
   if (!item) return;
-
   item.isAvailable = item.isAvailable === false ? true : false;
-  localStorage.setItem('ladolce_menu', JSON.stringify(menuItems));
-
   if (isFirebaseReady && db) {
     await db.collection("menu_items").doc(itemId).update({ isAvailable: item.isAvailable });
   }
-
   if (typeof renderMenu === 'function') renderMenu();
   renderAdminMenu();
   showToast(item.isAvailable ? `ເປີດຂາຍ "${item.name}" ແລ້ວ` : `ປິດ "${item.name}" (ສິນຄ້າໝົດ)`);
@@ -221,7 +295,6 @@ function openAddMenuModal(id = null) {
       document.getElementById('inputItemName').value = item.name || '';
       document.getElementById('inputItemCategory').value = item.category || 'coffee';
       document.getElementById('inputItemDesc').value = item.desc || '';
-      
       const v = item.variants || {};
       document.getElementById('priceStandard').value = v.standard || '';
       document.getElementById('priceHot').value = v.hot || '';
@@ -253,7 +326,6 @@ function openAddMenuModal(id = null) {
     document.getElementById('toggleAllowIced').checked = true;
     document.getElementById('toggleAllowFrappe').checked = false;
   }
-
   autoCheckStandardPriceVisibility();
   document.getElementById('addMenuModal')?.classList.remove('hidden');
 }
@@ -263,19 +335,10 @@ function autoCheckStandardPriceVisibility() {
   const iced = document.getElementById('toggleAllowIced')?.checked;
   const frappe = document.getElementById('toggleAllowFrappe')?.checked;
   const stdBox = document.getElementById('standardPriceBox');
-
-  if (stdBox) {
-    if (hot || iced || frappe) {
-      stdBox.classList.add('hidden');
-    } else {
-      stdBox.classList.remove('hidden');
-    }
-  }
+  if (stdBox) stdBox.classList.toggle('hidden', Boolean(hot || iced || frappe));
 }
 
-function closeAddMenuModal() {
-  document.getElementById('addMenuModal')?.classList.add('hidden');
-}
+function closeAddMenuModal() { document.getElementById('addMenuModal')?.classList.add('hidden'); }
 
 function handleMenuImageUpload(e) {
   const file = e.target.files[0];
@@ -294,7 +357,6 @@ async function saveMenuItem(e) {
   const name = document.getElementById('inputItemName')?.value.trim();
   const cat = document.getElementById('inputItemCategory')?.value || 'coffee';
   const desc = document.getElementById('inputItemDesc')?.value.trim() || '';
-
   if (!name) { alert("ກະລຸນາໃສ່ຊື່ເມນູ!"); return; }
 
   const allowMilk = document.getElementById('toggleAllowMilk')?.checked;
@@ -313,9 +375,7 @@ async function saveMenuItem(e) {
     hot: allowHot ? pHot : null,
     iced: allowIced ? pIced : null,
     frappe: allowFrappe ? pFrappe : null
-  } : {
-    standard: pStd
-  };
+  } : { standard: pStd };
 
   const itemPayload = {
     id: editingItemId || 'item_' + Date.now(),
@@ -334,15 +394,6 @@ async function saveMenuItem(e) {
     updatedAt: new Date().toISOString()
   };
 
-  if (editingItemId) {
-    const idx = menuItems.findIndex(i => i.id === editingItemId);
-    if (idx !== -1) menuItems[idx] = itemPayload;
-  } else {
-    menuItems.unshift(itemPayload);
-  }
-
-  localStorage.setItem('ladolce_menu', JSON.stringify(menuItems));
-
   if (isFirebaseReady && db) {
     await db.collection("menu_items").doc(itemPayload.id).set(itemPayload, { merge: true });
   }
@@ -355,32 +406,22 @@ async function saveMenuItem(e) {
 
 async function deleteMenuItem(id) {
   if (!confirm("ທ່ານຕ້ອງການລຶບເມນູນີ້ແທ້ບໍ່?")) return;
-  menuItems = menuItems.filter(i => i.id !== id);
-  localStorage.setItem('ladolce_menu', JSON.stringify(menuItems));
   if (isFirebaseReady && db) await db.collection("menu_items").doc(id).delete();
   if (typeof renderMenu === 'function') renderMenu();
   renderAdminMenu();
   showToast("ລຶບເມນູແລ້ວ");
 }
 
-// 3. 🔥 MODIFIERS MODAL (ແກ້ໄຂ Extra Shot & Toppings ຜ່ານ Pop-up ງາມໆ)
+// Modifiers & Payments & Users
 function renderModifierSettings() {
   const list = document.getElementById('modifierAdminList');
   if (!list) return;
-
   list.innerHTML = modifiers.map(m => `
     <div class="p-3 bg-surface border border-hairline rounded-xl flex justify-between items-center text-[12px] shadow-xs">
-      <div>
-        <span class="font-bold text-charcoal block">${m.name}</span>
-        <span class="text-[10px] text-taupe font-mono">[${m.group}] +${formatLAK(m.price)}</span>
-      </div>
+      <div><span class="font-bold text-charcoal block">${m.name}</span><span class="text-[10px] text-taupe font-mono">[${m.group}] +${formatLAK(m.price)}</span></div>
       <div class="flex items-center gap-1">
-        <button type="button" onclick="openModifierModal('${m.id}')" title="ແກ້ໄຂລາຄາ" class="w-7 h-7 rounded-lg bg-surface-pure border border-hairline text-forest-emerald flex items-center justify-center">
-          <span class="material-symbols-outlined text-[15px]">edit</span>
-        </button>
-        <button type="button" onclick="deleteModifier('${m.id}')" title="ລຶບ" class="w-7 h-7 rounded-lg bg-surface-pure border border-hairline text-red-600 flex items-center justify-center">
-          <span class="material-symbols-outlined text-[15px]">delete</span>
-        </button>
+        <button type="button" onclick="openModifierModal('${m.id}')" class="w-7 h-7 rounded-lg bg-surface-pure border border-hairline text-forest-emerald flex items-center justify-center"><span class="material-symbols-outlined text-[15px]">edit</span></button>
+        <button type="button" onclick="deleteModifier('${m.id}')" class="w-7 h-7 rounded-lg bg-surface-pure border border-hairline text-red-600 flex items-center justify-center"><span class="material-symbols-outlined text-[15px]">delete</span></button>
       </div>
     </div>
   `).join('');
@@ -390,7 +431,6 @@ function openModifierModal(id = null) {
   editingModId = id;
   const form = document.getElementById('modifierForm');
   if (form) form.reset();
-
   const title = document.getElementById('modifierModalTitle');
   if (id) {
     const mod = modifiers.find(m => m.id === id);
@@ -404,31 +444,24 @@ function openModifierModal(id = null) {
     if (title) title.textContent = "ເພີ່ມຕົວເລືອກໃໝ່";
     document.getElementById('inputModPrice').value = 12000;
   }
-
   document.getElementById('modifierModal')?.classList.remove('hidden');
 }
 
-function closeModifierModal() {
-  document.getElementById('modifierModal')?.classList.add('hidden');
-}
+function closeModifierModal() { document.getElementById('modifierModal')?.classList.add('hidden'); }
 
 function saveModifierFromModal(e) {
   if (e) e.preventDefault();
   const name = document.getElementById('inputModName')?.value.trim();
   const group = document.getElementById('inputModGroup')?.value || 'topping';
   const price = parseFloat(document.getElementById('inputModPrice')?.value) || 0;
-
   if (!name) return;
 
   if (editingModId) {
     const idx = modifiers.findIndex(m => m.id === editingModId);
-    if (idx !== -1) {
-      modifiers[idx] = { ...modifiers[idx], name, group, price };
-    }
+    if (idx !== -1) modifiers[idx] = { ...modifiers[idx], name, group, price };
   } else {
     modifiers.push({ id: "mod_" + Date.now(), name, group, price });
   }
-
   localStorage.setItem('ladolce_modifiers', JSON.stringify(modifiers));
   renderModifierSettings();
   closeModifierModal();
@@ -440,20 +473,15 @@ function deleteModifier(id) {
   modifiers = modifiers.filter(m => m.id !== id);
   localStorage.setItem('ladolce_modifiers', JSON.stringify(modifiers));
   renderModifierSettings();
-  showToast("ລຶບຕົວເລືອກແລ້ວ");
 }
 
-// 4. Payments
 function renderPaymentSettings() {
   const list = document.getElementById('paymentMethodsAdminList');
   if (!list) return;
   list.innerHTML = paymentMethods.map(p => `
     <div class="p-3 bg-surface-pure rounded-xl border-2 flex items-center gap-3 shadow-xs" style="border-color: ${p.borderColor}">
       <img src="${p.qrImage}" class="w-14 h-14 rounded-lg object-contain border p-1" style="border-color: ${p.borderColor}"/>
-      <div class="flex-1 min-w-0">
-        <h5 class="font-bold text-[13px]">${p.bankName}</h5>
-        <span class="text-[11px] font-mono text-taupe block truncate">${p.accountNumber}</span>
-      </div>
+      <div class="flex-1 min-w-0"><h5 class="font-bold text-[13px]">${p.bankName}</h5><span class="text-[11px] font-mono text-taupe block truncate">${p.accountNumber}</span></div>
       <button onclick="deletePaymentMethod('${p.id}')" class="text-red-600 text-[11px]">ລຶບ</button>
     </div>
   `).join('');
@@ -464,10 +492,7 @@ function openAddPaymentModal() {
   document.getElementById('bankQrPreview').classList.add('hidden');
   document.getElementById('addPaymentModal').classList.remove('hidden');
 }
-
-function closeAddPaymentModal() {
-  document.getElementById('addPaymentModal').classList.add('hidden');
-}
+function closeAddPaymentModal() { document.getElementById('addPaymentModal').classList.add('hidden'); }
 
 function handleBankQRUpload(e) {
   const file = e.target.files[0];
@@ -488,11 +513,7 @@ function savePaymentMethod(e) {
   const borderColor = document.getElementById('inputBorderColor').value;
   if (!currentUploadedBankQRBase64) { alert("ກະລຸນາອັບໂຫຼດຮູບ QR!"); return; }
 
-  paymentMethods.push({
-    id: "pay_" + Date.now(),
-    bankName, accountNumber, borderColor,
-    qrImage: currentUploadedBankQRBase64
-  });
+  paymentMethods.push({ id: "pay_" + Date.now(), bankName, accountNumber, borderColor, qrImage: currentUploadedBankQRBase64 });
   localStorage.setItem('ladolce_payment_methods', JSON.stringify(paymentMethods));
   renderPaymentSettings();
   closeAddPaymentModal();
@@ -504,11 +525,9 @@ function deletePaymentMethod(id) {
   renderPaymentSettings();
 }
 
-// 5. User Roles
 async function renderUsersList() {
   const tbody = document.getElementById('adminUsersTableBody');
   if (!tbody) return;
-
   if (isFirebaseReady && db) {
     try {
       const snapshot = await db.collection("users").get();
@@ -516,12 +535,6 @@ async function renderUsersList() {
       snapshot.forEach(doc => cloudUsers.push({ id: doc.id, ...doc.data() }));
     } catch (e) {}
   }
-
-  if (cloudUsers.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-taupe">ກຳລັງໂຫຼດລາຍຊື່ຜູ້ໃຊ້...</td></tr>`;
-    return;
-  }
-
   tbody.innerHTML = cloudUsers.map(u => `
     <tr>
       <td class="p-2.5 font-bold">${u.name}</td>
@@ -546,19 +559,51 @@ async function updateUserRole(email, newRole) {
   }
 }
 
-// 6. 🔥 TAX RATE SETTINGS (ຕັ້ງຄ່າ % ອາກອນໄດ້ເອງ)
-function updateTaxSettings() {
-  const newRate = parseFloat(prompt("ປ້ອນອັດຕາອາກອນ Tax (%): ໃສ່ 0 ຖ້າບໍ່ມີ Tax:", storeSettings.taxRatePercent || 0));
-  if (isNaN(newRate) || newRate < 0) return;
+function setSalesFilter(period) { salesFilterPeriod = period; renderAnalytics(); }
 
-  storeSettings.taxRatePercent = newRate;
-  localStorage.setItem('ladolce_store_settings', JSON.stringify(storeSettings));
-  
-  const taxBadge = document.getElementById('taxSettingsDisplay');
-  if (taxBadge) taxBadge.textContent = `Tax: ${newRate}%`;
-  
-  if (typeof renderCartList === 'function') renderCartList();
-  showToast(`ອັບເດດອັດຕາ Tax ເປັນ ${newRate}% ແລ້ວ`);
+function renderAnalytics() {
+  const metricEl = document.getElementById('metricTotalSales');
+  const metricOrdersCount = document.getElementById('metricTotalOrdersCount');
+  const metricQrRevenue = document.getElementById('metricQrRevenue');
+  const metricCashRevenue = document.getElementById('metricCashRevenue');
+  const tableBody = document.getElementById('analyticsTransactionsTableBody');
+  if (!metricEl) return;
+
+  const now = new Date();
+  const completed = orders.filter(o => o.status === 'completed');
+  let filtered = completed.filter(o => {
+    if (!o.createdAt) return false;
+    const oDate = new Date(o.createdAt);
+    const diffDays = Math.ceil(Math.abs(now - oDate) / (1000 * 60 * 60 * 24));
+    if (salesFilterPeriod === 'day') {
+      return oDate.getFullYear() === now.getFullYear() && oDate.getMonth() === now.getMonth() && oDate.getDate() === now.getDate();
+    }
+    if (salesFilterPeriod === 'week') return diffDays <= 7;
+    if (salesFilterPeriod === 'month') return diffDays <= 30;
+    return true;
+  });
+
+  const totalRev = filtered.reduce((s, o) => s + (Number(o.total) || 0), 0);
+  const qrTotal = filtered.filter(o => o.slipUrl).reduce((s, o) => s + (Number(o.total) || 0), 0);
+  const cashTotal = totalRev - qrTotal;
+
+  metricEl.textContent = formatLAK(totalRev);
+  if (metricOrdersCount) metricOrdersCount.textContent = `${filtered.length} ອໍເດີ້`;
+  if (metricQrRevenue) metricQrRevenue.textContent = formatLAK(qrTotal);
+  if (metricCashRevenue) metricCashRevenue.textContent = formatLAK(cashTotal);
+
+  if (tableBody) {
+    tableBody.innerHTML = filtered.map(o => `
+      <tr class="hover:bg-surface/50 transition-colors">
+        <td class="p-2.5 font-mono font-bold text-forest-emerald">${o.id}</td>
+        <td class="p-2.5 text-taupe text-[11px]">${new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+        <td class="p-2.5"><span class="font-bold block">${o.customerName}</span><span class="text-[10px] text-taupe font-mono">${o.customerPhone}</span></td>
+        <td class="p-2.5 text-[11px] max-w-xs truncate">${o.items.map(i => `${i.quantity}× ${i.name}`).join(', ')}</td>
+        <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${o.slipUrl ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700'}">${o.slipUrl ? 'ໂອນ QR' : 'ເງິນສົດ'}</span></td>
+        <td class="p-2.5 text-right font-mono font-bold text-forest-emerald">${formatLAK(o.total)}</td>
+      </tr>
+    `).join('');
+  }
 }
 
 function toggleStoreStatus() {
