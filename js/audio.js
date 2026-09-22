@@ -14,7 +14,42 @@ function getAudioContext() {
   }
   return audioCtx;
 }
+// ໃນ js/audio.js:
+function playChime(isReady = false) {
+  try {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => playChimeSound(ctx, isReady));
+    } else {
+      playChimeSound(ctx, isReady);
+    }
+  } catch (e) {
+    console.warn("Audio error:", e);
+  }
+}
 
+function playChimeSound(ctx, isReady) {
+  const now = ctx.currentTime;
+  const freqs = isReady ? [659.25, 830.61, 987.77] : [587.33, 880];
+
+  freqs.forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now + (idx * 0.08));
+
+    gain.gain.setValueAtTime(0.001, now + (idx * 0.08));
+    gain.gain.linearRampToValueAtTime(0.25, now + (idx * 0.08) + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + (idx * 0.08) + 1.2);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now + (idx * 0.08));
+    osc.stop(now + (idx * 0.08) + 1.2);
+  });
+}
 // ປົດລັອກສຽງທັນທີເມື່ອມີການແຕະໜ້າຈໍຄັ້ງທຳອິດ
 ['click', 'touchstart', 'mousedown'].forEach(evt => {
   document.addEventListener(evt, () => {
