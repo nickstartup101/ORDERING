@@ -1,5 +1,5 @@
 // =======================================================
-// LA DOLCE — REAL-TIME CLOUD STREAM & INSTANT DISPATCHER
+// APPLICATION ORCHESTRATION & LIVE FIRESTORE STREAM ENGINE
 // =======================================================
 
 function showToast(msg) {
@@ -26,17 +26,17 @@ function closeCustomerReadyModal() {
 let previousPendingOrders = new Set();
 let notifiedReadyOrders = new Set();
 
-// 🔥 GLOBAL REAL-TIME FIRESTORE LISTENER (ບໍ່ມີການຕັດການເຊື່ອມຕໍ່)
+// 🔥 GLOBAL REAL-TIME FIRESTORE LISTENER (ເຊື່ອມຕໍ່ທັນທີຕອນເປີດແອັບ)
 function startRealtimeCloudEngine() {
   if (!isFirebaseReady || !db) {
-    console.warn("Firebase not ready yet, retrying in 1s...");
-    setTimeout(startRealtimeCloudEngine, 1000);
+    console.warn("Firebase not ready yet, retrying in 500ms...");
+    setTimeout(startRealtimeCloudEngine, 500);
     return;
   }
 
-  console.log("⚡ [Realtime Engine] Connected to Firestore Live WebSocket!");
+  console.log("⚡ [Realtime Engine] Live WebSocket Connected!");
 
-  // 1. Sync Menu Items Real-time
+  // 1. Sync Menu Items
   db.collection("menu_items").onSnapshot(snapshot => {
     if (!snapshot.empty) {
       const remoteMenu = [];
@@ -46,34 +46,32 @@ function startRealtimeCloudEngine() {
       if (typeof renderMenu === 'function') renderMenu();
       if (typeof renderAdminMenu === 'function') renderAdminMenu();
     }
-  }, err => console.error("Menu sync error:", err));
+  }, err => console.error("Menu stream error:", err));
 
-  // 2. 🔥 Sync Orders Real-time ທັງສອງຝັ່ງ (Staff & Customer)
+  // 2. 🔥 Sync Orders Real-time ແທ້ 100% (ທັງ Staff ແລະ ລູກຄ້າ)
   db.collection("orders").orderBy("createdAt", "desc").onSnapshot(snapshot => {
     const liveOrders = [];
     snapshot.forEach(doc => liveOrders.push({ id: doc.id, ...doc.data() }));
     orders = liveOrders;
     localStorage.setItem('ladolce_orders', JSON.stringify(orders));
 
-    console.log("📡 Live Orders Update:", orders.length, "orders");
+    console.log("📡 [Live Orders Stream] Received", orders.length, "orders from Firestore");
 
     // ==========================================
-    // ຝັ່ງ STAFF: ດັກຈັບອໍເດີ້ໃໝ່ (Pending)
+    // 1. ຝັ່ງ STAFF: ດັກຈັບອໍເດີ້ໃໝ່ (Pending)
     // ==========================================
     if (currentUser && currentUser.role === 'staff') {
       const pendingList = orders.filter(o => o.status === 'pending');
-      
-      // ຊອກຫາອໍເດີ້ໃໝ່ທີ່ຍັງບໍ່ທັນໄດ້ແຈ້ງເຕືອນ
       const newOrders = pendingList.filter(o => !previousPendingOrders.has(o.id));
 
       if (newOrders.length > 0) {
         const latestNewOrder = newOrders[0];
-        console.log("🔔 [Staff Alert] New Order Detected:", latestNewOrder.id);
+        console.log("🔔 [Staff Alert] New Incoming Order:", latestNewOrder.id);
         
-        // 1. ສຽງ Alarm ດັງວົນຊ້ຳ
+        // ສຽງ Alarm ດັງວົນຊ້ຳ
         if (typeof startStaffAlarm === 'function') startStaffAlarm();
         
-        // 2. Pop-up ເດັ້ງເຕັມຈໍ Staff
+        // Pop-up ເດັ້ງເຕັມຈໍ Staff
         if (typeof triggerStaffIncomingModal === 'function') {
           triggerStaffIncomingModal(latestNewOrder);
         }
@@ -87,7 +85,7 @@ function startRealtimeCloudEngine() {
     }
 
     // ==========================================
-    // ຝັ່ງ ລູກຄ້າ: ດັກຈັບສະຖານະ Ready & Completed
+    // 2. ຝັ່ງ ລູກຄ້າ: ດັກຈັບສະຖານະ Ready & Completed
     // ==========================================
     let myPhone = currentUser ? currentUser.phone : null;
     let myEmail = currentUser ? currentUser.email : null;
@@ -96,21 +94,17 @@ function startRealtimeCloudEngine() {
       if (guestContact) myPhone = guestContact.phone;
     }
 
-    // ຊອກຫາອໍເດີ້ຂອງລູກຄ້າຄົນນີ້
     const myCurrentOrders = orders.filter(o => 
       (myPhone && o.customerPhone === myPhone) || (myEmail && o.customerEmail === myEmail)
     );
 
     myCurrentOrders.forEach(myOrder => {
-      // ຖ້າສະຖານະປ່ຽນເປັນ READY ແລະ ຍັງບໍ່ທັນໄດ້ເຕືອນ
+      // ຖ້າ Staff ກົດ Ready ແລ້ວ -> ເດັ້ງ Pop-up ພ້ອມສຽງ Crystal Marimba ຫາລູກຄ້າທັນທີ!
       if (myOrder.status === 'ready' && !notifiedReadyOrders.has(myOrder.id)) {
         notifiedReadyOrders.add(myOrder.id);
         console.log("☕ [Customer Alert] Drink Ready for Order:", myOrder.id);
         
-        // 1. ສຽງ Crystal Marimba ດັງທັນທີ!
         if (typeof playChime === 'function') playChime(true);
-        
-        // 2. Pop-up ພ້ອມຮັບເດັ້ງຂຶ້ນໜ້າຈໍລູກຄ້າທັນທີ!
         showCustomerReadyModal();
       }
     });
@@ -120,7 +114,7 @@ function startRealtimeCloudEngine() {
       renderCustomerTicket();
     }
 
-    // ອັບເດດໜ້າ Profile ທັນທີ Real-time
+    // ອັບເດດໜ້າ Profile ທັນທີ
     if (typeof renderCustomerProfile === 'function') {
       renderCustomerProfile();
     }
@@ -141,6 +135,6 @@ window.addEventListener('DOMContentLoaded', () => {
     dispatchRoleView(currentUser.role);
   }
 
-  // ເລີ່ມຕົ້ນ Realtime Engine ທັນທີ!
+  // ເຊື່ອມຕໍ່ Realtime Stream ທັນທີຕອນເປີດແອັບ
   startRealtimeCloudEngine();
 });
