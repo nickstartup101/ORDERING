@@ -323,3 +323,10 @@ async function executeOrderCreation(customerName, customerPhone) {
     switchCustomerTab('ticket');
   }
 }
+// 🔥 ລົບສິນຄ້າອອກຈາກກະຕ່າໄວທັນໃຈ ບໍ່ມີ Lag
+function removeCartItem(idx) {
+  cart.splice(idx, 1);
+  localStorage.setItem('ladolce_cart', JSON.stringify(cart));
+  updateCartBadges(false);
+  renderCartList(); // Re-render ທັນທີ
+}
