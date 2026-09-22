@@ -236,7 +236,7 @@ function submitGuestOrder() {
   executeOrderCreation(name, phone);
 }
 
-// 2. 🔥 ສົ່ງອໍເດີ້ຂຶ້ນ Cloud Firestore ແທ້ 100% (ແກ້ໄຂບັນຫາ Staff ຂຶ້ນ Queue is clear)
+// 2. 🔥 ສົ່ງອໍເດີ້ຂຶ້ນ Cloud Firestore ແລະ ຈື່ຈຳອໍເດີ້ລ່າສຸດຂອງລູກຄ້າທັນທີ 100%
 async function executeOrderCreation(customerName, customerPhone) {
   showToast("ກຳລັງສົ່ງອໍເດີ້...");
 
@@ -248,8 +248,10 @@ async function executeOrderCreation(customerName, customerPhone) {
   const bank = paymentMethods.find(p => p.id === selectedBankMethodId);
   const paymentType = uploadedSlipDataUrl ? (bank ? bank.bankName : "Bank QR") : "Cash on Pickup";
 
+  const newOrderId = 'LD-' + Math.floor(1000 + Math.random() * 9000);
+
   const newOrder = {
-    id: 'LD-' + Math.floor(1000 + Math.random() * 9000),
+    id: newOrderId,
     createdAt: new Date().toISOString(),
     customerName: customerName,
     customerPhone: customerPhone,
@@ -264,9 +266,17 @@ async function executeOrderCreation(customerName, customerPhone) {
     delayNotice: null
   };
 
-  console.log("🚀 [Firestore Push] Pushing new order to Cloud:", newOrder.id);
+  console.log("🚀 [Firestore Push] Pushing new order:", newOrder.id);
 
-  // 1. 🔥 ຍິງກົງຂຶ້ນ Cloud Firestore Collection 'orders'
+  // 1. 🔥 ຈື່ຈຳອໍເດີ້ລ່າສຸດຂອງລູກຄ້າໄວ້ໃນ LocalStorage ທັນທີ (ເພື່ອໃຫ້ My Ticket ສະແດງອໍເດີ້ໃໝ່ນີ້ທັນທີ!)
+  currentActiveOrder = newOrder;
+  localStorage.setItem('ladolce_active_order', JSON.stringify(currentActiveOrder));
+
+  // 2. ອັບເດດລົງ Memory Local
+  orders.unshift(newOrder);
+  localStorage.setItem('ladolce_orders', JSON.stringify(orders));
+
+  // 3. 🔥 ຍິງກົງຂຶ້ນ Cloud Firestore Collection 'orders'
   if (isFirebaseReady && db) {
     try {
       await db.collection("orders").doc(newOrder.id).set(newOrder);
@@ -278,10 +288,7 @@ async function executeOrderCreation(customerName, customerPhone) {
     }
   }
 
-  // 2. ບັນທຶກລົງ Local ຂອງລູກຄ້າ
-  orders.unshift(newOrder);
-
-  // 3. ລ້າງກະຕ່າ
+  // 4. ລ້າງກະຕ່າ
   cart = [];
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
   uploadedSlipDataUrl = null;
@@ -299,7 +306,7 @@ async function executeOrderCreation(customerName, customerPhone) {
   updateCartBadges();
   showToast("ສັ່ງຊື້ສຳເລັດແລ້ວ! 🎉");
 
-  // 4. ນຳທາງໄປໜ້າ Ticket ທັນທີ
+  // 5. ນຳທາງໄປໜ້າ Ticket ທັນທີ
   if (typeof switchCustomerTab === 'function') {
     switchCustomerTab('ticket');
   }
