@@ -46,7 +46,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-  <!-- Global Head Router: ແກ້ໄຂ switchCustomerTab ໃຫ້ກົດໄດ້ທັນທີ 100% -->
+  <!-- Global Head Router -->
   <script>
     function switchCustomerTab(tabName) {
       const tabs = ['menu', 'cart', 'ticket', 'profile'];
@@ -104,7 +104,7 @@
         </div>
       </div>
 
-      <!-- Staff Repeating Alarm Indicator -->
+      <!-- Staff Alarm Indicator -->
       <div id="staffRingingIndicator" class="hidden items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-full animate-pulse">
         <span class="w-2 h-2 rounded-full bg-red-600"></span>
         <span class="text-[11px] font-medium text-red-700">ມີອໍເດີ້ໃໝ່ເຂົ້າມາ!</span>
@@ -161,10 +161,16 @@
             </span>
             <div>
               <div class="flex items-center gap-2 flex-wrap">
-                <h2 class="font-serif-title text-[16px] text-primary font-bold brand-branch-display">Numphou Branch</h2>
+                <h2 class="font-serif-title text-[16px] text-primary font-bold brand-branch-display">Downtown Flagship Roastery</h2>
                 <span id="customerStoreOpenBadge" class="px-2 py-0.5 rounded text-[9px] uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold">ເປີດບໍລິການ</span>
               </div>
-              <p class="text-[12px] text-taupe mt-0.5">ສັ່ງລ່ວງໜ້າ • ຮັບທີ່ເຄົາເຕີ້ພາຍໃນ 8–15 ນາທີ • 🛵 ສົ່ງຟຣີ 500ມ</p>
+              <p class="text-[12px] text-taupe mt-0.5 flex items-center gap-1.5 flex-wrap">
+                <span>ສັ່ງລ່ວງໜ້າ • ຮັບທີ່ເຄົາເຕີ້ພາຍໃນ 8–15 ນາທີ</span>
+                <span class="text-hairline">•</span>
+                <span class="inline-flex items-center gap-0.5 font-bold text-forest-emerald">
+                  <span class="material-symbols-outlined text-[14px]">two_wheeler</span> ສົ່ງຟຣີ 500ມ
+                </span>
+              </p>
             </div>
           </div>
 
@@ -202,7 +208,7 @@
                   <span id="summarySubtotal" class="font-medium text-charcoal">0 LAK</span>
                 </div>
 
-                <!-- 🔥 ແຖວສະຫຼຸບ Coupon Discount -->
+                <!-- ແຖວສະຫຼຸບ Coupon Discount -->
                 <div id="couponDiscountRow" class="flex justify-between text-emerald-800 text-[13px] font-bold hidden">
                   <span class="flex items-center gap-1">
                     <span class="material-symbols-outlined text-[16px]">local_activity</span>
@@ -223,32 +229,34 @@
                 </div>
               </div>
 
-              <!-- 🔥 ກ່ອງປົດລັອກສົ່ງຟຣີ 500 ແມັດ (3 ຈອກ ຫຼື 120,000 LAK) -->
+              <!-- ກ່ອງປົດລັອກສົ່ງຟຣີ 500 ແມັດ (3 ຈອກ ຫຼື 120,000 LAK) -->
               <div id="deliveryUnlockBox" class="p-3.5 rounded-xl bg-surface border border-hairline space-y-2">
                 <div id="deliveryProgressText"></div>
                 <div class="w-full bg-hairline h-1.5 rounded-full overflow-hidden">
                   <div id="deliveryProgressBar" class="bg-forest-emerald h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
                 </div>
 
-                <!-- ແຖບເລືອກ Delivery / Pickup ເມື່ອປົດລັອກແລ້ວ -->
+                <!-- ແຖບເລືອກ Delivery / Pickup -->
                 <div id="deliveryAddressPanel" class="hidden pt-2 border-t border-hairline space-y-2">
                   <span class="block text-[11px] font-bold text-forest-emerald">ເລືອກຮູບແບບການຮັບ:</span>
                   <div class="grid grid-cols-2 gap-2">
-                    <button type="button" onclick="setFulfillmentType('pickup')" id="optFulfillmentPickup" class="p-2 rounded-lg border-2 border-forest-emerald text-[11px] font-bold text-center bg-surface-pure cursor-pointer">
-                      🏬 ຮັບເອງໜ້າຮ້ານ
+                    <button type="button" onclick="setFulfillmentType('pickup')" id="optFulfillmentPickup" class="p-2 rounded-lg border-2 border-forest-emerald text-[11px] font-bold text-center bg-surface-pure flex items-center justify-center gap-1 cursor-pointer">
+                      <span class="material-symbols-outlined text-[16px]">storefront</span>
+                      <span>ຮັບເອງໜ້າຮ້ານ</span>
                     </button>
-                    <button type="button" onclick="setFulfillmentType('delivery')" id="optFulfillmentDelivery" class="p-2 rounded-lg border-2 border-hairline text-[11px] font-bold text-center bg-surface-pure hover:border-forest-leaf cursor-pointer">
-                      🛵 ຈັດສົ່ງ Delivery
+                    <button type="button" onclick="setFulfillmentType('delivery')" id="optFulfillmentDelivery" class="p-2 rounded-lg border-2 border-hairline text-[11px] font-bold text-center bg-surface-pure hover:border-forest-leaf flex items-center justify-center gap-1 cursor-pointer">
+                      <span class="material-symbols-outlined text-[16px]">two_wheeler</span>
+                      <span>ຈັດສົ່ງ Delivery</span>
                     </button>
                   </div>
                   <div id="deliveryInputFields" class="hidden pt-1">
                     <label class="block text-[11px] text-taupe mb-1 font-bold">ທີ່ຢູ່ຈັດສົ່ງ (ບ້ານ, ເມືອງ, ຈຸດສັງເກດ ພາຍໃນ 500 ແມັດ):</label>
-                    <textarea id="deliveryAddressInput" rows="2" placeholder="ເຊັ່ນ: BCEL ຕຶກ C, BOL, AVANI..." class="w-full text-[12px] rounded-lg border border-hairline p-2 bg-surface"></textarea>
+                    <textarea id="deliveryAddressInput" rows="2" placeholder="ເຊັ່ນ: ບ້ານໂພນສີນວນ ຮ່ອມ 5 ເຮືອນປະຕູສີຂາວ..." class="w-full text-[12px] rounded-lg border border-hairline p-2 bg-surface"></textarea>
                   </div>
                 </div>
               </div>
 
-              <!-- 🔥 ຊ່ອງປ້ອນ Coupon Code -->
+              <!-- ຊ່ອງ Coupon Code -->
               <div class="border-t border-hairline pt-3">
                 <label class="block text-[11px] uppercase tracking-wider font-semibold text-primary mb-1">Coupon ສ່ວນຫຼຸດ:</label>
                 <div class="flex gap-2">
@@ -344,8 +352,9 @@
         </div>
 
         <div class="flex items-center gap-2">
-          <button type="button" onclick="editCafeBranding()" class="px-3 py-1.5 rounded-lg border border-hairline hover:bg-surface text-[11px] font-bold">
-            🏪 ຕັ້ງຊື່ຮ້ານ
+          <button type="button" onclick="openBrandModal()" class="px-3 py-1.5 rounded-lg border border-hairline hover:bg-surface text-[11px] font-bold flex items-center gap-1 cursor-pointer">
+            <span class="material-symbols-outlined text-[15px]">store</span>
+            <span>ຕັ້ງຊື່ຮ້ານ</span>
           </button>
           <button onclick="toggleStoreStatus()" id="btnToggleStore" class="px-3 py-1.5 rounded-lg bg-emerald-800 text-white text-[11px] font-medium"></button>
           <button onclick="openAddMenuModal()" class="px-3.5 py-2 rounded-lg bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] font-medium tracking-wider flex items-center gap-1.5 shadow-xs">
@@ -366,6 +375,10 @@
           <span class="material-symbols-outlined text-[16px]">restaurant_menu</span>
           <span>ຈັດການເມນູທັງໝົດ</span>
         </button>
+        <button onclick="switchAdminPanelTab('coupons')" id="adm-tab-coupons" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0 flex items-center gap-1.5 hover:text-charcoal transition-colors">
+          <span class="material-symbols-outlined text-[16px]">confirmation_number</span>
+          <span>ຄູປອງ & ໂປຣໂມຊັ່ນ</span>
+        </button>
         <button onclick="switchAdminPanelTab('modifiers')" id="adm-tab-modifiers" class="px-3.5 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px] font-medium shrink-0 flex items-center gap-1.5 hover:text-charcoal transition-colors">
           <span class="material-symbols-outlined text-[16px]">tune</span>
           <span>ຕົວເລືອກເສີມ</span>
@@ -380,7 +393,7 @@
         </button>
       </div>
 
-      <!-- Panel 1: Analytics & Transaction Log -->
+      <!-- Panel 1: Analytics -->
       <div id="adm-panel-analytics" class="space-y-4">
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div class="p-4 rounded-xl bg-surface-pure border border-hairline shadow-xs">
@@ -441,6 +454,20 @@
           <button onclick="openAddMenuModal()" class="px-3 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-bold">+ ເພີ່ມເມນູ</button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="adminMenuListGrid"></div>
+      </div>
+
+      <!-- Panel: Coupons -->
+      <div id="adm-panel-coupons" class="hidden p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
+        <div class="flex justify-between items-center border-b border-hairline pb-3">
+          <div>
+            <h4 class="font-serif-title text-[16px] text-primary font-bold">ຈັດການຄູປອງ & ໂປຣໂມຊັ່ນ</h4>
+            <p class="text-[11px] text-taupe font-lao">ກຳນົດສ່ວນຫຼຸດ, ເພດານສູງສຸດ, ຍອດຂັ້ນຕ່ຳ, ງົບປະມານລວມ ແລະ ວັນໝົດອາຍຸ</p>
+          </div>
+          <button type="button" onclick="openAddCouponModal()" class="px-3.5 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-bold shadow-xs cursor-pointer">
+            + ສ້າງຄູປອງໃໝ່
+          </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5" id="adminCouponsListGrid"></div>
       </div>
 
       <!-- Panel 3: Modifiers -->
@@ -523,7 +550,7 @@
     <div class="bg-surface-pure w-full max-w-lg rounded-t-2xl sm:rounded-2xl border border-hairline max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
       <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
         <span class="font-serif-title text-[18px] text-primary" id="modalItemTitle">Drink Title</span>
-        <button onclick="closeCustomizeModal()" class="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-taupe hover:text-charcoal"><span class="material-symbols-outlined text-[18px]">close</span></button>
+        <button onclick="closeCustomizeModal()" class="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-taupe hover:text-charcoal cursor-pointer"><span class="material-symbols-outlined text-[18px]">close</span></button>
       </div>
       
       <div class="p-5 overflow-y-auto space-y-6 flex-1 text-[13px]">
@@ -583,7 +610,7 @@
           </div>
         </div>
 
-        <!-- 🔥 ຊ່ອງ Special Request ສະເພາະຈອກ -->
+        <!-- ຊ່ອງ Special Request ສະເພາະຈອກ -->
         <div class="space-y-1">
           <label class="block text-[11px] uppercase tracking-wider font-semibold text-charcoal">05. ໝາຍເຫດພິເສດເຖິງບາຣິສຕ້າ (Optional):</label>
           <input type="text" id="modalItemSpecialNote" placeholder="ເຊັ່ນ: ຂໍແຍກນ້ຳກ້ອນ, ຂໍນົມຫຼາຍໜ້ອຍໜຶ່ງ..." class="w-full text-[12px] rounded-lg border border-hairline p-2 bg-surface"/>
@@ -592,9 +619,9 @@
 
       <div class="p-4 border-t border-hairline bg-surface flex items-center justify-between gap-4">
         <div class="flex items-center border border-hairline rounded-lg bg-surface-pure">
-          <button type="button" onclick="adjustModalQty(-1)" class="w-9 h-9 flex items-center justify-center hover:bg-surface text-charcoal"><span class="material-symbols-outlined text-[16px]">remove</span></button>
+          <button type="button" onclick="adjustModalQty(-1)" class="w-9 h-9 flex items-center justify-center hover:bg-surface text-charcoal cursor-pointer"><span class="material-symbols-outlined text-[16px]">remove</span></button>
           <span id="modalQtyDisplay" class="px-3 font-medium text-[13px] text-charcoal">1</span>
-          <button type="button" onclick="adjustModalQty(1)" class="w-9 h-9 flex items-center justify-center hover:bg-surface text-charcoal"><span class="material-symbols-outlined text-[16px]">add</span></button>
+          <button type="button" onclick="adjustModalQty(1)" class="w-9 h-9 flex items-center justify-center hover:bg-surface text-charcoal cursor-pointer"><span class="material-symbols-outlined text-[16px]">add</span></button>
         </div>
         <button type="button" onclick="confirmAddToCart()" class="flex-1 h-11 px-5 rounded-lg bg-forest-emerald text-white text-[12px] uppercase tracking-[0.14em] font-medium flex items-center justify-between hover:bg-forest-leaf transition-all shadow-xs cursor-pointer">
           <span>ເພີ່ມໃສ່ກະຕ່າ</span>
@@ -657,7 +684,7 @@
       <div class="space-y-1">
         <span class="text-[11px] uppercase tracking-widest text-emerald-800 font-bold">Pick-up Ready!</span>
         <h3 class="font-serif-title text-[22px] font-bold text-primary">ເຄື່ອງດື່ມພ້ອມຮັບແລ້ວ! ☕</h3>
-        <p class="text-[12px] text-taupe">ເຄື່ອງດື່ມຂອງທ່ານປຸງແຕ່ງສຳເລັດແລ້ວ ເຊີນຮັບໄດ້ທີ່ Counter La Dolce</p>
+        <p class="text-[12px] text-taupe">ເຄື່ອງດື່ມຂອງທ່ານປຸງແຕ່ງສຳເລັດແລ້ວ ເຊີນຮັບໄດ້ທີ່ Counter 02 Downtown Roastery</p>
       </div>
       <button type="button" onclick="closeCustomerReadyModal()" class="w-full py-2.5 rounded-lg bg-emerald-800 text-white text-[12px] font-bold hover:bg-emerald-900 shadow-xs cursor-pointer">
         ຕົກລົງ / ໄປຮັບເຄື່ອງ
@@ -868,7 +895,101 @@
     </div>
   </div>
 
-  <!-- 10. ADD PAYMENT MODAL -->
+  <!-- 10. ADVANCED COUPON BUILDER MODAL -->
+  <div id="addCouponModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
+    <div class="bg-surface-pure w-full max-w-md rounded-2xl border border-hairline p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-hairline pb-2">
+        <h3 class="font-serif-title text-[17px] text-primary font-bold">ສ້າງຄູປອງສ່ວນຫຼຸດໃໝ່</h3>
+        <button type="button" onclick="closeAddCouponModal()" class="w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-taupe cursor-pointer"><span class="material-symbols-outlined text-[16px]">close</span></button>
+      </div>
+
+      <form id="couponForm" onsubmit="saveCouponFromModal(event)" class="space-y-3 text-[12px]">
+        <div>
+          <label class="block text-taupe mb-1 font-bold">ລະຫັດຄູປອງ (Code):</label>
+          <input required id="inputCpnCode" type="text" placeholder="ເຊັ່ນ: SUMMER2026, VIP10" class="w-full rounded-lg border border-hairline p-2 uppercase font-mono font-bold"/>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-taupe mb-1 font-bold">ປະເພດສ່ວນຫຼຸດ:</label>
+            <select id="inputCpnType" class="w-full rounded-lg border border-hairline p-2 text-[12px]">
+              <option value="percent">ເປີເຊັນ (%)</option>
+              <option value="fixed">ຈຳນວນເງິນ (LAK)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-taupe mb-1 font-bold">ມູນຄ່າສ່ວນຫຼຸດ:</label>
+            <input required id="inputCpnValue" type="number" placeholder="20 ຫຼື 20000" class="w-full rounded-lg border border-hairline p-2 font-mono"/>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-taupe mb-1 font-bold">ເພດານຫຼຸດສູງສຸດ (LAK):</label>
+            <input id="inputCpnMaxDiscount" type="number" placeholder="30000 (ຫວ່າງ = ບໍ່ຈຳກັດ)" class="w-full rounded-lg border border-hairline p-2 font-mono"/>
+          </div>
+          <div>
+            <label class="block text-taupe mb-1 font-bold">ຍອດບິນຂັ້ນຕ່ຳ (LAK):</label>
+            <input id="inputCpnMinOrder" type="number" placeholder="100000 (ຫວ່າງ = ບໍ່ມີ)" class="w-full rounded-lg border border-hairline p-2 font-mono"/>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-taupe mb-1 font-bold">ງົບປະມານລວມ (Total Budget LAK):</label>
+            <input id="inputCpnTotalBudget" type="number" placeholder="500000 (ເຕັມ=Expire)" class="w-full rounded-lg border border-hairline p-2 font-mono"/>
+          </div>
+          <div>
+            <label class="block text-taupe mb-1 font-bold">ວັນໝົດອາຍຸ (Expiry Date):</label>
+            <input id="inputCpnExpiry" type="date" class="w-full rounded-lg border border-hairline p-2"/>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-taupe mb-1 font-bold">ຄຳອະທິບາຍໂປຣໂມຊັ່ນ:</label>
+          <input id="inputCpnDesc" type="text" placeholder="ເຊັ່ນ: ຫຼຸດ 20% ສຳລັບສັ່ງ 100,000 LAK ຂຶ້ນໄປ" class="w-full rounded-lg border border-hairline p-2"/>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-hairline">
+          <button type="button" onclick="closeAddCouponModal()" class="px-3.5 py-1.5 border border-hairline rounded-lg text-taupe cursor-pointer">ຍົກເລີກ</button>
+          <button type="submit" class="px-4 py-1.5 rounded-lg bg-forest-emerald text-white font-bold shadow-xs cursor-pointer flex items-center gap-1">
+            <span class="material-symbols-outlined text-[15px]">send</span>
+            <span>ປະກາດໃຊ້ (Publish)</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 11. CAFE BRANDING MODAL -->
+  <div id="brandSettingsModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
+    <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-5 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b border-hairline pb-2">
+        <h3 class="font-serif-title text-[17px] text-primary font-bold">ຕັ້ງຊື່ຮ້ານ & ຄຳຂວັນ (Branding)</h3>
+        <button type="button" onclick="closeBrandModal()" class="w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-taupe cursor-pointer"><span class="material-symbols-outlined text-[16px]">close</span></button>
+      </div>
+
+      <form onsubmit="saveBrandSettings(event)" class="space-y-3 text-[12px]">
+        <div>
+          <label class="block text-taupe mb-1 font-bold">ຊື່ຮ້ານກາເຟ (Cafe Name):</label>
+          <input required id="inputCafeName" type="text" placeholder="LA DOLCE" class="w-full rounded-lg border border-hairline p-2 font-serif-title font-bold text-[14px]"/>
+        </div>
+        <div>
+          <label class="block text-taupe mb-1 font-bold">ຊື່ສາຂາ ຫຼື ຄຳຂວັນ (Branch / Slogan):</label>
+          <input required id="inputCafeBranch" type="text" placeholder="Downtown Flagship Roastery" class="w-full rounded-lg border border-hairline p-2"/>
+        </div>
+        <p class="text-[11px] text-taupe leading-relaxed font-lao">
+          * ຂໍ້ມູນນີ້ຈະປ່ຽນແທນຊື່ຮ້ານທຸກຈຸດໃນແອັບ: Logo Header, Banner ໜ້າຮ້ານ, ປີ້ຮັບເຄື່ອງ, ໃບບິນ e-Receipt, ແລະ Favicon Browser.
+        </p>
+        <div class="flex justify-end gap-2 pt-2 border-t border-hairline">
+          <button type="button" onclick="closeBrandModal()" class="px-3.5 py-1.5 border border-hairline rounded-lg text-taupe cursor-pointer">ຍົກເລີກ</button>
+          <button type="submit" class="px-4 py-1.5 rounded-lg bg-forest-emerald text-white font-bold cursor-pointer">ບັນທຶກ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 12. ADD PAYMENT MODAL -->
   <div id="addPaymentModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-5 shadow-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-hairline pb-2">
@@ -901,13 +1022,13 @@
     </div>
   </div>
 
-  <!-- 11. FAST BOUTIQUE TOAST -->
+  <!-- 13. FAST BOUTIQUE TOAST -->
   <div id="atelierToast" class="fixed top-6 left-1/2 -translate-x-1/2 z-[999] opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-4 px-5 py-3 rounded-full bg-forest-gradient text-white text-[12px] font-bold shadow-2xl flex items-center gap-2 border border-white/20">
     <span class="material-symbols-outlined text-[20px] text-emerald-400" id="toastIcon">check_circle</span>
     <span id="toastMsg">Action completed</span>
   </div>
 
-  <!-- ================= LOAD SCRIPTS ================= -->
+  <!-- ================= LOAD MODULAR SCRIPTS IN ORDER ================= -->
   <script src="js/config.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/auth.js"></script>
