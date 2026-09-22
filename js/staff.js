@@ -1,5 +1,5 @@
 // =======================================================
-// STAFF KDS WITH CUSTOMER MATCH INDICATOR
+// STAFF KDS (QUOTA-SAFE & CLOUD-FIRST REALTIME ENGINE)
 // =======================================================
 
 let staffSubTab = 'active';
@@ -23,7 +23,7 @@ function renderStaffOrders() {
   const activeOrders = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled');
   const completedOrders = orders.filter(o => o.status === 'completed');
 
-  // ນັບຈຳນວນອໍເດີ້ຂອງລູກຄ້າແຕ່ລະຄົນໃນຄິວປັດຈຸບັນ
+  // ນັບຈຳນວນອໍເດີ້ຂອງລູກຄ້າແຕ່ລະຄົນໃນຄິວປັດຈຸບັນ (ຄິວພວງ)
   const customerOrderCounts = {};
   activeOrders.forEach(o => {
     const key = o.customerPhone || o.customerName;
@@ -66,27 +66,27 @@ function renderStaffOrders() {
           </div>
 
           <div class="text-[11px] divide-y divide-hairline">
-            ${o.items.map(i => `<div class="py-1 flex justify-between"><span>${i.quantity}× ${i.name} [${(i.variant||'std').toUpperCase()}]</span><span>${formatLAK(i.total)}</span></div>`).join('')}
+            ${(o.items || []).map(i => `<div class="py-1 flex justify-between"><span>${i.quantity}× ${i.name} [${(i.variant||'std').toUpperCase()}]</span><span>${formatLAK(i.total)}</span></div>`).join('')}
           </div>
 
           <div class="flex justify-between items-center pt-2 border-t border-hairline">
             <span class="font-mono font-bold">${formatLAK(o.total)}</span>
-            ${o.slipUrl ? `<button onclick="viewSlip('${o.slipUrl}','${o.id}')" class="px-2.5 py-1 rounded bg-forest-emerald/10 text-forest-emerald text-[11px] font-bold">ກວດສະລິບ</button>` : '<span class="text-[10px] text-taupe">ເງິນສົດ</span>'}
+            ${o.slipUrl ? `<button type="button" onclick="viewSlip('${o.id}')" class="px-2.5 py-1 rounded bg-forest-emerald/10 text-forest-emerald text-[11px] font-bold">ກວດສະລິບ</button>` : '<span class="text-[10px] text-taupe">ເງິນສົດ</span>'}
           </div>
 
           <div class="pt-2 border-t border-hairline flex flex-wrap gap-2">
             ${o.status === 'pending' ? `
-              <button onclick="updateOrderStatus('${o.id}','crafting')" class="flex-1 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-bold">ຮັບອໍເດີ້</button>
-              <button onclick="openRejectModal('${o.id}')" class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-[11px] font-bold">ປະຕິເສດ</button>
+              <button type="button" onclick="updateOrderStatus('${o.id}','crafting')" class="flex-1 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-bold shadow-xs">ຮັບອໍເດີ້</button>
+              <button type="button" onclick="openRejectModal('${o.id}')" class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-[11px] font-bold">ປະຕິເສດ</button>
             ` : ''}
             ${o.status === 'crafting' ? `
-              <button onclick="sendDelayNotice('${o.id}')" class="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-[11px] text-amber-900 font-bold flex items-center gap-1">
+              <button type="button" onclick="sendDelayNotice('${o.id}')" class="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-[11px] text-amber-900 font-bold flex items-center gap-1">
                 <span class="material-symbols-outlined text-[14px]">hourglass_top</span>
                 <span>+5m ລ່າຊ້າ</span>
               </button>
-              <button onclick="updateOrderStatus('${o.id}','ready')" class="flex-1 py-1.5 rounded-lg bg-emerald-800 text-white text-[11px] font-bold">ພ້ອມຮັບ</button>
+              <button type="button" onclick="updateOrderStatus('${o.id}','ready')" class="flex-1 py-1.5 rounded-lg bg-emerald-800 text-white text-[11px] font-bold shadow-xs">ພ້ອມຮັບ</button>
             ` : ''}
-            ${o.status === 'ready' ? `<button onclick="updateOrderStatus('${o.id}','completed')" class="w-full py-1.5 rounded-lg bg-primary text-white text-[11px] font-bold">ມອບແລ້ວ (Completed)</button>` : ''}
+            ${o.status === 'ready' ? `<button type="button" onclick="updateOrderStatus('${o.id}','completed')" class="w-full py-1.5 rounded-lg bg-primary text-white text-[11px] font-bold">ມອບແລ້ວ (Completed)</button>` : ''}
           </div>
         </div>
       `;
@@ -101,16 +101,18 @@ function renderStaffOrders() {
       <div class="p-4 bg-surface-pure border border-hairline rounded-2xl space-y-2 opacity-85">
         <div class="flex justify-between"><span class="font-mono font-bold text-forest-emerald">${o.id}</span><span class="text-emerald-800 text-[11px] font-bold">✓ ສຳເລັດແລ້ວ</span></div>
         <p class="text-[12px] font-bold">${o.customerName} (${o.customerPhone})</p>
-        <p class="text-[11px] text-taupe">${o.items.map(i=>i.name).join(', ')}</p>
+        <p class="text-[11px] text-taupe">${(o.items||[]).map(i=>i.name).join(', ')}</p>
         <span class="font-mono font-bold block text-[13px] pt-1 border-t border-hairline">${formatLAK(o.total)}</span>
       </div>
     `).join('');
   }
 }
 
-function viewSlip(url, id) {
-  document.getElementById('slipAuditImage').src = url;
-  document.getElementById('slipAuditOrderRef').textContent = "Order ID: " + id;
+function viewSlip(orderId) {
+  const o = orders.find(x => x.id === orderId);
+  if (!o || !o.slipUrl) return;
+  document.getElementById('slipAuditImage').src = o.slipUrl;
+  document.getElementById('slipAuditOrderRef').textContent = "Order ID: " + orderId;
   document.getElementById('slipAuditModal').classList.remove('hidden');
 }
 
@@ -118,30 +120,29 @@ function closeSlipAuditModal() {
   document.getElementById('slipAuditModal').classList.add('hidden');
 }
 
-// 🔥 ອັບເດດສະຖານະ ແລະ Sync ຂຶ້ນ Cloud Firestore Real-time
+// 🔥 ອັບເດດສະຖານະ (ຕັດ QuotaExceededError ອອກ 100%)
 async function updateOrderStatus(id, status) {
   if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
 
-  // 1. ອັບເດດ Memory
+  // 1. ອັບເດດ Memory ທັນທີ
   const order = orders.find(o => o.id === id);
   if (order) {
     order.status = status;
     if (status === 'completed') {
       order.completedAt = new Date().toISOString();
     }
-    localStorage.setItem('ladolce_orders', JSON.stringify(orders));
   }
 
   renderStaffOrders();
 
-  // 2. 🔥 ຍິງກົງຂຶ້ນ Cloud Firestore
+  // 2. 🔥 ຍິງກົງຂຶ້ນ Cloud Firestore (ບ່ອນດຽວ ບໍ່ຕ້ອງຍັດລົງ localStorage ໃຫ້ເກີນ Quota)
   if (isFirebaseReady && db) {
     try {
       await db.collection("orders").doc(id).update({
         status: status,
         completedAt: status === 'completed' ? new Date().toISOString() : null
       });
-      console.log("✅ Firestore Status Updated:", id, status);
+      console.log("✅ [Firestore Updated] Order", id, "status set to:", status);
     } catch (e) {
       console.error("Firestore update error:", e);
     }
