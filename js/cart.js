@@ -1,33 +1,32 @@
 // =======================================================
-// CART, GUEST CHECKOUT & MULTI-ORDER CREATION
+// CART, CHECKOUT & RELIABLE MODAL CLOSE ENGINE
 // =======================================================
 
 let selectedBankMethodId = null;
 let uploadedSlipDataUrl = null;
 
-// 🔥 ຟັງຊັນເພີ່ມເຂົ້າກະຕ່າ ພ້ອມ Visual Feedback & Button Transform
+// 🔥 ແກ້ໄຂ: ປິດ Modal ທຸກຄັ້ງຢ່າງແນ່ນອນ 100% ບໍ່ມີຕິດຄ້າງໃນເມນູທີ 2, 3
 function confirmAddToCart() {
   if (!activeCustomizingItem) return;
 
-  const btn = event?.currentTarget || document.querySelector('#customizeModal button[onclick="confirmAddToCart()"]');
-  const originalHTML = btn ? btn.innerHTML : '';
+  const modal = document.getElementById('customizeModal');
+  const confirmBtn = document.querySelector('#customizeModal button[onclick="confirmAddToCart()"]');
 
-  // 1. ປ່ຽນປຸ່ມໃຫ້ສະແດງເຄື່ອງໝາຍຖືກທັນທີ (Button Instant Feedback)
-  if (btn) {
-    btn.classList.add('bg-emerald-700', 'scale-[0.98]');
-    btn.innerHTML = `
-      <span class="flex items-center gap-1.5 font-bold mx-auto text-[13px]">
+  // 1. ປ່ຽນປຸ່ມໃຫ້ເປັນສີຂຽວແຈ້ງເຕືອນສຳເລັດ
+  if (confirmBtn) {
+    confirmBtn.classList.add('bg-emerald-700');
+    confirmBtn.innerHTML = `
+      <span class="flex items-center justify-center gap-1.5 font-bold mx-auto text-[13px]">
         <span class="material-symbols-outlined text-[18px]">check_circle</span>
         <span>ເພີ່ມເຂົ້າກະຕ່າແລ້ວ!</span>
       </span>
     `;
   }
 
-  // ສຽງ Pop ເບົາໆ
-  if (typeof playChime === 'function') {
-    playChime(false);
-  }
+  // 2. ສຽງ Pop
+  if (typeof playChime === 'function') playChime(false);
 
+  // 3. ຄິດໄລ່ລາຄາ
   let unitPrice = 35000;
   if (activeCustomizingItem.variants && activeCustomizingItem.variants[selectedVariant]) {
     unitPrice = parseFloat(activeCustomizingItem.variants[selectedVariant]) || 35000;
@@ -49,6 +48,7 @@ function confirmAddToCart() {
 
   const qty = parseInt(modalQuantity) || 1;
 
+  // ເພີ່ມລົງກະຕ່າ
   cart.push({
     cartId: 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
     itemId: activeCustomizingItem.id,
@@ -65,19 +65,18 @@ function confirmAddToCart() {
 
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
 
-  // 2. ລໍຖ້າ 0.35 ວິນາທີ ໃຫ້ລູກຄ້າເຫັນປຸ່ມປ່ຽນເປັນສີຂຽວ ແລ້ວຈຶ່ງປິດ Modal
+  // 4. 🔥 ບັງຄັບປິດ Modal ຢ່າງແນ່ນອນພາຍໃນ 0.3 ວິນາທີ ທຸກໆເມນູ!
   setTimeout(() => {
-    if (btn) {
-      btn.classList.remove('bg-emerald-700', 'scale-[0.98]');
-      btn.innerHTML = originalHTML;
+    if (modal) modal.classList.add('hidden');
+    if (confirmBtn) {
+      confirmBtn.classList.remove('bg-emerald-700');
+      confirmBtn.innerHTML = `<span>ເພີ່ມໃສ່ກະຕ່າ</span><span id="modalDynamicTotal" class="font-serif-title text-[15px] font-normal">0 LAK</span>`;
     }
-    closeCustomizeModal();
-    updateCartBadges(true); // ສັ່ງໃຫ້ Badge ເຕັ້ນ Bounce
+    updateCartBadges(true);
     showToast(`✓ ເພີ່ມ "${activeCustomizingItem.name}" (${qty} ລາຍການ) ເຂົ້າກະຕ່າແລ້ວ!`);
-  }, 350);
+  }, 300);
 }
 
-// 🔥 ອັບເດດຕົວເລກ Badge ພ້ອມ Animation ເຕັ້ນ (Bounce Pop)
 function updateCartBadges(shouldAnimate = false) {
   const count = cart.reduce((s, i) => s + (i.quantity || 1), 0);
   const badge = document.getElementById('cartBadgeCount');
@@ -87,25 +86,15 @@ function updateCartBadges(shouldAnimate = false) {
     badge.textContent = count;
     if (shouldAnimate) {
       badge.classList.remove('animate-bounce');
-      // Force reflow
       void badge.offsetWidth;
-      badge.classList.add('animate-bounce', 'ring-4', 'ring-emerald-300');
-      setTimeout(() => {
-        badge.classList.remove('ring-4', 'ring-emerald-300');
-      }, 1000);
+      badge.classList.add('animate-bounce');
     }
   }
 
-  if (bottomDot) {
-    bottomDot.classList.toggle('hidden', count === 0);
-    if (shouldAnimate && count > 0) {
-      bottomDot.classList.add('animate-ping');
-      setTimeout(() => bottomDot.classList.remove('animate-ping'), 1000);
-    }
-  }
-
+  if (bottomDot) bottomDot.classList.toggle('hidden', count === 0);
   renderCartList();
 }
+
 function renderCartList() {
   const container = document.getElementById('cartListContainer');
   if (!container) return;
@@ -140,7 +129,7 @@ function renderCartList() {
             <span class="font-mono text-[12px] font-bold text-forest-emerald">${formatLAK(item.unitPrice)} × ${item.quantity}</span>
           </div>
         </div>
-        <button type="button" onclick="cart.splice(${idx},1); localStorage.setItem('ladolce_cart',JSON.stringify(cart)); updateCartBadges();" class="text-red-600 p-2 shrink-0">
+        <button type="button" onclick="removeCartItem(${idx})" class="text-red-600 p-2 shrink-0">
           <span class="material-symbols-outlined text-[18px]">delete</span>
         </button>
       </div>
@@ -162,6 +151,13 @@ function renderCartList() {
   }
 
   document.getElementById('summaryTotal').textContent = formatLAK(total);
+}
+
+function removeCartItem(idx) {
+  cart.splice(idx, 1);
+  localStorage.setItem('ladolce_cart', JSON.stringify(cart));
+  updateCartBadges(false);
+  renderCartList();
 }
 
 function renderCustomerPaymentOptions() {
@@ -252,14 +248,11 @@ function submitGuestOrder() {
     return;
   }
 
-  // ບັນທຶກຊື່ ແລະ ເບີໂທໄວ້ໃນເຄື່ອງຂອງ Guest ເພື່ອໃຫ້ດຶງປີ້ເກົ່າໄດ້
   localStorage.setItem('ladolce_guest_contact', JSON.stringify({ name, phone }));
-
   closeGuestModal();
   executeOrderCreation(name, phone);
 }
 
-// 🔥 ສ້າງອໍເດີ້ ແລະ ຮອງຮັບການສັ່ງເພີ່ມໄດ້ຫຼາຍປີ້ພ້ອມກັນ
 async function executeOrderCreation(customerName, customerPhone) {
   showToast("ກຳລັງສົ່ງອໍເດີ້...");
 
@@ -287,10 +280,17 @@ async function executeOrderCreation(customerName, customerPhone) {
     delayNotice: null
   };
 
-  // 1. ບັນທຶກລົງ Memory & Firestore
-  orders.unshift(newOrder);
+  // 1. ບັນທຶກລົງ Firestore ທັນທີ
+  if (isFirebaseReady && db) {
+    try {
+      await db.collection("orders").doc(newOrder.id).set(newOrder);
+      console.log("✅ Order created on Firestore:", newOrder.id);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
-  // 2. ລ້າງກະຕ່າ ເພື່ອໃຫ້ສັ່ງອໍເດີ້ຕໍ່ໄປໄດ້ທັນທີ
+  // 2. ລ້າງກະຕ່າ
   cart = [];
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
   uploadedSlipDataUrl = null;
@@ -306,27 +306,9 @@ async function executeOrderCreation(customerName, customerPhone) {
   if (fileInput) fileInput.value = '';
 
   updateCartBadges();
-
-  // 3. ຍິງກົງຂຶ້ນ Cloud Firestore Real-time
-  if (isFirebaseReady && db) {
-    try {
-      await db.collection("orders").doc(newOrder.id).set(newOrder);
-      console.log("✅ Order Synced to Firestore:", newOrder.id);
-    } catch (err) {
-      console.warn("Firestore sync warning:", err);
-    }
-  }
-
   showToast("ສັ່ງຊື້ສຳເລັດແລ້ວ! 🎉");
 
   if (typeof switchCustomerTab === 'function') {
     switchCustomerTab('ticket');
   }
-}
-// 🔥 ລົບສິນຄ້າອອກຈາກກະຕ່າໄວທັນໃຈ ບໍ່ມີ Lag
-function removeCartItem(idx) {
-  cart.splice(idx, 1);
-  localStorage.setItem('ladolce_cart', JSON.stringify(cart));
-  updateCartBadges(false);
-  renderCartList(); // Re-render ທັນທີ
 }
