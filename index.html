@@ -46,7 +46,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-  <!-- Global Head Router -->
+  <!-- Global Head Router: ແກ້ໄຂ switchCustomerTab ໃຫ້ກົດໄດ້ທັນທີ 100% -->
   <script>
     function switchCustomerTab(tabName) {
       const tabs = ['menu', 'cart', 'ticket', 'profile'];
@@ -97,14 +97,14 @@
   <header class="fixed top-0 w-full z-40 bg-surface/92 backdrop-blur-md border-b border-hairline pt-safe">
     <div class="h-16 px-4 md:px-8 max-w-6xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <span class="w-8 h-8 rounded-full bg-forest-emerald text-white flex items-center justify-center font-serif text-[15px] font-bold shadow-xs">LD</span>
+        <span class="w-8 h-8 rounded-full bg-forest-emerald text-white flex items-center justify-center font-serif text-[15px] font-bold shadow-xs brand-initial-display">LD</span>
         <div class="flex flex-col">
-          <span class="font-serif-title tracking-[0.16em] text-[18px] font-semibold text-primary leading-tight">LA DOLCE</span>
+          <span class="font-serif-title tracking-[0.16em] text-[18px] font-semibold text-primary leading-tight brand-name-display">LA DOLCE</span>
           <span class="text-[9px] tracking-[0.2em] text-forest-leaf uppercase font-medium" id="currentRoleBadge">Customer View</span>
         </div>
       </div>
 
-      <!-- Staff Alarm Indicator -->
+      <!-- Staff Repeating Alarm Indicator -->
       <div id="staffRingingIndicator" class="hidden items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-full animate-pulse">
         <span class="w-2 h-2 rounded-full bg-red-600"></span>
         <span class="text-[11px] font-medium text-red-700">ມີອໍເດີ້ໃໝ່ເຂົ້າມາ!</span>
@@ -152,6 +152,8 @@
     <div id="customerAppView" class="space-y-6">
       <!-- TAB: MENU -->
       <section id="tab-customer-menu" class="space-y-6">
+        
+        <!-- Store Banner + Cart Button -->
         <div class="p-4 rounded-2xl bg-surface-pure border border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
           <div class="flex items-center gap-3">
             <span class="w-10 h-10 rounded-xl bg-forest-emerald/10 text-forest-emerald flex items-center justify-center shrink-0">
@@ -159,10 +161,10 @@
             </span>
             <div>
               <div class="flex items-center gap-2 flex-wrap">
-                <h2 class="font-serif-title text-[16px] text-primary font-bold">Numphou Branch</h2>
+                <h2 class="font-serif-title text-[16px] text-primary font-bold brand-branch-display">Downtown Flagship Roastery</h2>
                 <span id="customerStoreOpenBadge" class="px-2 py-0.5 rounded text-[9px] uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold">ເປີດບໍລິການ</span>
               </div>
-              <p class="text-[12px] text-taupe mt-0.5">ສັ່ງລ່ວງໜ້າ • ຮັບທີ່ເຄົາເຕີ້ພາຍໃນ 8–15 ນາທີ</p>
+              <p class="text-[12px] text-taupe mt-0.5">ສັ່ງລ່ວງໜ້າ • ຮັບທີ່ເຄົາເຕີ້ພາຍໃນ 8–15 ນາທີ • 🛵 ສົ່ງຟຣີ 500ມ</p>
             </div>
           </div>
 
@@ -199,15 +201,63 @@
                   <span>ຍອດລວມ (Subtotal)</span>
                   <span id="summarySubtotal" class="font-medium text-charcoal">0 LAK</span>
                 </div>
+
+                <!-- 🔥 ແຖວສະຫຼຸບ Coupon Discount -->
+                <div id="couponDiscountRow" class="flex justify-between text-emerald-800 text-[13px] font-bold hidden">
+                  <span class="flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[16px]">local_activity</span>
+                    <span>ສ່ວນຫຼຸດຄູປອງ</span>
+                  </span>
+                  <span id="summaryCouponDiscount">-0 LAK</span>
+                </div>
+
                 <div id="taxRowContainer" class="flex justify-between text-taupe hidden">
                   <span>ອາກອນ (Tax)</span>
                   <span id="summaryTax" class="font-medium text-charcoal">0 LAK</span>
                 </div>
+
                 <div class="h-px bg-hairline my-2"></div>
                 <div class="flex justify-between items-baseline pt-1">
                   <span class="font-serif-title text-[16px] text-primary font-medium">ຍອດລວມທັງໝົດ</span>
                   <span id="summaryTotal" class="font-serif-title text-[22px] text-forest-emerald font-bold">0 LAK</span>
                 </div>
+              </div>
+
+              <!-- 🔥 ກ່ອງປົດລັອກສົ່ງຟຣີ 500 ແມັດ (3 ຈອກ ຫຼື 120,000 LAK) -->
+              <div id="deliveryUnlockBox" class="p-3.5 rounded-xl bg-surface border border-hairline space-y-2">
+                <div id="deliveryProgressText"></div>
+                <div class="w-full bg-hairline h-1.5 rounded-full overflow-hidden">
+                  <div id="deliveryProgressBar" class="bg-forest-emerald h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
+                </div>
+
+                <!-- ແຖບເລືອກ Delivery / Pickup ເມື່ອປົດລັອກແລ້ວ -->
+                <div id="deliveryAddressPanel" class="hidden pt-2 border-t border-hairline space-y-2">
+                  <span class="block text-[11px] font-bold text-forest-emerald">ເລືອກຮູບແບບການຮັບ:</span>
+                  <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="setFulfillmentType('pickup')" id="optFulfillmentPickup" class="p-2 rounded-lg border-2 border-forest-emerald text-[11px] font-bold text-center bg-surface-pure cursor-pointer">
+                      🏬 ຮັບເອງໜ້າຮ້ານ
+                    </button>
+                    <button type="button" onclick="setFulfillmentType('delivery')" id="optFulfillmentDelivery" class="p-2 rounded-lg border-2 border-hairline text-[11px] font-bold text-center bg-surface-pure hover:border-forest-leaf cursor-pointer">
+                      🛵 ຈັດສົ່ງ Delivery
+                    </button>
+                  </div>
+                  <div id="deliveryInputFields" class="hidden pt-1">
+                    <label class="block text-[11px] text-taupe mb-1 font-bold">ທີ່ຢູ່ຈັດສົ່ງ (ບ້ານ, ເມືອງ, ຈຸດສັງເກດ ພາຍໃນ 500 ແມັດ):</label>
+                    <textarea id="deliveryAddressInput" rows="2" placeholder="ເຊັ່ນ: ບ້ານໂພນສີນວນ ຮ່ອມ 5 ເຮືອນປະຕູສີຂາວ..." class="w-full text-[12px] rounded-lg border border-hairline p-2 bg-surface"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 🔥 ຊ່ອງປ້ອນ Coupon Code -->
+              <div class="border-t border-hairline pt-3">
+                <label class="block text-[11px] uppercase tracking-wider font-semibold text-primary mb-1">Coupon ສ່ວນຫຼຸດ:</label>
+                <div class="flex gap-2">
+                  <input type="text" id="couponCodeInput" placeholder="ເຊັ່ນ: LADOLCE20, FREE20K" class="flex-1 text-[12px] uppercase rounded-lg border border-hairline p-2 font-mono"/>
+                  <button type="button" onclick="applyCouponCode()" class="px-3.5 py-2 rounded-lg bg-surface border border-forest-emerald text-forest-emerald hover:bg-forest-emerald hover:text-white text-[11px] font-bold transition-colors cursor-pointer">
+                    ນຳໃຊ້
+                  </button>
+                </div>
+                <span class="text-[10px] text-taupe block mt-1">ລອງໃຊ້: <strong>LADOLCE20</strong> (ຫຼຸດ 20% ສູງສຸດ 30,000 LAK)</span>
               </div>
 
               <!-- Multi-Bank Payment Selector -->
@@ -230,7 +280,7 @@
                 </div>
               </div>
 
-              <button type="button" onclick="handleStartCheckout()" class="w-full h-12 rounded-lg bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] uppercase tracking-wider font-medium flex items-center justify-center gap-2 transition-all shadow-xs">
+              <button type="button" onclick="handleStartCheckout()" class="w-full h-12 rounded-lg bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] uppercase tracking-wider font-medium flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer">
                 ຢືນຢັນການສັ່ງຊື້ (Confirm Order)
               </button>
             </div>
@@ -264,17 +314,22 @@
         <button onclick="logoutUser()" class="text-[11px] px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white uppercase tracking-wider">Sign Out</button>
       </div>
 
+      <!-- 3 Tabs ສໍາລັບ Staff -->
       <div class="flex gap-2 border-b border-hairline pb-2">
-        <button type="button" onclick="switchStaffSubTab('active')" id="staff-tab-active" class="px-4 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold">
-          ຄິວທີ່ກຳລັງດຳເນີນການ (Active Queue)
+        <button type="button" onclick="switchStaffSubTab('active')" id="staff-tab-active" class="px-4 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold shadow-xs">
+          ຄິວທີ່ກຳລັງດຳເນີນການ
         </button>
         <button type="button" onclick="switchStaffSubTab('history')" id="staff-tab-history" class="px-4 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px]">
-          ປະຫວັດທີ່ສຳເລັດແລ້ວ (Completed History)
+          ສຳເລັດແລ້ວ
+        </button>
+        <button type="button" onclick="switchStaffSubTab('cancelled')" id="staff-tab-cancelled" class="px-4 py-1.5 rounded-lg bg-surface border border-hairline text-red-700 text-[12px]">
+          ຍົກເລີກແລ້ວ
         </button>
       </div>
 
       <div id="staffOrdersContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-      <div id="staffHistoryContainer" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      <div id="staffOrdersContainerHistory" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      <div id="staffOrdersContainerCancelled" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
     </div>
 
     <!-- 3. SUPERADMIN SUITE -->
@@ -289,6 +344,9 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <button type="button" onclick="editCafeBranding()" class="px-3 py-1.5 rounded-lg border border-hairline hover:bg-surface text-[11px] font-bold">
+            🏪 ຕັ້ງຊື່ຮ້ານ
+          </button>
           <button onclick="toggleStoreStatus()" id="btnToggleStore" class="px-3 py-1.5 rounded-lg bg-emerald-800 text-white text-[11px] font-medium"></button>
           <button onclick="openAddMenuModal()" class="px-3.5 py-2 rounded-lg bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] font-medium tracking-wider flex items-center gap-1.5 shadow-xs">
             <span class="material-symbols-outlined text-[16px]">add_circle</span>
@@ -322,7 +380,7 @@
         </button>
       </div>
 
-      <!-- Panel 1: Analytics -->
+      <!-- Panel 1: Analytics & Transaction Log -->
       <div id="adm-panel-analytics" class="space-y-4">
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div class="p-4 rounded-xl bg-surface-pure border border-hairline shadow-xs">
@@ -524,6 +582,12 @@
             </label>
           </div>
         </div>
+
+        <!-- 🔥 ຊ່ອງ Special Request ສະເພາະຈອກ -->
+        <div class="space-y-1">
+          <label class="block text-[11px] uppercase tracking-wider font-semibold text-charcoal">05. ໝາຍເຫດພິເສດເຖິງບາຣິສຕ້າ (Optional):</label>
+          <input type="text" id="modalItemSpecialNote" placeholder="ເຊັ່ນ: ຂໍແຍກນ້ຳກ້ອນ, ຂໍນົມຫຼາຍໜ້ອຍໜຶ່ງ..." class="w-full text-[12px] rounded-lg border border-hairline p-2 bg-surface"/>
+        </div>
       </div>
 
       <div class="p-4 border-t border-hairline bg-surface flex items-center justify-between gap-4">
@@ -532,7 +596,7 @@
           <span id="modalQtyDisplay" class="px-3 font-medium text-[13px] text-charcoal">1</span>
           <button type="button" onclick="adjustModalQty(1)" class="w-9 h-9 flex items-center justify-center hover:bg-surface text-charcoal"><span class="material-symbols-outlined text-[16px]">add</span></button>
         </div>
-        <button type="button" onclick="confirmAddToCart()" class="flex-1 h-11 px-5 rounded-lg bg-forest-emerald text-white text-[12px] uppercase tracking-[0.14em] font-medium flex items-center justify-between hover:bg-forest-leaf transition-all shadow-xs">
+        <button type="button" onclick="confirmAddToCart()" class="flex-1 h-11 px-5 rounded-lg bg-forest-emerald text-white text-[12px] uppercase tracking-[0.14em] font-medium flex items-center justify-between hover:bg-forest-leaf transition-all shadow-xs cursor-pointer">
           <span>ເພີ່ມໃສ່ກະຕ່າ</span>
           <span id="modalDynamicTotal" class="font-serif-title text-[15px] font-normal">0 LAK</span>
         </button>
@@ -553,11 +617,11 @@
           <label class="block text-[11px] text-taupe uppercase mb-1">ເບີໂທລະສັບ:</label>
           <input type="tel" id="guestInputPhone" placeholder="+856 20 ..." class="w-full rounded-lg border border-hairline p-2.5 font-mono"/>
         </div>
-        <button type="button" onclick="submitGuestOrder()" class="w-full py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] uppercase font-bold hover:bg-forest-leaf transition-all shadow-xs">
+        <button type="button" onclick="submitGuestOrder()" class="w-full py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] uppercase font-bold hover:bg-forest-leaf transition-all shadow-xs cursor-pointer">
           ຢືນຢັນ ແລະ ສົ່ງອໍເດີ້
         </button>
       </div>
-      <button type="button" onclick="closeGuestModal()" class="w-full py-1 text-[11px] text-taupe text-center">ຍົກເລີກ</button>
+      <button type="button" onclick="closeGuestModal()" class="w-full py-1 text-[11px] text-taupe text-center cursor-pointer">ຍົກເລີກ</button>
     </div>
   </div>
 
@@ -574,10 +638,10 @@
         <span class="font-mono font-bold text-forest-emerald text-[16px] block pt-1" id="staffNotifTotal">0 LAK</span>
       </div>
       <div class="grid grid-cols-2 gap-2 pt-2">
-        <button type="button" onclick="closeStaffNewOrderModal()" class="py-2.5 rounded-lg border border-hairline text-taupe text-[12px] font-medium hover:bg-surface">
+        <button type="button" onclick="closeStaffNewOrderModal()" class="py-2.5 rounded-lg border border-hairline text-taupe text-[12px] font-medium hover:bg-surface cursor-pointer">
           ປິດສຽງເຕືອນ
         </button>
-        <button type="button" onclick="acceptStaffNewOrderFromModal()" class="py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold hover:bg-forest-leaf shadow-xs">
+        <button type="button" onclick="acceptStaffNewOrderFromModal()" class="py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold hover:bg-forest-leaf shadow-xs cursor-pointer">
           ຮັບອໍເດີ້ເລີຍ
         </button>
       </div>
@@ -593,9 +657,9 @@
       <div class="space-y-1">
         <span class="text-[11px] uppercase tracking-widest text-emerald-800 font-bold">Pick-up Ready!</span>
         <h3 class="font-serif-title text-[22px] font-bold text-primary">ເຄື່ອງດື່ມພ້ອມຮັບແລ້ວ! ☕</h3>
-        <p class="text-[12px] text-taupe">ເຄື່ອງດື່ມຂອງທ່ານປຸງແຕ່ງສຳເລັດແລ້ວ ເຊີນຮັບໄດ້ທີ່ counter La Dolce</p>
+        <p class="text-[12px] text-taupe">ເຄື່ອງດື່ມຂອງທ່ານປຸງແຕ່ງສຳເລັດແລ້ວ ເຊີນຮັບໄດ້ທີ່ Counter 02 Downtown Roastery</p>
       </div>
-      <button type="button" onclick="closeCustomerReadyModal()" class="w-full py-2.5 rounded-lg bg-emerald-800 text-white text-[12px] font-bold hover:bg-emerald-900 shadow-xs">
+      <button type="button" onclick="closeCustomerReadyModal()" class="w-full py-2.5 rounded-lg bg-emerald-800 text-white text-[12px] font-bold hover:bg-emerald-900 shadow-xs cursor-pointer">
         ຕົກລົງ / ໄປຮັບເຄື່ອງ
       </button>
     </div>
@@ -610,9 +674,9 @@
           <label class="block text-[11px] text-taupe uppercase mb-1">ເຫດຜົນ:</label>
           <textarea id="rejectInputReason" rows="3" class="w-full rounded-lg border border-hairline p-2.5" placeholder="ໃບສະລິບບໍ່ຖືກຕ້ອງ..."></textarea>
         </div>
-        <button type="button" onclick="confirmRejectOrder()" class="w-full py-2.5 rounded-lg bg-red-700 hover:bg-red-800 text-white text-[12px] uppercase font-bold transition-all shadow-xs">ຢືນຢັນການປະຕິເສດ</button>
+        <button type="button" onclick="confirmRejectOrder()" class="w-full py-2.5 rounded-lg bg-red-700 hover:bg-red-800 text-white text-[12px] uppercase font-bold transition-all shadow-xs cursor-pointer">ຢືນຢັນການປະຕິເສດ</button>
       </div>
-      <button type="button" onclick="closeRejectModal()" class="w-full py-1 text-[11px] text-taupe text-center">ຍົກເລີກ</button>
+      <button type="button" onclick="closeRejectModal()" class="w-full py-1 text-[11px] text-taupe text-center cursor-pointer">ຍົກເລີກ</button>
     </div>
   </div>
 
@@ -621,14 +685,14 @@
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline overflow-hidden shadow-2xl flex flex-col">
       <div class="p-4 border-b border-hairline flex items-center justify-between">
         <h4 class="font-serif-title text-[16px] text-primary">Transfer Slip</h4>
-        <button onclick="closeSlipAuditModal()" class="w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-taupe"><span class="material-symbols-outlined text-[16px]">close</span></button>
+        <button onclick="closeSlipAuditModal()" class="w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-taupe cursor-pointer"><span class="material-symbols-outlined text-[16px]">close</span></button>
       </div>
       <div class="p-4 text-center bg-surface">
         <img id="slipAuditImage" src="" class="max-h-80 mx-auto rounded-xl border border-hairline object-contain"/>
         <p class="text-[11px] text-taupe font-mono mt-2" id="slipAuditOrderRef">Ref #LD-000</p>
       </div>
       <div class="p-4 border-t border-hairline bg-surface-pure flex justify-end">
-        <button onclick="closeSlipAuditModal()" class="px-4 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-medium">ກວດສອບແລ້ວ</button>
+        <button onclick="closeSlipAuditModal()" class="px-4 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-medium cursor-pointer">ກວດສອບແລ້ວ</button>
       </div>
     </div>
   </div>
@@ -653,16 +717,16 @@
           <label class="block text-[11px] text-taupe uppercase mb-1">ລະຫັດຜ່ານ</label>
           <input type="password" id="authPassword" class="w-full rounded-lg border border-hairline p-2.5" placeholder="••••••••"/>
         </div>
-        <button onclick="handleAuthSubmit()" id="btnAuthSubmit" class="w-full py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] uppercase tracking-wider font-semibold hover:bg-forest-leaf transition-colors">
+        <button onclick="handleAuthSubmit()" id="btnAuthSubmit" class="w-full py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] uppercase tracking-wider font-semibold hover:bg-forest-leaf transition-colors cursor-pointer">
           Sign In
         </button>
         <div class="text-center pt-1">
-          <button onclick="toggleAuthMode()" id="authToggleText" class="text-[11px] text-taupe hover:text-forest-emerald underline">
+          <button onclick="toggleAuthMode()" id="authToggleText" class="text-[11px] text-taupe hover:text-forest-emerald underline cursor-pointer">
             New customer? Create an account
           </button>
         </div>
       </div>
-      <button onclick="closeAuthModal()" class="w-full py-1 text-[11px] text-taupe text-center">ປິດ</button>
+      <button onclick="closeAuthModal()" class="w-full py-1 text-[11px] text-taupe text-center cursor-pointer">ປິດ</button>
     </div>
   </div>
 
@@ -671,7 +735,7 @@
     <div class="bg-surface-pure w-full max-w-lg rounded-2xl border border-hairline overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
       <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
         <h3 class="font-serif-title text-[18px] text-primary font-medium">ເພີ່ມ / ແກ້ໄຂເມນູ</h3>
-        <button type="button" onclick="closeAddMenuModal()" class="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-taupe"><span class="material-symbols-outlined text-[18px]">close</span></button>
+        <button type="button" onclick="closeAddMenuModal()" class="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-taupe cursor-pointer"><span class="material-symbols-outlined text-[18px]">close</span></button>
       </div>
 
       <form id="menuForm" class="p-5 overflow-y-auto space-y-4 text-[13px] flex-1">
@@ -763,8 +827,8 @@
         </div>
 
         <div class="flex justify-end gap-2 pt-3 border-t border-hairline">
-          <button type="button" onclick="closeAddMenuModal()" class="px-4 py-2 border border-hairline rounded-lg text-taupe">ຍົກເລີກ</button>
-          <button type="button" onclick="saveMenuItem(event)" class="px-5 py-2 rounded-lg bg-forest-emerald text-white font-medium hover:bg-forest-leaf transition-all shadow-xs">
+          <button type="button" onclick="closeAddMenuModal()" class="px-4 py-2 border border-hairline rounded-lg text-taupe cursor-pointer">ຍົກເລີກ</button>
+          <button type="button" onclick="saveMenuItem(event)" class="px-5 py-2 rounded-lg bg-forest-emerald text-white font-medium hover:bg-forest-leaf transition-all shadow-xs cursor-pointer">
             ບັນທຶກເມນູ
           </button>
         </div>
@@ -777,7 +841,7 @@
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-5 shadow-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-hairline pb-2">
         <h3 class="font-serif-title text-[17px] text-primary font-medium" id="modifierModalTitle">ເພີ່ມ / ແກ້ໄຂຕົວເລືອກ</h3>
-        <button type="button" onclick="closeModifierModal()" class="w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-taupe"><span class="material-symbols-outlined text-[16px]">close</span></button>
+        <button type="button" onclick="closeModifierModal()" class="w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-taupe cursor-pointer"><span class="material-symbols-outlined text-[16px]">close</span></button>
       </div>
 
       <form id="modifierForm" onsubmit="saveModifierFromModal(event)" class="space-y-3 text-[12px]">
@@ -797,8 +861,8 @@
           <input required id="inputModPrice" type="number" step="1000" placeholder="15000" class="w-full rounded-lg border border-hairline p-2 font-mono"/>
         </div>
         <div class="flex justify-end gap-2 pt-2 border-t border-hairline">
-          <button type="button" onclick="closeModifierModal()" class="px-3 py-1.5 border border-hairline rounded-lg text-taupe">ຍົກເລີກ</button>
-          <button type="submit" class="px-4 py-1.5 rounded-lg bg-forest-emerald text-white font-medium">ບັນທຶກ</button>
+          <button type="button" onclick="closeModifierModal()" class="px-3 py-1.5 border border-hairline rounded-lg text-taupe cursor-pointer">ຍົກເລີກ</button>
+          <button type="submit" class="px-4 py-1.5 rounded-lg bg-forest-emerald text-white font-medium cursor-pointer">ບັນທຶກ</button>
         </div>
       </form>
     </div>
@@ -809,7 +873,7 @@
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-5 shadow-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-hairline pb-2">
         <h3 class="font-serif-title text-[17px] text-primary font-medium">ເພີ່ມຊ່ອງທາງຮັບເງິນ QR</h3>
-        <button onclick="closeAddPaymentModal()" class="w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-taupe"><span class="material-symbols-outlined text-[16px]">close</span></button>
+        <button onclick="closeAddPaymentModal()" class="w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-taupe cursor-pointer"><span class="material-symbols-outlined text-[16px]">close</span></button>
       </div>
       <form id="paymentForm" class="space-y-3 text-[12px]">
         <div>
@@ -830,8 +894,8 @@
           <img id="bankQrPreview" class="h-28 mx-auto mt-2 rounded border border-hairline object-contain hidden" src=""/>
         </div>
         <div class="flex justify-end gap-2 pt-2 border-t border-hairline">
-          <button type="button" onclick="closeAddPaymentModal()" class="px-3 py-1.5 border border-hairline rounded text-taupe">ຍົກເລີກ</button>
-          <button type="button" onclick="savePaymentMethod(event)" class="px-4 py-1.5 rounded bg-forest-emerald text-white font-medium">ບັນທຶກ</button>
+          <button type="button" onclick="closeAddPaymentModal()" class="px-3 py-1.5 border border-hairline rounded text-taupe cursor-pointer">ຍົກເລີກ</button>
+          <button type="button" onclick="savePaymentMethod(event)" class="px-4 py-1.5 rounded bg-forest-emerald text-white font-medium cursor-pointer">ບັນທຶກ</button>
         </div>
       </form>
     </div>
@@ -843,7 +907,7 @@
     <span id="toastMsg">Action completed</span>
   </div>
 
-  <!-- ================= LOAD MODULAR SCRIPTS IN ORDER ================= -->
+  <!-- ================= LOAD SCRIPTS ================= -->
   <script src="js/config.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/auth.js"></script>
