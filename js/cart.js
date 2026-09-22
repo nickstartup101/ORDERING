@@ -5,8 +5,29 @@
 let selectedBankMethodId = null;
 let uploadedSlipDataUrl = null;
 
+// 🔥 ຟັງຊັນເພີ່ມເຂົ້າກະຕ່າ ພ້ອມ Visual Feedback & Button Transform
 function confirmAddToCart() {
   if (!activeCustomizingItem) return;
+
+  const btn = event?.currentTarget || document.querySelector('#customizeModal button[onclick="confirmAddToCart()"]');
+  const originalHTML = btn ? btn.innerHTML : '';
+
+  // 1. ປ່ຽນປຸ່ມໃຫ້ສະແດງເຄື່ອງໝາຍຖືກທັນທີ (Button Instant Feedback)
+  if (btn) {
+    btn.classList.add('bg-emerald-700', 'scale-[0.98]');
+    btn.innerHTML = `
+      <span class="flex items-center gap-1.5 font-bold mx-auto text-[13px]">
+        <span class="material-symbols-outlined text-[18px]">check_circle</span>
+        <span>ເພີ່ມເຂົ້າກະຕ່າແລ້ວ!</span>
+      </span>
+    `;
+  }
+
+  // ສຽງ Pop ເບົາໆ
+  if (typeof playChime === 'function') {
+    playChime(false);
+  }
+
   let unitPrice = 35000;
   if (activeCustomizingItem.variants && activeCustomizingItem.variants[selectedVariant]) {
     unitPrice = parseFloat(activeCustomizingItem.variants[selectedVariant]) || 35000;
@@ -43,20 +64,48 @@ function confirmAddToCart() {
   });
 
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
-  updateCartBadges();
-  closeCustomizeModal();
-  showToast(`ເພີ່ມ "${activeCustomizingItem.name}" ເຂົ້າກະຕ່າແລ້ວ!`);
+
+  // 2. ລໍຖ້າ 0.35 ວິນາທີ ໃຫ້ລູກຄ້າເຫັນປຸ່ມປ່ຽນເປັນສີຂຽວ ແລ້ວຈຶ່ງປິດ Modal
+  setTimeout(() => {
+    if (btn) {
+      btn.classList.remove('bg-emerald-700', 'scale-[0.98]');
+      btn.innerHTML = originalHTML;
+    }
+    closeCustomizeModal();
+    updateCartBadges(true); // ສັ່ງໃຫ້ Badge ເຕັ້ນ Bounce
+    showToast(`✓ ເພີ່ມ "${activeCustomizingItem.name}" (${qty} ລາຍການ) ເຂົ້າກະຕ່າແລ້ວ!`);
+  }, 350);
 }
 
-function updateCartBadges() {
+// 🔥 ອັບເດດຕົວເລກ Badge ພ້ອມ Animation ເຕັ້ນ (Bounce Pop)
+function updateCartBadges(shouldAnimate = false) {
   const count = cart.reduce((s, i) => s + (i.quantity || 1), 0);
   const badge = document.getElementById('cartBadgeCount');
-  if (badge) badge.textContent = count;
-  const dot = document.getElementById('bottomNavCartDot');
-  if (dot) dot.classList.toggle('hidden', count === 0);
+  const bottomDot = document.getElementById('bottomNavCartDot');
+
+  if (badge) {
+    badge.textContent = count;
+    if (shouldAnimate) {
+      badge.classList.remove('animate-bounce');
+      // Force reflow
+      void badge.offsetWidth;
+      badge.classList.add('animate-bounce', 'ring-4', 'ring-emerald-300');
+      setTimeout(() => {
+        badge.classList.remove('ring-4', 'ring-emerald-300');
+      }, 1000);
+    }
+  }
+
+  if (bottomDot) {
+    bottomDot.classList.toggle('hidden', count === 0);
+    if (shouldAnimate && count > 0) {
+      bottomDot.classList.add('animate-ping');
+      setTimeout(() => bottomDot.classList.remove('animate-ping'), 1000);
+    }
+  }
+
   renderCartList();
 }
-
 function renderCartList() {
   const container = document.getElementById('cartListContainer');
   if (!container) return;
