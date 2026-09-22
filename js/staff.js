@@ -37,12 +37,11 @@ function renderStaffOrders() {
     activeContainer.innerHTML = activeOrders.map(o => {
       const customerKey = o.customerPhone || o.customerName;
       const totalFromCustomer = customerOrderCounts[customerKey] || 1;
-      const theme = getCustomerColorTheme(customerKey); // ສີປະຈຳຕົວລູກຄ້າ
+      const theme = getCustomerColorTheme(customerKey);
 
       return `
         <div class="p-4 bg-surface-pure border-2 ${o.status === 'pending' ? 'border-red-400 animate-pulse' : 'border-hairline'} rounded-2xl space-y-3 relative overflow-hidden shadow-xs">
           
-          <!-- 🔥 Customer Match Indicator Header (ແຖບສີຈັບຄູ່ລູກຄ້າຄົນດຽວກັນ) -->
           <div class="p-2 rounded-xl ${theme.bg} border ${theme.border} flex items-center justify-between">
             <div class="flex items-center gap-1.5">
               <span class="w-6 h-6 rounded-full bg-white border ${theme.border} flex items-center justify-center font-bold text-[11px] ${theme.text}">
@@ -119,26 +118,36 @@ function closeSlipAuditModal() {
   document.getElementById('slipAuditModal').classList.add('hidden');
 }
 
+// 🔥 ອັບເດດສະຖານະ ແລະ Sync ຂຶ້ນ Cloud Firestore Real-time
 async function updateOrderStatus(id, status) {
-  stopStaffAlarm();
+  if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
+
+  // 1. ອັບເດດ Memory
   const order = orders.find(o => o.id === id);
   if (order) {
     order.status = status;
     if (status === 'completed') {
       order.completedAt = new Date().toISOString();
     }
-    
-    if (isFirebaseReady && db) {
+    localStorage.setItem('ladolce_orders', JSON.stringify(orders));
+  }
+
+  renderStaffOrders();
+
+  // 2. 🔥 ຍິງກົງຂຶ້ນ Cloud Firestore
+  if (isFirebaseReady && db) {
+    try {
       await db.collection("orders").doc(id).update({
         status: status,
         completedAt: status === 'completed' ? new Date().toISOString() : null
       });
+      console.log("✅ Firestore Status Updated:", id, status);
+    } catch (e) {
+      console.error("Firestore update error:", e);
     }
-
-    renderStaffOrders();
-    if (typeof renderAnalytics === 'function') renderAnalytics();
-    showToast(`ອັບເດດ ${id} ເປັນ ${status}`);
   }
+
+  showToast(`ອັບເດດ ${id} ເປັນ ${status}`);
 }
 
 async function sendDelayNotice(id) {
@@ -165,7 +174,7 @@ function closeRejectModal() {
 async function confirmRejectOrder() {
   const reason = document.getElementById('rejectInputReason').value.trim();
   if (!reason) return;
-  stopStaffAlarm();
+  if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
 
   const order = orders.find(o => o.id === activeRejectOrderId);
   if (order) {
@@ -194,7 +203,7 @@ function triggerStaffIncomingModal(order) {
 }
 
 function closeStaffNewOrderModal() {
-  stopStaffAlarm();
+  if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
   document.getElementById('staffNewOrderModal')?.classList.add('hidden');
 }
 
@@ -203,35 +212,4 @@ function acceptStaffNewOrderFromModal() {
     updateOrderStatus(currentModalOrderId, 'crafting');
   }
   closeStaffNewOrderModal();
-}
-// 🔥 ອັບເດດສະຖານະ ແລະ Sync ໄປຫາລູກຄ້າ Real-time ແທ້ 100%
-async function updateOrderStatus(id, status) {
-  if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
-
-  // 1. ອັບເດດ Memory Local
-  const order = orders.find(o => o.id === id);
-  if (order) {
-    order.status = status;
-    if (status === 'completed') {
-      order.completedAt = new Date().toISOString();
-    }
-    localStorage.setItem('ladolce_orders', JSON.stringify(orders));
-  }
-
-  renderStaffOrders();
-
-  // 2. 🔥 ຍິງກົງຂຶ້ນ Cloud Firestore ທັນທີ (ສັນຍາລັກ Ready ຈະແລ່ນໄປຫາລູກຄ້າ Real-time)
-  if (isFirebaseReady && db) {
-    try {
-      await db.collection("orders").doc(id).update({
-        status: status,
-        completedAt: status === 'completed' ? new Date().toISOString() : null
-      });
-      console.log("✅ [Firestore Updated] Order", id, "status set to:", status);
-    } catch (e) {
-      console.error("Firestore update error:", e);
-    }
-  }
-
-  showToast(`ອັບເດດ ${id} ເປັນ ${status}`);
 }
