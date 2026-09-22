@@ -29,9 +29,9 @@ try {
 }
 
 const REGISTERED_ACCOUNTS = [
-  { email: "customer@ladolce.com", password: "123", name: "Elena Rostova", role: "customer", phone: "+856 20 5512 8899" },
-  { email: "staff@ladolce.com", password: "123", name: "Mateo (Barista)", role: "staff", phone: "+856 20 7788 9900" },
-  { email: "owner@ladolce.com", password: "123", name: "Sengsavanh (Superadmin)", role: "superadmin", phone: "+856 20 9900 1122" }
+  { email: "customer@ladolce.com", password: "123", name: "Nick test", role: "customer", phone: "+856 20 77609857" },
+  { email: "staff@ladolce.com", password: "123", name: "cashiers (Barista)", role: "staff", phone: "+856 20 77362388" },
+  { email: "owner@ladolce.com", password: "123", name: "Namfon (Superadmin)", role: "superadmin", phone: "+856 20 77362388" }
 ];
 
 const DEFAULT_PAYMENTS = [
@@ -59,7 +59,9 @@ let storeSettings = JSON.parse(localStorage.getItem('ladolce_store_settings')) |
   taxRatePercent: 0 // ຕອນນີ້ຮ້ານຍັງບໍ່ມີ Tax = 0%
 };
 
-let menuItems = JSON.parse(localStorage.getItem('ladolce_menu')) || DEFAULT_MENU;
+// ໃນ js/config.js:
+// ❌ ຕັດ localStorage.getItem('ladolce_menu') ອອກ
+let menuItems = []; // ໃຫ້ເປັນ Array ຫວ່າງເປົ່າ ເພື່ອລໍຖ້າດຶງຂໍ້ມູນສົດໆຈາກ Cloud Firestore
 let paymentMethods = JSON.parse(localStorage.getItem('ladolce_payment_methods')) || DEFAULT_PAYMENTS;
 let modifiers = JSON.parse(localStorage.getItem('ladolce_modifiers')) || DEFAULT_MODIFIERS;
 let orders = JSON.parse(localStorage.getItem('ladolce_orders')) || [];
