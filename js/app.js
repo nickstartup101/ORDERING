@@ -1,5 +1,5 @@
 // =======================================================
-// APPLICATION ORCHESTRATION & LIVE FIRESTORE STREAM ENGINE
+// LA DOLCE — REALTIME CLOUD WEBSOCKET STREAM ENGINE
 // =======================================================
 
 function showToast(msg) {
@@ -23,18 +23,18 @@ function closeCustomerReadyModal() {
   document.getElementById('customerReadyModal')?.classList.add('hidden');
 }
 
-let previousPendingOrders = new Set();
-let notifiedReadyOrders = new Set();
+// ຕົວແປຈື່ຈຳສະຖານະອໍເດີ້ ເພື່ອບໍ່ໃຫ້ເຕືອນຊ້ຳ
+let knownOrderStatuses = {};
 
-// 🔥 GLOBAL REAL-TIME FIRESTORE LISTENER (ເຊື່ອມຕໍ່ທັນທີຕອນເປີດແອັບ)
+// 🔥 REAL-TIME FIRESTORE LISTENER (ເຮັດວຽກທັນທີ 100%)
 function startRealtimeCloudEngine() {
   if (!isFirebaseReady || !db) {
-    console.warn("Firebase not ready yet, retrying in 500ms...");
+    console.warn("Waiting for Firebase...");
     setTimeout(startRealtimeCloudEngine, 500);
     return;
   }
 
-  console.log("⚡ [Realtime Engine] Live WebSocket Connected!");
+  console.log("⚡ [Firestore Live Stream] Connecting...");
 
   // 1. Sync Menu Items
   db.collection("menu_items").onSnapshot(snapshot => {
@@ -46,37 +46,44 @@ function startRealtimeCloudEngine() {
       if (typeof renderMenu === 'function') renderMenu();
       if (typeof renderAdminMenu === 'function') renderAdminMenu();
     }
-  }, err => console.error("Menu stream error:", err));
+  }, err => console.warn("Menu stream issue:", err));
 
-  // 2. 🔥 Sync Orders Real-time ແທ້ 100% (ທັງ Staff ແລະ ລູກຄ້າ)
-  db.collection("orders").orderBy("createdAt", "desc").onSnapshot(snapshot => {
+  // 2. 🔥 LIVE SYNC ORDERS (ແກ້ໄຂບໍ່ໃຊ້ orderBy ເພື່ອປ້ອງກັນ Index Error)
+  db.collection("orders").onSnapshot(snapshot => {
     const liveOrders = [];
-    snapshot.forEach(doc => liveOrders.push({ id: doc.id, ...doc.data() }));
+    snapshot.forEach(doc => {
+      liveOrders.push({ id: doc.id, ...doc.data() });
+    });
+
+    // Sort ຕາມວັນທີຫຼ້າສຸດຢູ່ໃນ Memory ແທນ
+    liveOrders.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     orders = liveOrders;
     localStorage.setItem('ladolce_orders', JSON.stringify(orders));
 
-    console.log("📡 [Live Orders Stream] Received", orders.length, "orders from Firestore");
+    console.log("📡 [Live Orders Received]:", orders.length, "orders");
 
     // ==========================================
-    // 1. ຝັ່ງ STAFF: ດັກຈັບອໍເດີ້ໃໝ່ (Pending)
+    // 1. ຝັ່ງ STAFF: ດັກຈັບອໍເດີ້ໃໝ່ເຂົ້າມາ (Pending)
     // ==========================================
     if (currentUser && currentUser.role === 'staff') {
       const pendingList = orders.filter(o => o.status === 'pending');
-      const newOrders = pendingList.filter(o => !previousPendingOrders.has(o.id));
+
+      // ຊອກຫາອໍເດີ້ໃໝ່ທີ່ຍັງບໍ່ທັນໄດ້ແຈ້ງເຕືອນ Staff
+      const newOrders = pendingList.filter(o => !knownOrderStatuses[o.id]);
 
       if (newOrders.length > 0) {
         const latestNewOrder = newOrders[0];
-        console.log("🔔 [Staff Alert] New Incoming Order:", latestNewOrder.id);
-        
-        // ສຽງ Alarm ດັງວົນຊ້ຳ
+        console.log("🔔 [Staff Push Alert] New Order:", latestNewOrder.id);
+
+        // 1. ດັງສຽງ Alarm ວົນຊ້ຳ
         if (typeof startStaffAlarm === 'function') startStaffAlarm();
-        
-        // Pop-up ເດັ້ງເຕັມຈໍ Staff
+
+        // 2. ເດັ້ງ Pop-up ເຕັມຈໍ Staff
         if (typeof triggerStaffIncomingModal === 'function') {
           triggerStaffIncomingModal(latestNewOrder);
         }
 
-        newOrders.forEach(o => previousPendingOrders.add(o.id));
+        newOrders.forEach(o => knownOrderStatuses[o.id] = 'pending');
       } else if (pendingList.length === 0) {
         if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
       }
@@ -85,7 +92,7 @@ function startRealtimeCloudEngine() {
     }
 
     // ==========================================
-    // 2. ຝັ່ງ ລູກຄ້າ: ດັກຈັບສະຖານະ Ready & Completed
+    // 2. ຝັ່ງ ລູກຄ້າ: ດັກຈັບສະຖານະ READY & COMPLETED
     // ==========================================
     let myPhone = currentUser ? currentUser.phone : null;
     let myEmail = currentUser ? currentUser.email : null;
@@ -94,27 +101,36 @@ function startRealtimeCloudEngine() {
       if (guestContact) myPhone = guestContact.phone;
     }
 
-    const myCurrentOrders = orders.filter(o => 
-      (myPhone && o.customerPhone === myPhone) || (myEmail && o.customerEmail === myEmail)
-    );
+    // ຊອກຫາອໍເດີ້ທັງໝົດຂອງລູກຄ້າຄົນນີ້
+    const myOrders = orders.filter(o => {
+      const matchPhone = myPhone && o.customerPhone && (o.customerPhone.replace(/\s+/g, '') === myPhone.replace(/\s+/g, ''));
+      const matchEmail = myEmail && o.customerEmail && (o.customerEmail.toLowerCase() === myEmail.toLowerCase());
+      return matchPhone || matchEmail;
+    });
 
-    myCurrentOrders.forEach(myOrder => {
-      // ຖ້າ Staff ກົດ Ready ແລ້ວ -> ເດັ້ງ Pop-up ພ້ອມສຽງ Crystal Marimba ຫາລູກຄ້າທັນທີ!
-      if (myOrder.status === 'ready' && !notifiedReadyOrders.has(myOrder.id)) {
-        notifiedReadyOrders.add(myOrder.id);
-        console.log("☕ [Customer Alert] Drink Ready for Order:", myOrder.id);
-        
+    myOrders.forEach(order => {
+      const prevStatus = knownOrderStatuses[order.id];
+
+      // 🔥 ຖ້າສະຖານະປ່ຽນເປັນ READY -> ເດັ້ງ Pop-up ພ້ອມສຽງກະດິ່ງ Crystal Marimba ທັນທີ!
+      if (order.status === 'ready' && prevStatus !== 'ready') {
+        knownOrderStatuses[order.id] = 'ready';
+        console.log("☕ [Customer Push Alert] Drink Ready for Order:", order.id);
+
         if (typeof playChime === 'function') playChime(true);
         showCustomerReadyModal();
+      } else if (order.status === 'completed') {
+        knownOrderStatuses[order.id] = 'completed';
+      } else {
+        knownOrderStatuses[order.id] = order.status;
       }
     });
 
-    // ອັບເດດໜ້າ Ticket ທັນທີ Real-time ໂດຍບໍ່ຕ້ອງ Refresh
+    // ອັບເດດໜ້າ Ticket ທັນທີ Real-time
     if (typeof renderCustomerTicket === 'function') {
       renderCustomerTicket();
     }
 
-    // ອັບເດດໜ້າ Profile ທັນທີ
+    // ອັບເດດໜ້າ Profile ທັນທີ Real-time
     if (typeof renderCustomerProfile === 'function') {
       renderCustomerProfile();
     }
@@ -135,6 +151,6 @@ window.addEventListener('DOMContentLoaded', () => {
     dispatchRoleView(currentUser.role);
   }
 
-  // ເຊື່ອມຕໍ່ Realtime Stream ທັນທີຕອນເປີດແອັບ
+  // ເຊື່ອມຕໍ່ Live Stream ທັນທີ!
   startRealtimeCloudEngine();
 });
