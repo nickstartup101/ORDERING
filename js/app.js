@@ -1,5 +1,5 @@
 // =======================================================
-// LA DOLCE — REALTIME CLOUD WEBSOCKET STREAM ENGINE
+// LA DOLCE — REAL-TIME CLOUD STREAM & AUTO EVENT DISPATCHER
 // =======================================================
 
 function showToast(msg) {
@@ -23,10 +23,9 @@ function closeCustomerReadyModal() {
   document.getElementById('customerReadyModal')?.classList.add('hidden');
 }
 
-// ຕົວແປຈື່ຈຳສະຖານະອໍເດີ້ ເພື່ອບໍ່ໃຫ້ເຕືອນຊ້ຳ
 let knownOrderStatuses = {};
 
-// 🔥 REAL-TIME FIRESTORE LISTENER (ເຮັດວຽກທັນທີ 100%)
+// 🔥 Real-time Cloud Stream Engine
 function startRealtimeCloudEngine() {
   if (!isFirebaseReady || !db) {
     console.warn("Waiting for Firebase...");
@@ -34,7 +33,7 @@ function startRealtimeCloudEngine() {
     return;
   }
 
-  console.log("⚡ [Firestore Live Stream] Connecting...");
+  console.log("⚡ [Firestore Live Stream] Live WebSocket Connected!");
 
   // 1. Sync Menu Items
   db.collection("menu_items").onSnapshot(snapshot => {
@@ -48,17 +47,16 @@ function startRealtimeCloudEngine() {
     }
   }, err => console.warn("Menu stream issue:", err));
 
-  // 2. 🔥 LIVE SYNC ORDERS (ແກ້ໄຂບໍ່ໃຊ້ orderBy ເພື່ອປ້ອງກັນ Index Error)
+  // 2. 🔥 Sync Orders Real-time ແທ້ 100% (ທັງ Staff ແລະ ລູກຄ້າ)
   db.collection("orders").onSnapshot(snapshot => {
     const liveOrders = [];
     snapshot.forEach(doc => {
       liveOrders.push({ id: doc.id, ...doc.data() });
     });
 
-    // Sort ຕາມວັນທີຫຼ້າສຸດຢູ່ໃນ Memory ແທນ
+    // Sort ຕາມວັນທີຫຼ້າສຸດ
     liveOrders.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     orders = liveOrders;
-    localStorage.setItem('ladolce_orders', JSON.stringify(orders));
 
     console.log("📡 [Live Orders Received]:", orders.length, "orders");
 
@@ -67,18 +65,14 @@ function startRealtimeCloudEngine() {
     // ==========================================
     if (currentUser && currentUser.role === 'staff') {
       const pendingList = orders.filter(o => o.status === 'pending');
-
-      // ຊອກຫາອໍເດີ້ໃໝ່ທີ່ຍັງບໍ່ທັນໄດ້ແຈ້ງເຕືອນ Staff
       const newOrders = pendingList.filter(o => !knownOrderStatuses[o.id]);
 
       if (newOrders.length > 0) {
         const latestNewOrder = newOrders[0];
         console.log("🔔 [Staff Push Alert] New Order:", latestNewOrder.id);
 
-        // 1. ດັງສຽງ Alarm ວົນຊ້ຳ
         if (typeof startStaffAlarm === 'function') startStaffAlarm();
 
-        // 2. ເດັ້ງ Pop-up ເຕັມຈໍ Staff
         if (typeof triggerStaffIncomingModal === 'function') {
           triggerStaffIncomingModal(latestNewOrder);
         }
@@ -101,7 +95,6 @@ function startRealtimeCloudEngine() {
       if (guestContact) myPhone = guestContact.phone;
     }
 
-    // ຊອກຫາອໍເດີ້ທັງໝົດຂອງລູກຄ້າຄົນນີ້
     const myOrders = orders.filter(o => {
       const matchPhone = myPhone && o.customerPhone && (o.customerPhone.replace(/\s+/g, '') === myPhone.replace(/\s+/g, ''));
       const matchEmail = myEmail && o.customerEmail && (o.customerEmail.toLowerCase() === myEmail.toLowerCase());
@@ -111,7 +104,7 @@ function startRealtimeCloudEngine() {
     myOrders.forEach(order => {
       const prevStatus = knownOrderStatuses[order.id];
 
-      // 🔥 ຖ້າສະຖານະປ່ຽນເປັນ READY -> ເດັ້ງ Pop-up ພ້ອມສຽງກະດິ່ງ Crystal Marimba ທັນທີ!
+      // ☕ ຖ້າສະຖານະປ່ຽນເປັນ READY -> ເດັ້ງ Pop-up ພ້ອມສຽງກະດິ່ງ Crystal Marimba ທັນທີ!
       if (order.status === 'ready' && prevStatus !== 'ready') {
         knownOrderStatuses[order.id] = 'ready';
         console.log("☕ [Customer Push Alert] Drink Ready for Order:", order.id);
@@ -125,12 +118,12 @@ function startRealtimeCloudEngine() {
       }
     });
 
-    // ອັບເດດໜ້າ Ticket ທັນທີ Real-time
+    // ອັບເດດໜ້າ Ticket ທັນທີ
     if (typeof renderCustomerTicket === 'function') {
       renderCustomerTicket();
     }
 
-    // ອັບເດດໜ້າ Profile ທັນທີ Real-time
+    // ອັບເດດໜ້າ Profile ທັນທີ
     if (typeof renderCustomerProfile === 'function') {
       renderCustomerProfile();
     }
@@ -151,6 +144,6 @@ window.addEventListener('DOMContentLoaded', () => {
     dispatchRoleView(currentUser.role);
   }
 
-  // ເຊື່ອມຕໍ່ Live Stream ທັນທີ!
+  // ເລີ່ມຕົ້ນ Live Stream
   startRealtimeCloudEngine();
 });
