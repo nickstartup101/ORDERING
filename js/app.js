@@ -15,7 +15,6 @@ function showToast(msg) {
   }, 1800);
 }
 
-// Pop-up ສຳລັບລູກຄ້າ ເມື່ອເຄື່ອງດື່ມພ້ອມຮັບ
 function showCustomerReadyModal() {
   document.getElementById('customerReadyModal')?.classList.remove('hidden');
 }
@@ -26,7 +25,7 @@ function closeCustomerReadyModal() {
 
 let previousPendingCount = 0;
 
-// Real-time Cloud Firestore Listener
+// 🔥 Real-time Cloud Stream Sync (ແກ້ໄຂ Pop-up Ready ໃຫ້ເດັ້ງຫາລູກຄ້າ 100%)
 function initCloudStream() {
   if (!isFirebaseReady || !db) return;
 
@@ -42,7 +41,7 @@ function initCloudStream() {
     }
   }, err => console.warn("Menu stream:", err));
 
-  // 2. Sync Orders (ສຽງ & Pop-up ແຍກຢ່າງເຂັ້ມງວດ 100%)
+  // 2. Sync Orders Real-time
   db.collection("orders").orderBy("createdAt", "desc").onSnapshot(snapshot => {
     if (!snapshot.empty) {
       const remote = [];
@@ -50,52 +49,46 @@ function initCloudStream() {
       orders = remote;
       localStorage.setItem('ladolce_orders', JSON.stringify(orders));
 
-      // 🔥 1. ສຽງ & Pop-up ເຮັດວຽກສະເພາະເຄື່ອງຂອງ STAFF (BARISTA) ເທົ່ານັ້ນ!
+      // 🔥 ດັກຈັບສະເພາະ Staff
       if (currentUser && currentUser.role === 'staff') {
         const pendingOrders = orders.filter(o => o.status === 'pending');
-        
         if (pendingOrders.length > previousPendingCount) {
           const latest = pendingOrders[0];
-          // Pop-up ເດັ້ງເຕັມຈໍ Staff
-          if (typeof triggerStaffIncomingModal === 'function') {
-            triggerStaffIncomingModal(latest);
-          }
-          // ສຽງ Alarm ດັງວົນຊ້ຳສະເພາະ Staff
-          if (typeof startStaffAlarm === 'function') {
-            startStaffAlarm();
-          }
+          if (typeof triggerStaffIncomingModal === 'function') triggerStaffIncomingModal(latest);
+          if (typeof startStaffAlarm === 'function') startStaffAlarm();
         } else if (pendingOrders.length === 0) {
           if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
         }
-        
         previousPendingCount = pendingOrders.length;
         if (typeof renderStaffOrders === 'function') renderStaffOrders();
       }
 
-      // 🔥 2. ສຽງ & Pop-up ເຮັດວຽກສະເພາະເຄື່ອງຂອງ ລູກຄ້າ:
-      if (currentActiveOrder) {
-        const live = orders.find(o => o.id === currentActiveOrder.id);
-        if (live) {
-          // ເມື່ອມີການປ່ຽນແປງສະຖານະ ຫຼື ມີ Delay Alert
-          if (live.status !== currentActiveOrder.status || live.delayNotice !== currentActiveOrder.delayNotice) {
-            currentActiveOrder = live;
-            localStorage.setItem('ladolce_active_order', JSON.stringify(currentActiveOrder));
-            
-            // ☕ ເຄື່ອງດື່ມພ້ອມຮັບ -> ເດັ້ງ Pop-up ພ້ອມສຽງກະດິ່ງຫາລູກຄ້າ!
-            if (live.status === 'ready') {
-              if (typeof playChime === 'function') playChime(true);
-              showCustomerReadyModal();
-            }
+      // 🔥 ດັກຈັບສະເພາະ ລູກຄ້າ (ແຈ້ງເຕືອນ Ready Real-time)
+      let myPhone = currentUser ? currentUser.phone : null;
+      let myEmail = currentUser ? currentUser.email : null;
+      if (!myPhone) {
+        const guestContact = JSON.parse(localStorage.getItem('ladolce_guest_contact'));
+        if (guestContact) myPhone = guestContact.phone;
+      }
 
-            // ✨ ສຳເລັດແລ້ວ -> Clear ປີ້ອອກເພື່ອຍ້າຍໄປ Profile
-            if (live.status === 'completed') {
-              currentActiveOrder = null;
-              localStorage.removeItem('ladolce_active_order');
-            }
+      // ຊອກຫາອໍເດີ້ຂອງລູກຄ້າຄົນນີ້
+      const myLiveOrders = orders.filter(o => 
+        (myPhone && o.customerPhone === myPhone) || (myEmail && o.customerEmail === myEmail)
+      );
 
-            if (typeof renderCustomerTicket === 'function') renderCustomerTicket();
-          }
+      myLiveOrders.forEach(liveOrder => {
+        // ກວດສອບອໍເດີ້ທີ່ຫາກໍ່ປ່ຽນເປັນ Ready
+        const cachedStatus = localStorage.getItem('order_status_' + liveOrder.id);
+        if (liveOrder.status === 'ready' && cachedStatus !== 'ready') {
+          localStorage.setItem('order_status_' + liveOrder.id, 'ready');
+          if (typeof playChime === 'function') playChime(true); // ສຽງ Crystal Marimba ດັງທັນທີ!
+          showCustomerReadyModal(); // Pop-up ເດັ້ງທັນທີ!
         }
+      });
+
+      // Render Ticket ທັນທີ
+      if (typeof renderCustomerTicket === 'function') {
+        renderCustomerTicket();
       }
 
       if (typeof renderAnalytics === 'function') renderAnalytics();
@@ -103,7 +96,7 @@ function initCloudStream() {
   }, err => console.warn("Orders stream:", err));
 }
 
-// App Bootstrap
+// Fast App Bootstrap
 window.addEventListener('DOMContentLoaded', () => {
   if (typeof renderMenu === 'function') renderMenu();
   if (typeof updateCartBadges === 'function') updateCartBadges();
