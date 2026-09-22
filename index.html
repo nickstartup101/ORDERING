@@ -46,7 +46,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-  <!-- 🔥 Global Head Router: ແກ້ໄຂ switchCustomerTab ໃຫ້ກົດໄດ້ທັນທີ 100% -->
+  <!-- Global Head Router -->
   <script>
     function switchCustomerTab(tabName) {
       const tabs = ['menu', 'cart', 'ticket', 'profile'];
@@ -152,8 +152,6 @@
     <div id="customerAppView" class="space-y-6">
       <!-- TAB: MENU -->
       <section id="tab-customer-menu" class="space-y-6">
-        
-        <!-- 🔥 Store Banner + Cart Button (ລັອກ Layout ໃຫ້ຢູ່ເທິງສຸດ ບໍ່ມີຕົກລົງລຸ່ມ) -->
         <div class="p-4 rounded-2xl bg-surface-pure border border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
           <div class="flex items-center gap-3">
             <span class="w-10 h-10 rounded-xl bg-forest-emerald/10 text-forest-emerald flex items-center justify-center shrink-0">
@@ -161,14 +159,13 @@
             </span>
             <div>
               <div class="flex items-center gap-2 flex-wrap">
-                <h2 class="font-serif-title text-[16px] text-primary font-bold">Namphou Branch</h2>
+                <h2 class="font-serif-title text-[16px] text-primary font-bold">Downtown Flagship Roastery</h2>
                 <span id="customerStoreOpenBadge" class="px-2 py-0.5 rounded text-[9px] uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold">ເປີດບໍລິການ</span>
               </div>
               <p class="text-[12px] text-taupe mt-0.5">ສັ່ງລ່ວງໜ້າ • ຮັບທີ່ເຄົາເຕີ້ພາຍໃນ 8–15 ນາທີ</p>
             </div>
           </div>
 
-          <!-- ປຸ່ມກະຕ່າສັ່ງຊື້ ພ້ອມ Animation Highlight -->
           <button type="button" onclick="switchCustomerTab('cart')" class="self-stretch sm:self-auto flex items-center justify-center gap-2.5 px-5 py-2.5 rounded-xl bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] font-bold shadow-sm transition-all transform active:scale-95 cursor-pointer shrink-0">
             <span class="material-symbols-outlined text-[19px]">shopping_bag</span>
             <span>ກະຕ່າສັ່ງຊື້</span>
@@ -176,7 +173,7 @@
           </button>
         </div>
 
-        <!-- Filter Categories (ແຖບໝວດໝູ່) -->
+        <!-- Filter Categories -->
         <div class="flex items-center gap-2 overflow-x-auto pb-1" id="categoryFilterContainer">
           <button type="button" onclick="filterCategory('all')" class="cat-pill active-cat px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-forest-emerald text-white">ທັງໝົດ</button>
           <button type="button" onclick="filterCategory('coffee')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal">ກາເຟ</button>
@@ -185,7 +182,6 @@
           <button type="button" onclick="filterCategory('bakery')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal">ເບເກີຣີ່ & ອາຫານ</button>
         </div>
 
-        <!-- Grid ສະແດງເມນູສິນຄ້າ -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="menuGrid"></div>
       </section>
 
@@ -352,7 +348,6 @@
           </div>
         </div>
 
-        <!-- ຕາຕະລາງ Transaction Audit Log -->
         <div class="p-5 rounded-xl bg-surface-pure border border-hairline space-y-3 shadow-xs">
           <div class="flex justify-between items-center border-b border-hairline pb-2">
             <div>
@@ -566,7 +561,7 @@
     </div>
   </div>
 
-  <!-- 3. STAFF INCOMING ORDER MODAL (ສະເພາະ Staff) -->
+  <!-- 3. STAFF INCOMING ORDER MODAL -->
   <div id="staffNewOrderModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border-2 border-forest-emerald p-6 shadow-2xl text-center space-y-4 animate-scale-up">
       <div class="w-16 h-16 rounded-full bg-emerald-50 text-forest-emerald border border-emerald-200 mx-auto flex items-center justify-center animate-bounce">
@@ -589,7 +584,7 @@
     </div>
   </div>
 
-  <!-- 4. CUSTOMER DRINK READY MODAL (ສະເພາະ ລູກຄ້າ) -->
+  <!-- 4. CUSTOMER DRINK READY MODAL -->
   <div id="customerReadyModal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border-2 border-emerald-500 p-6 shadow-2xl text-center space-y-4 animate-scale-up">
       <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 mx-auto flex items-center justify-center">
@@ -671,7 +666,7 @@
     </div>
   </div>
 
-  <!-- 8. SUPERADMIN ADD/EDIT MENU MODAL (ມີ Checkbox Option Toggles) -->
+  <!-- 8. SUPERADMIN ADD/EDIT MENU MODAL -->
   <div id="addMenuModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-lg rounded-2xl border border-hairline overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
       <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
@@ -701,7 +696,6 @@
           </div>
         </div>
 
-        <!-- ຕັ້ງຄ່າຮູບແບບ: ຮ້ອນ / ເຢັນ / ປັ່ນ -->
         <div class="p-3.5 bg-surface rounded-xl border border-hairline space-y-2.5">
           <span class="block text-[11px] font-bold text-forest-emerald uppercase tracking-wider">ຮູບແບບເຄື່ອງດື່ມ & ລາຄາແຍກ:</span>
           <div class="grid grid-cols-3 gap-2">
@@ -729,7 +723,6 @@
           </div>
         </div>
 
-        <!-- Option Toggles -->
         <div class="p-3.5 bg-surface rounded-xl border border-hairline space-y-2">
           <span class="block text-[11px] font-bold text-forest-emerald uppercase tracking-wider">ຕັ້ງຄ່າຕົວເລືອກພິເສດສຳລັບເມນູນີ້:</span>
           
@@ -850,7 +843,7 @@
     <span id="toastMsg">Action completed</span>
   </div>
 
-  <!-- ================= LOAD SCRIPTS ================= -->
+  <!-- ================= LOAD MODULAR SCRIPTS IN ORDER ================= -->
   <script src="js/config.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/auth.js"></script>
