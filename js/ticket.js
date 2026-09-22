@@ -1,12 +1,11 @@
 // =======================================================
-// MULTI-TICKET PASS & LIVE REALTIME STATUS CAROUSEL
+// REAL-TIME MULTI-TICKET PASS (ACTIVE ORDERS ONLY)
 // =======================================================
 
 function renderCustomerTicket() {
   const container = document.getElementById('activeTicketContainer');
   if (!container) return;
 
-  // ດຶງອໍເດີ້ທີ່ຍັງບໍ່ທັນສຳເລັດຂອງລູກຄ້າຄົນນີ້ (ຮອງຮັບທັງ Member ແລະ Guest)
   let myPhone = currentUser ? currentUser.phone : null;
   let myEmail = currentUser ? currentUser.email : null;
 
@@ -15,6 +14,7 @@ function renderCustomerTicket() {
     if (guestContact) myPhone = guestContact.phone;
   }
 
+  // 🔥 ກັ່ນຕອງສະເພາະອໍເດີ້ທີ່ "ກຳລັງດຳເນີນການ" ເທົ່ານັ້ນ (Completed ຈະຖືກຍ້າຍໄປ Profile ອັດຕະໂນມັດ!)
   const myActiveOrders = orders.filter(o => 
     (o.status === 'pending' || o.status === 'crafting' || o.status === 'ready') &&
     ((myPhone && o.customerPhone === myPhone) || (myEmail && o.customerEmail === myEmail))
@@ -25,20 +25,20 @@ function renderCustomerTicket() {
       <div class="p-8 bg-surface-pure border border-hairline rounded-2xl text-center space-y-3 shadow-xs">
         <span class="material-symbols-outlined text-[42px] text-forest-leaf/60">receipt_long</span>
         <h3 class="font-serif-title text-[18px] text-primary font-medium">ບໍ່ມີອໍເດີ້ທີ່ກຳລັງດຳເນີນການ</h3>
-        <p class="text-[12px] text-taupe font-lao">ເມື່ອທ່ານສັ່ງເຄື່ອງດື່ມ, ປີ້ຮັບເຄື່ອງ ແລະ ສະຖານະ Real-time ຈະສະແດງຢູ່ນີ້</p>
+        <p class="text-[12px] text-taupe font-lao">ອໍເດີ້ທີ່ຮັບເຄື່ອງສຳເລັດແລ້ວ ຖືກຍ້າຍໄປເກັບໄວ້ໃນໜ້າ "ໂປຣໄຟລ໌ -> ປະຫວັດການສັ່ງຊື້"</p>
         <button type="button" onclick="switchCustomerTab('menu')" class="px-5 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-semibold hover:bg-forest-leaf transition-all shadow-xs">
-          ສັ່ງເຄື່ອງດື່ມເລີຍ
+          ສັ່ງເຄື່ອງດື່ມເພີ່ມ
         </button>
       </div>
     `;
     return;
   }
 
-  // 🔥 Render Multi-Ticket Stack (ສະແດງຫຼາຍປີ້ພ້ອມກັນ)
+  // Render Multi-Ticket Stack Real-time
   container.innerHTML = `
     <div class="space-y-4">
       <div class="flex justify-between items-center px-1">
-        <span class="text-[12px] font-bold text-primary font-serif-title">ປີ້ຮັບເຄື່ອງທີ່ກຳລັງດຳເນີນການ</span>
+        <span class="text-[12px] font-bold text-primary font-serif-title">ປີ້ຮັບເຄື່ອງ Real-time</span>
         <span class="px-2.5 py-0.5 rounded-full bg-forest-emerald text-white text-[10px] font-bold font-mono">
           ${myActiveOrders.length} ອໍເດີ້ພວມຊົງ
         </span>
@@ -65,14 +65,14 @@ function renderCustomerTicket() {
               <div class="p-5 ${bgClass} text-white">
                 <div class="flex justify-between text-[11px] mb-1">
                   <span class="uppercase tracking-wider font-bold">${status}</span>
-                  <span class="font-mono">${order.id}</span>
+                  <span class="font-mono font-bold">${order.id}</span>
                 </div>
                 <h3 class="font-serif-title text-[20px] font-bold leading-snug">${statusTitle}</h3>
                 <p class="text-[12px] opacity-85 mt-0.5">${statusDesc}</p>
 
-                <!-- Delay Notice Banner -->
+                <!-- 🔥 ແຖບລ່າຊ້າກະພິບ Real-time ໂດຍບໍ່ຕ້ອງ Refresh -->
                 ${order.delayNotice ? `
-                  <div class="mt-3 p-2.5 rounded-xl bg-amber-500/20 border border-amber-300/40 text-[11px] text-amber-200 font-medium flex items-center gap-2 animate-pulse">
+                  <div class="mt-3 p-2.5 rounded-xl bg-amber-500/30 border border-amber-300/50 text-[11px] text-amber-200 font-bold flex items-center gap-2 animate-pulse">
                     <span class="material-symbols-outlined text-[16px]">hourglass_top</span>
                     <span>${order.delayNotice}</span>
                   </div>
@@ -83,11 +83,11 @@ function renderCustomerTicket() {
               <div class="px-5">
                 <div class="grid grid-cols-4 gap-1.5 py-1">
                   <div class="h-1.5 rounded-full ${status === 'pending' ? 'bg-forest-emerald animate-pulse' : 'bg-forest-emerald'}"></div>
-                  <div class="h-1.5 rounded-full ${status === 'crafting' ? 'bg-forest-emerald animate-pulse' : (status === 'ready' || status === 'completed' ? 'bg-forest-emerald' : 'bg-hairline')}"></div>
-                  <div class="h-1.5 rounded-full ${status === 'ready' ? 'bg-emerald-600 animate-pulse' : (status === 'completed' ? 'bg-emerald-600' : 'bg-hairline')}"></div>
-                  <div class="h-1.5 rounded-full ${status === 'completed' ? 'bg-forest-emerald' : 'bg-hairline'}"></div>
+                  <div class="h-1.5 rounded-full ${status === 'crafting' ? 'bg-forest-emerald animate-pulse' : (status === 'ready' ? 'bg-forest-emerald' : 'bg-hairline')}"></div>
+                  <div class="h-1.5 rounded-full ${status === 'ready' ? 'bg-emerald-600 animate-pulse' : 'bg-hairline'}"></div>
+                  <div class="h-1.5 rounded-full bg-hairline"></div>
                 </div>
-                <div class="flex justify-between text-[10px] text-taupe uppercase tracking-wider pt-1">
+                <div class="flex justify-between text-[10px] text-taupe uppercase tracking-wider pt-1 font-lao">
                   <span>ຮັບແລ້ວ</span><span>ກຳລັງຊົງ</span><span>ພ້ອມຮັບ</span><span>ສຳເລັດ</span>
                 </div>
               </div>
@@ -100,7 +100,7 @@ function renderCustomerTicket() {
                 ${order.items.map(i => `
                   <div class="flex justify-between py-0.5 text-taupe">
                     <span>${i.quantity}× ${i.name} [${(i.variant||'std').toUpperCase()}]</span>
-                    <span class="font-mono">${formatLAK(i.total)}</span>
+                    <span class="font-mono font-bold">${formatLAK(i.total)}</span>
                   </div>
                 `).join('')}
               </div>
@@ -116,7 +116,6 @@ function renderCustomerTicket() {
         }).join('')}
       </div>
 
-      <!-- ປຸ່ມສັ່ງເພີ່ມອີກອໍເດີ້ -->
       <div class="pt-2 text-center">
         <button type="button" onclick="switchCustomerTab('menu')" class="px-5 py-2.5 rounded-xl border-2 border-forest-emerald text-forest-emerald hover:bg-forest-emerald hover:text-white transition-all text-[12px] font-bold inline-flex items-center gap-1.5 shadow-xs">
           <span class="material-symbols-outlined text-[17px]">add_shopping_cart</span>
