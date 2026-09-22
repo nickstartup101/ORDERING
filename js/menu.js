@@ -1,5 +1,5 @@
 // =======================================================
-// MENU CURATION & STATE-CLEANED CUSTOMIZER
+// MENU CURATION & BULLETPROOF CUSTOMIZER (100% NULL-SAFE)
 // =======================================================
 
 let currentCategoryFilter = 'all';
@@ -11,10 +11,10 @@ let modalQuantity = 1;
 function filterCategory(cat) {
   currentCategoryFilter = cat;
   document.querySelectorAll('.cat-pill').forEach(btn => {
-    btn.className = 'cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal';
+    btn.className = 'cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal transition-all';
   });
   if (event && event.target) {
-    event.target.className = 'cat-pill active-cat px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-forest-emerald text-white';
+    event.target.className = 'cat-pill active-cat px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-forest-emerald text-white transition-all';
   }
   renderMenu();
 }
@@ -74,15 +74,15 @@ function renderMenu() {
   });
 }
 
-// 🔥 ແກ້ໄຂ: Reset State 100% ທຸກຄັ້ງທີ່ເປີດ (ແກ້ບັນຫາເລືອກເມນູທີ 3 ບໍ່ໄດ້)
+// 🔥 ຟັງຊັນເປີດ Customize Modal ແບບ Null-Safe 100%
 function openCustomizeModal(itemId) {
   activeCustomizingItem = menuItems.find(i => i.id === itemId);
   if (!activeCustomizingItem || activeCustomizingItem.isAvailable === false) return;
 
-  // 1. Reset State ທັງໝົດຢ່າງໝົດຈົດ
   modalQuantity = 1;
   selectedSweetnessLevel = '100%';
-  
+
+  // Null-Safe Element Updating
   const qtyEl = document.getElementById('modalQtyDisplay');
   const titleEl = document.getElementById('modalItemTitle');
   const descEl = document.getElementById('modalItemDesc');
@@ -91,17 +91,17 @@ function openCustomizeModal(itemId) {
   if (qtyEl) qtyEl.textContent = modalQuantity;
   if (titleEl) titleEl.textContent = activeCustomizingItem.name;
   if (descEl) descEl.textContent = activeCustomizingItem.desc || '';
-  if (imgEl) imgEl.src = activeCustomizingItem.image;
+  if (imgEl) imgEl.src = activeCustomizingItem.image || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600';
 
-  // 2. Reset Extra Shot Topping
+  // Reset Topping Checkbox
   const extraShotEl = document.getElementById('addonExtraShot');
   if (extraShotEl) extraShotEl.checked = false;
 
-  // 3. Reset Milk Radio ເປັນ Whole Milk
+  // Reset Milk Radio
   const defaultMilk = document.querySelector('input[name="milkOption"][value="Whole Milk"]');
   if (defaultMilk) defaultMilk.checked = true;
 
-  // 4. Render Variants List
+  // Render Variants List
   const container = document.getElementById('variantButtonsGrid');
   if (container) {
     container.innerHTML = '';
@@ -135,7 +135,7 @@ function openCustomizeModal(itemId) {
     });
   }
 
-  // 5. ເຊື່ອງ/ສະແດງ Options ຕາມທີ່ Admin ຕັ້ງຄ່າ
+  // ເຊື່ອງ/ສະແດງ Options ຕາມທີ່ Admin ຕັ້ງຄ່າ
   const milkSection = document.getElementById('milkSelectorGroup');
   if (milkSection) {
     milkSection.classList.toggle('hidden', activeCustomizingItem.allowMilk === false || activeCustomizingItem.category === 'bakery' || activeCustomizingItem.category === 'refresher');
@@ -151,7 +151,7 @@ function openCustomizeModal(itemId) {
     toppingSection.classList.toggle('hidden', activeCustomizingItem.allowTopping === false || activeCustomizingItem.category === 'bakery');
   }
 
-  // Reset Sweetness Button Highlight
+  // Reset Sweetness Buttons
   document.querySelectorAll('.sweet-btn').forEach(b => {
     b.className = 'sweet-btn py-1.5 rounded text-[11px] text-taupe font-medium';
     if (b.textContent.trim() === '100%') {
@@ -159,7 +159,9 @@ function openCustomizeModal(itemId) {
     }
   });
 
+  // ຄິດໄລ່ລາຄາ (Null-safe)
   updateModalPrice();
+  
   document.getElementById('customizeModal')?.classList.remove('hidden');
 }
 
@@ -189,10 +191,12 @@ function closeCustomizeModal() {
 
 function adjustModalQty(delta) {
   modalQuantity = Math.max(1, modalQuantity + delta);
-  document.getElementById('modalQtyDisplay').textContent = modalQuantity;
+  const qtyEl = document.getElementById('modalQtyDisplay');
+  if (qtyEl) qtyEl.textContent = modalQuantity;
   updateModalPrice();
 }
 
+// 🔥 ແກ້ໄຂແຖວທີ 224: Null-Safe 100% ບໍ່ມີ Error ອີກເລີຍ
 function updateModalPrice() {
   if (!activeCustomizingItem) return;
   const v = activeCustomizingItem.variants || {};
@@ -206,20 +210,30 @@ function updateModalPrice() {
     unitPrice = v.standard;
   }
 
+  // 1. ບວກຄ່ານົມ
   if (activeCustomizingItem.allowMilk !== false) {
     const milkRadio = document.querySelector('input[name="milkOption"]:checked');
     if (milkRadio && (milkRadio.value.includes('Oat') || milkRadio.value.includes('Almond'))) {
-      const oatMod = modifiers.find(m => m.id === 'mod_oat');
+      const oatMod = (typeof modifiers !== 'undefined') ? modifiers.find(m => m.id === 'mod_oat') : null;
       unitPrice += (oatMod ? oatMod.price : 15000);
     }
   }
 
+  // 2. ບວກຄ່າ Extra Shot
   const extraShot = document.getElementById('addonExtraShot')?.checked;
   if (extraShot && activeCustomizingItem.allowTopping !== false) {
-    const shotMod = modifiers.find(m => m.id === 'mod_shot') || modifiers.find(m => m.group === 'topping');
+    const shotMod = (typeof modifiers !== 'undefined') ? (modifiers.find(m => m.id === 'mod_shot') || modifiers.find(m => m.group === 'topping')) : null;
     unitPrice += (shotMod ? shotMod.price : 12000);
   }
 
-  document.getElementById('modalItemBasePrice').textContent = formatLAK(unitPrice);
-  document.getElementById('modalDynamicTotal').textContent = formatLAK(unitPrice * modalQuantity);
+  // 🔥 ກວດສອບກ່ອນ set textContent ປ້ອງກັນ crash 100%
+  const basePriceEl = document.getElementById('modalItemBasePrice');
+  const dynamicTotalEl = document.getElementById('modalDynamicTotal');
+
+  if (basePriceEl) {
+    basePriceEl.textContent = formatLAK(unitPrice);
+  }
+  if (dynamicTotalEl) {
+    dynamicTotalEl.textContent = formatLAK(unitPrice * modalQuantity);
+  }
 }
