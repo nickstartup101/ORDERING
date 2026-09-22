@@ -1,5 +1,5 @@
 // =======================================================
-// CART, DYNAMIC TAX & ORDER SUBMISSION
+// CART, GUEST CHECKOUT & MULTI-ORDER CREATION
 // =======================================================
 
 let selectedBankMethodId = null;
@@ -98,20 +98,18 @@ function renderCartList() {
     `;
   }).join('');
 
-  // ຄິດໄລ່ Tax ຕາມ Store Settings (ຖ້າ tax = 0 ໃຫ້ເຊື່ອງແຖວ Tax ອອກ)
   const taxRate = (storeSettings && storeSettings.taxRatePercent) || 0;
   const tax = subtotal * (taxRate / 100);
   const total = subtotal + tax;
 
   document.getElementById('summarySubtotal').textContent = formatLAK(subtotal);
-  
   const taxRow = document.getElementById('taxRowContainer');
   const taxEl = document.getElementById('summaryTax');
   if (taxRate > 0) {
     if (taxRow) taxRow.classList.remove('hidden');
     if (taxEl) taxEl.textContent = formatLAK(tax);
   } else {
-    if (taxRow) taxRow.classList.add('hidden'); // ເຊື່ອງ Tax ຖິ້ມເພາະຍັງບໍ່ມີ
+    if (taxRow) taxRow.classList.add('hidden');
   }
 
   document.getElementById('summaryTotal').textContent = formatLAK(total);
@@ -167,9 +165,13 @@ function handleSlipSelected(e) {
   const reader = new FileReader();
   reader.onload = () => {
     uploadedSlipDataUrl = reader.result;
-    document.getElementById('slipImagePreview').src = uploadedSlipDataUrl;
-    document.getElementById('slipPreviewContainer').classList.remove('hidden');
-    document.getElementById('slipStatusText').textContent = "✓ ແນບໃບໂອນແລ້ວ (ກົດເພື່ອປ່ຽນ)";
+    const preview = document.getElementById('slipImagePreview');
+    const box = document.getElementById('slipPreviewContainer');
+    const txt = document.getElementById('slipStatusText');
+
+    if (preview) preview.src = uploadedSlipDataUrl;
+    if (box) box.classList.remove('hidden');
+    if (txt) txt.textContent = "✓ ແນບໃບໂອນແລ້ວ (ກົດເພື່ອປ່ຽນ)";
     showToast("ອັບໂຫຼດສະລິບຮຽບຮ້ອຍ!");
   };
   reader.readAsDataURL(file);
@@ -201,11 +203,14 @@ function submitGuestOrder() {
     return;
   }
 
+  // ບັນທຶກຊື່ ແລະ ເບີໂທໄວ້ໃນເຄື່ອງຂອງ Guest ເພື່ອໃຫ້ດຶງປີ້ເກົ່າໄດ້
+  localStorage.setItem('ladolce_guest_contact', JSON.stringify({ name, phone }));
+
   closeGuestModal();
   executeOrderCreation(name, phone);
 }
 
-// 🔥 ສ້າງອໍເດີ້ ແລະ ເຄຼຍລາຍການຄ້າງທັງໝົດ 100%
+// 🔥 ສ້າງອໍເດີ້ ແລະ ຮອງຮັບການສັ່ງເພີ່ມໄດ້ຫຼາຍປີ້ພ້ອມກັນ
 async function executeOrderCreation(customerName, customerPhone) {
   showToast("ກຳລັງສົ່ງອໍເດີ້...");
 
@@ -233,13 +238,10 @@ async function executeOrderCreation(customerName, customerPhone) {
     delayNotice: null
   };
 
-  // 1. ບັນທຶກລົງ LocalStorage
+  // 1. ບັນທຶກລົງ Memory & Firestore
   orders.unshift(newOrder);
-  localStorage.setItem('ladolce_orders', JSON.stringify(orders));
-  currentActiveOrder = newOrder;
-  localStorage.setItem('ladolce_active_order', JSON.stringify(currentActiveOrder));
 
-  // 2. 🔥 ເຄຼຍກະຕ່າ ແລະ ເຄຼຍຊ່ອງສະລິບ ບໍ່ໃຫ້ຄ້າງລາຍການໃຫ້ຊຳລະອີກ!
+  // 2. ລ້າງກະຕ່າ ເພື່ອໃຫ້ສັ່ງອໍເດີ້ຕໍ່ໄປໄດ້ທັນທີ
   cart = [];
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
   uploadedSlipDataUrl = null;
@@ -256,19 +258,18 @@ async function executeOrderCreation(customerName, customerPhone) {
 
   updateCartBadges();
 
-  // 3. Sync ຂຶ້ນ Cloud Firestore Real-time
+  // 3. ຍິງກົງຂຶ້ນ Cloud Firestore Real-time
   if (isFirebaseReady && db) {
     try {
       await db.collection("orders").doc(newOrder.id).set(newOrder);
       console.log("✅ Order Synced to Firestore:", newOrder.id);
     } catch (err) {
-      console.warn("Firestore sync issue (Saved locally):", err);
+      console.warn("Firestore sync warning:", err);
     }
   }
 
   showToast("ສັ່ງຊື້ສຳເລັດແລ້ວ! 🎉");
 
-  // 4. ນຳທາງໄປໜ້າປີ້ຮັບເຄື່ອງ (My Ticket) ທັນທີ 100%!
   if (typeof switchCustomerTab === 'function') {
     switchCustomerTab('ticket');
   }
