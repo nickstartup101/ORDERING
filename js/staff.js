@@ -1,5 +1,5 @@
 // =======================================================
-// BARISTA KITCHEN DISPLAY, REPEAT ALARM & POP-UP ENGINE
+// STAFF KDS WITH CUSTOMER MATCH INDICATOR
 // =======================================================
 
 let staffSubTab = 'active';
@@ -23,43 +23,75 @@ function renderStaffOrders() {
   const activeOrders = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled');
   const completedOrders = orders.filter(o => o.status === 'completed');
 
+  // ນັບຈຳນວນອໍເດີ້ຂອງລູກຄ້າແຕ່ລະຄົນໃນຄິວປັດຈຸບັນ
+  const customerOrderCounts = {};
+  activeOrders.forEach(o => {
+    const key = o.customerPhone || o.customerName;
+    customerOrderCounts[key] = (customerOrderCounts[key] || 0) + 1;
+  });
+
   // Active Queue
   if (activeOrders.length === 0) {
     activeContainer.innerHTML = `<div class="col-span-full p-8 bg-surface-pure border border-hairline rounded-2xl text-center"><p class="text-taupe">Queue is clear</p></div>`;
   } else {
-    activeContainer.innerHTML = activeOrders.map(o => `
-      <div class="p-4 bg-surface-pure border-2 ${o.status === 'pending' ? 'border-red-400 animate-pulse' : 'border-hairline'} rounded-2xl space-y-3">
-        <div class="flex justify-between items-center border-b border-hairline pb-2">
-          <div>
-            <span class="font-mono font-bold text-forest-emerald">${o.id}</span>
-            <p class="text-[12px] font-bold text-charcoal flex items-center gap-1 mt-0.5">
-              ${o.customerName}
-              <a href="tel:${o.customerPhone}" class="text-forest-emerald underline font-mono text-[11px] ml-1">📞 ${o.customerPhone}</a>
-            </p>
+    activeContainer.innerHTML = activeOrders.map(o => {
+      const customerKey = o.customerPhone || o.customerName;
+      const totalFromCustomer = customerOrderCounts[customerKey] || 1;
+      const theme = getCustomerColorTheme(customerKey); // ສີປະຈຳຕົວລູກຄ້າ
+
+      return `
+        <div class="p-4 bg-surface-pure border-2 ${o.status === 'pending' ? 'border-red-400 animate-pulse' : 'border-hairline'} rounded-2xl space-y-3 relative overflow-hidden shadow-xs">
+          
+          <!-- 🔥 Customer Match Indicator Header (ແຖບສີຈັບຄູ່ລູກຄ້າຄົນດຽວກັນ) -->
+          <div class="p-2 rounded-xl ${theme.bg} border ${theme.border} flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <span class="w-6 h-6 rounded-full bg-white border ${theme.border} flex items-center justify-center font-bold text-[11px] ${theme.text}">
+                ${o.customerName.charAt(0).toUpperCase()}
+              </span>
+              <div>
+                <span class="text-[12px] font-bold ${theme.text} block leading-tight">${o.customerName}</span>
+                <a href="tel:${o.customerPhone}" class="text-[10px] font-mono opacity-80 hover:underline">📞 ${o.customerPhone}</a>
+              </div>
+            </div>
+
+            ${totalFromCustomer > 1 ? `
+              <span class="px-2 py-0.5 rounded-full bg-white border ${theme.border} text-[9px] font-bold ${theme.text} shadow-2xs">
+                🔗 ຄິວພວງ (${totalFromCustomer} ປີ້)
+              </span>
+            ` : ''}
           </div>
-          <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-amber-100 text-amber-900">${o.status}</span>
+
+          <div class="flex justify-between items-center border-b border-hairline pb-2">
+            <span class="font-mono font-bold text-forest-emerald text-[14px]">${o.id}</span>
+            <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-amber-100 text-amber-900">${o.status}</span>
+          </div>
+
+          <div class="text-[11px] divide-y divide-hairline">
+            ${o.items.map(i => `<div class="py-1 flex justify-between"><span>${i.quantity}× ${i.name} [${(i.variant||'std').toUpperCase()}]</span><span>${formatLAK(i.total)}</span></div>`).join('')}
+          </div>
+
+          <div class="flex justify-between items-center pt-2 border-t border-hairline">
+            <span class="font-mono font-bold">${formatLAK(o.total)}</span>
+            ${o.slipUrl ? `<button onclick="viewSlip('${o.slipUrl}','${o.id}')" class="px-2.5 py-1 rounded bg-forest-emerald/10 text-forest-emerald text-[11px] font-bold">ກວດສະລິບ</button>` : '<span class="text-[10px] text-taupe">ເງິນສົດ</span>'}
+          </div>
+
+          <div class="pt-2 border-t border-hairline flex flex-wrap gap-2">
+            ${o.status === 'pending' ? `
+              <button onclick="updateOrderStatus('${o.id}','crafting')" class="flex-1 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-bold">ຮັບອໍເດີ້</button>
+              <button onclick="openRejectModal('${o.id}')" class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-[11px] font-bold">ປະຕິເສດ</button>
+            ` : ''}
+            ${o.status === 'crafting' ? `
+              <button onclick="sendDelayNotice('${o.id}')" class="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-[11px] text-amber-900 font-bold flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">hourglass_top</span>
+                <span>+5m ລ່າຊ້າ</span>
+              </button>
+              <button onclick="updateOrderStatus('${o.id}','ready')" class="flex-1 py-1.5 rounded-lg bg-emerald-800 text-white text-[11px] font-bold">ພ້ອມຮັບ</button>
+            ` : ''}
+            ${o.status === 'ready' ? `<button onclick="updateOrderStatus('${o.id}','completed')" class="w-full py-1.5 rounded-lg bg-primary text-white text-[11px] font-bold">ມອບແລ້ວ (Completed)</button>` : ''}
+          </div>
         </div>
-        <div class="text-[11px] divide-y divide-hairline">${o.items.map(i => `<div class="py-1 flex justify-between"><span>${i.quantity}× ${i.name} [${(i.variant||'std').toUpperCase()}]</span><span>${formatLAK(i.total)}</span></div>`).join('')}</div>
-        <div class="flex justify-between items-center pt-2 border-t border-hairline">
-          <span class="font-mono font-bold">${formatLAK(o.total)}</span>
-          ${o.slipUrl ? `<button onclick="viewSlip('${o.slipUrl}','${o.id}')" class="px-2.5 py-1 rounded bg-forest-emerald/10 text-forest-emerald text-[11px] font-bold">ກວດສະລິບ</button>` : '<span class="text-[10px] text-taupe">ເງິນສົດ</span>'}
-        </div>
-        <div class="pt-2 border-t border-hairline flex flex-wrap gap-2">
-          ${o.status === 'pending' ? `
-            <button onclick="updateOrderStatus('${o.id}','crafting')" class="flex-1 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-bold">ຮັບອໍເດີ້</button>
-            <button onclick="openRejectModal('${o.id}')" class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-[11px] font-bold">ປະຕິເສດ</button>
-          ` : ''}
-          ${o.status === 'crafting' ? `
-            <button onclick="sendDelayNotice('${o.id}')" class="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-[11px] text-amber-900 font-bold flex items-center gap-1">
-              <span class="material-symbols-outlined text-[14px]">hourglass_top</span>
-              <span>+5m ລ່າຊ້າ</span>
-            </button>
-            <button onclick="updateOrderStatus('${o.id}','ready')" class="flex-1 py-1.5 rounded-lg bg-emerald-800 text-white text-[11px] font-bold">ພ້ອມຮັບ</button>
-          ` : ''}
-          ${o.status === 'ready' ? `<button onclick="updateOrderStatus('${o.id}','completed')" class="w-full py-1.5 rounded-lg bg-primary text-white text-[11px] font-bold">ມອບແລ້ວ (Completed)</button>` : ''}
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   // Completed History
@@ -95,8 +127,6 @@ async function updateOrderStatus(id, status) {
     if (status === 'completed') {
       order.completedAt = new Date().toISOString();
     }
-
-    localStorage.setItem('ladolce_orders', JSON.stringify(orders));
     
     if (isFirebaseReady && db) {
       await db.collection("orders").doc(id).update({
@@ -115,12 +145,9 @@ async function sendDelayNotice(id) {
   const order = orders.find(o => o.id === id);
   if (order) {
     order.delayNotice = "ຄິວຫຼາຍ ຂໍເວລາເພີ່ມ 5 ນາທີ ເພື່ອຄວາມສົດໃໝ່";
-    localStorage.setItem('ladolce_orders', JSON.stringify(orders));
-    
     if (isFirebaseReady && db) {
       await db.collection("orders").doc(id).update({ delayNotice: order.delayNotice });
     }
-
     showToast("ສົ່ງແຈ້ງເຕືອນລ່າຊ້າຫາລູກຄ້າແລ້ວ!");
   }
 }
@@ -144,7 +171,6 @@ async function confirmRejectOrder() {
   if (order) {
     order.status = 'cancelled';
     order.cancelReason = reason;
-    localStorage.setItem('ladolce_orders', JSON.stringify(orders));
 
     if (isFirebaseReady && db) {
       await db.collection("orders").doc(activeRejectOrderId).update({
@@ -159,7 +185,6 @@ async function confirmRejectOrder() {
   }
 }
 
-// Staff Incoming Order Pop-up Controls
 function triggerStaffIncomingModal(order) {
   currentModalOrderId = order.id;
   document.getElementById('staffNotifOrderId').textContent = "Order #" + order.id;
