@@ -163,12 +163,12 @@
               <p class="text-[12px] text-taupe">ສັ່ງລ່ວງໜ້າ • ຮັບທີ່ເຄົາເຕີ້ພາຍໃນ 8–15 ນາທີ</p>
             </div>
           </div>
-          <button type="button" onclick="switchCustomerTab('cart')" class="relative self-end md:self-center flex items-center gap-2 px-4 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-medium shadow-xs">
-            <span class="material-symbols-outlined text-[17px]">shopping_bag</span>
+          <!-- ປຸ່ມກະຕ່າສັ່ງຊື້ ພ້ອມ Animation Highlight -->
+          <button type="button" onclick="switchCustomerTab('cart')" class="relative self-end md:self-center flex items-center gap-2 px-4 py-2.5 rounded-xl bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] font-bold shadow-sm transition-all transform active:scale-95 cursor-pointer">
+            <span class="material-symbols-outlined text-[19px]">shopping_bag</span>
             <span>ກະຕ່າສັ່ງຊື້</span>
-            <span id="cartBadgeCount" class="w-5 h-5 rounded-full bg-white text-forest-emerald text-[10px] font-bold flex items-center justify-center">0</span>
+            <span id="cartBadgeCount" class="w-6 h-6 rounded-full bg-white text-forest-emerald text-[11px] font-bold flex items-center justify-center shadow-xs transition-transform duration-300">0</span>
           </button>
-        </div>
 
         <!-- Filter Categories -->
 <div class="flex items-center gap-2 overflow-x-auto pb-1" id="categoryFilterContainer">
@@ -853,9 +853,9 @@
     </div>
   </div>
 
-  <!-- 11. FAST BOUTIQUE TOAST -->
-  <div id="atelierToast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-2 px-4 py-2.5 rounded-full bg-forest-gradient text-white text-[12px] font-medium shadow-xl flex items-center gap-2 border border-white/20">
-    <span class="material-symbols-outlined text-[18px] text-emerald-400" id="toastIcon">check_circle</span>
+  <!-- 11. FAST BOUTIQUE TOAST --> <!-- Floating Toast ສູງສຸດ ບໍ່ມີຫຍັງບັງ -->
+  <div id="atelierToast" class="fixed top-6 left-1/2 -translate-x-1/2 z-[999] opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-4 px-5 py-3 rounded-full bg-forest-gradient text-white text-[12px] font-bold shadow-2xl flex items-center gap-2 border border-white/20">
+    <span class="material-symbols-outlined text-[20px] text-emerald-400" id="toastIcon">check_circle</span>
     <span id="toastMsg">Action completed</span>
   </div>
 
