@@ -1,17 +1,17 @@
 // =======================================================
-// CART, DYNAMIC DELIVERY UNLOCK, COUPON & BULLETPROOF CHECKOUT
+// CART, FREE 500M DELIVERY & CAPPED 20% COUPON ENGINE
 // =======================================================
 
 let selectedBankMethodId = null;
 let uploadedSlipDataUrl = null;
 let orderFulfillmentType = 'pickup'; // 'pickup' | 'delivery'
-let appliedCoupon = null; // { code: 'LADOLCE10', discountPercent: 10, discountAmount: 0 }
+let appliedCoupon = null;
 
-// ລະຫັດຄູປອງທີ່ຮອງຮັບໃນລະບົບ
+// 🔥 ລະບົບຄູປອງ 20% ຈຳກັດສູງສຸດ 30,000 LAK
 const VALID_COUPONS = [
-  { code: "LADOLCE10", type: "percent", value: 10, desc: "ສ່ວນຫຼຸດ 10% ທຸກເມນູ" },
-  { code: "FREE20K", type: "fixed", value: 20000, desc: "ສ່ວນຫຼຸດ 20,000 LAK" },
-  { code: "ATELIERVIP", type: "percent", value: 15, desc: "ສ່ວນຫຼຸດ VIP 15%" }
+  { code: "LADOLCE20", type: "percent", value: 20, maxDiscount: 30000, desc: "ສ່ວນຫຼຸດ 20% (ສູງສຸດ 30,000 LAK)" },
+  { code: "FREE20K", type: "fixed", value: 20000, maxDiscount: 20000, desc: "ສ່ວນຫຼຸດ 20,000 LAK" },
+  { code: "ATELIERVIP", type: "percent", value: 15, maxDiscount: 50000, desc: "ສ່ວນຫຼຸດ VIP 15%" }
 ];
 
 function confirmAddToCart() {
@@ -50,7 +50,7 @@ function confirmAddToCart() {
     milk: milk,
     sweetness: selectedSweetnessLevel || '100%',
     extraShot: extraShot,
-    specialNote: itemSpecialNote, // ຄຳຂໍພິເສດສະເພາະຈອກນີ້
+    specialNote: itemSpecialNote,
     unitPrice: unitPrice,
     quantity: qty,
     total: unitPrice * qty,
@@ -127,14 +127,15 @@ function renderCartList() {
     `;
   }).join('');
 
-  // 🔥 ລະບົບກວດສອບເງື່ອນໄຂປົດລັອກ Delivery: ສັ່ງ 3 ຈອກຂຶ້ນໄປ ຫຼື ຍອດ 120,000 LAK ຂຶ້ນໄປ
+  // ກວດສອບເງື່ອນໄຂສົ່ງຟຣີ 500 ແມັດ
   checkDeliveryUnlockStatus(totalCups, subtotal);
 
-  // ຄິດໄລ່ສ່ວນຫຼຸດຄູປອງ (Coupon Discount)
+  // 🔥 ຄິດໄລ່ສ່ວນຫຼຸດຄູປອງ 20% (ສູງສຸດບໍ່ເກີນ 30,000 LAK)
   let discountAmount = 0;
   if (appliedCoupon) {
     if (appliedCoupon.type === 'percent') {
-      discountAmount = subtotal * (appliedCoupon.value / 100);
+      const rawDiscount = subtotal * (appliedCoupon.value / 100);
+      discountAmount = appliedCoupon.maxDiscount ? Math.min(rawDiscount, appliedCoupon.maxDiscount) : rawDiscount;
     } else {
       discountAmount = Math.min(subtotal, appliedCoupon.value);
     }
@@ -147,7 +148,6 @@ function renderCartList() {
 
   document.getElementById('summarySubtotal').textContent = formatLAK(subtotal);
 
-  // ສະແດງແຖວ Coupon ຖ້າມີ
   const couponRow = document.getElementById('couponDiscountRow');
   const couponDiscountEl = document.getElementById('summaryCouponDiscount');
   if (appliedCoupon && discountAmount > 0) {
@@ -160,7 +160,7 @@ function renderCartList() {
   document.getElementById('summaryTotal').textContent = formatLAK(total);
 }
 
-// 🔥 ຟັງຊັນກວດສອບເງື່ອນໄຂປົດລັອກ Delivery
+// 🔥 ກວດສອບເງື່ອນໄຂ ສົ່ງຟຣີ 500 ແມັດ (3 ຈອກ ຫຼື 120,000 LAK)
 function checkDeliveryUnlockStatus(cups, subtotal) {
   const box = document.getElementById('deliveryUnlockBox');
   const unlockedPanel = document.getElementById('deliveryAddressPanel');
@@ -178,10 +178,15 @@ function checkDeliveryUnlockStatus(cups, subtotal) {
     box.className = "p-3.5 rounded-xl bg-emerald-50 border-2 border-emerald-400 space-y-2.5 transition-all";
     if (progressText) {
       progressText.innerHTML = `
-        <span class="text-emerald-900 font-bold flex items-center gap-1.5 text-[12px]">
-          <span class="material-symbols-outlined text-[18px]">verified</span>
-          <span>ຍິນດີດ້ວຍ! ທ່ານປົດລັອກສິດ "ຈັດສົ່ງ Delivery" ແລ້ວ</span>
-        </span>
+        <div>
+          <span class="text-emerald-900 font-bold flex items-center gap-1.5 text-[12px]">
+            <span class="material-symbols-outlined text-[18px]">verified</span>
+            <span>ຍິນດີດ້ວຍ! ທ່ານປົດລັອກສິດ "ຈັດສົ່ງ Delivery" ແລ້ວ</span>
+          </span>
+          <span class="text-[11px] text-emerald-800 font-semibold block mt-0.5">
+            🛵 <strong>ບໍລິການສົ່ງຟຣີ</strong> ໃນບໍລິເວນ 500 ແມັດ ອ້ອມຮອບຮ້ານ!
+          </span>
+        </div>
       `;
     }
     if (progressBar) progressBar.style.width = "100%";
@@ -191,21 +196,20 @@ function checkDeliveryUnlockStatus(cups, subtotal) {
     const cupsNeeded = Math.max(0, 3 - cups);
     const amountNeeded = Math.max(0, 120000 - subtotal);
     
-    // ຄິດໄລ່ % ຄວາມຄືບໜ້າ
     const cupPercent = (cups / 3) * 100;
     const amountPercent = (subtotal / 120000) * 100;
     const maxPercent = Math.min(100, Math.max(cupPercent, amountPercent));
 
     if (progressText) {
       progressText.innerHTML = `
-        <span class="text-taupe text-[11px] block">
-          🛵 <strong>ເງື່ອນໄຂຈັດສົ່ງ Delivery:</strong> ສັ່ງອີກ <strong>${cupsNeeded} ຈອກ</strong> ຫຼື ເພີ່ມອີກ <strong>${formatLAK(amountNeeded)}</strong>
+        <span class="text-taupe text-[11px] block leading-relaxed">
+          🛵 <strong>ເງື່ອນໄຂສົ່ງຟຣີ (ໄລຍະ 500ມ):</strong> ສັ່ງອີກ <strong>${cupsNeeded} ຈອກ</strong> ຫຼື ເພີ່ມອີກ <strong>${formatLAK(amountNeeded)}</strong> ເພື່ອປົດລັອກຈັດສົ່ງຟຣີ!
         </span>
       `;
     }
     if (progressBar) progressBar.style.width = `${maxPercent}%`;
     unlockedPanel.classList.add('hidden');
-    orderFulfillmentType = 'pickup'; // Reset ເປັນ pickup
+    orderFulfillmentType = 'pickup';
   }
 }
 
@@ -216,7 +220,6 @@ function setFulfillmentType(type) {
   document.getElementById('deliveryInputFields')?.classList.toggle('hidden', type !== 'delivery');
 }
 
-// 🔥 ລະບົບກວດສອບ ແລະ ໃຊ້ Coupon Code
 function applyCouponCode() {
   const input = document.getElementById('couponCodeInput');
   const code = input ? input.value.trim().toUpperCase() : '';
@@ -228,7 +231,7 @@ function applyCouponCode() {
 
   const match = VALID_COUPONS.find(c => c.code === code);
   if (!match) {
-    alert("ລະຫັດຄູປອງບໍ່ຖືກຕ້ອງ ຫຼື ໝົດອາຍຸແລ້ວ! (ລອງໃຊ້ໂຄດ: LADOLCE10 ຫຼື FREE20K)");
+    alert("ລະຫັດຄູປອງບໍ່ຖືກຕ້ອງ ຫຼື ໝົດອາຍຸ! (ລອງໃຊ້ໂຄດ: LADOLCE20 ຫຼື FREE20K)");
     return;
   }
 
@@ -320,11 +323,10 @@ function handleStartCheckout() {
     return;
   }
 
-  // ກວດສອບທີ່ຢູ່ຖ້າເລືອກ Delivery
   if (orderFulfillmentType === 'delivery') {
     const address = document.getElementById('deliveryAddressInput')?.value.trim();
     if (!address) {
-      alert("ກະລຸນາປ້ອນທີ່ຢູ່ຈັດສົ່ງ (ບ້ານ, ເມືອງ, ຫຼື ຈຸດສັງເກດ)!");
+      alert("ກະລຸນາປ້ອນທີ່ຢູ່ຈັດສົ່ງ (ບ້ານ, ເມືອງ, ຫຼື ຈຸດສັງເກດ ພາຍໃນ 500 ແມັດ)!");
       document.getElementById('deliveryAddressInput')?.focus();
       return;
     }
@@ -355,15 +357,20 @@ function submitGuestOrder() {
   executeOrderCreation(name, phone);
 }
 
-// 🔥 ສົ່ງອໍເດີ້ ພ້ອມລວມທີ່ຢູ່ Delivery, ໂຄດຄູປອງ ແລະ ໝາຍເຫດ
 async function executeOrderCreation(customerName, customerPhone) {
   showToast("ກຳລັງສົ່ງອໍເດີ້...");
 
   const subtotal = cart.reduce((s, i) => s + (Number(i.total) || 0), 0);
   
+  // ຄິດໄລ່ສ່ວນຫຼຸດຄູປອງ 20% ສູງສຸດ 30,000 LAK
   let discountAmount = 0;
   if (appliedCoupon) {
-    discountAmount = appliedCoupon.type === 'percent' ? subtotal * (appliedCoupon.value / 100) : Math.min(subtotal, appliedCoupon.value);
+    if (appliedCoupon.type === 'percent') {
+      const raw = subtotal * (appliedCoupon.value / 100);
+      discountAmount = appliedCoupon.maxDiscount ? Math.min(raw, appliedCoupon.maxDiscount) : raw;
+    } else {
+      discountAmount = Math.min(subtotal, appliedCoupon.value);
+    }
   }
 
   const discountedSubtotal = Math.max(0, subtotal - discountAmount);
@@ -373,13 +380,10 @@ async function executeOrderCreation(customerName, customerPhone) {
 
   const bank = paymentMethods.find(p => p.id === selectedBankMethodId);
   const paymentType = uploadedSlipDataUrl ? (bank ? bank.bankName : "Bank QR") : "Cash on Pickup";
-  const generalNote = document.getElementById('checkoutCustomerNote')?.value.trim() || '';
   const deliveryAddress = orderFulfillmentType === 'delivery' ? (document.getElementById('deliveryAddressInput')?.value.trim() || '') : null;
 
-  const newOrderId = 'LD-' + Math.floor(1000 + Math.random() * 9000);
-
   const newOrder = {
-    id: newOrderId,
+    id: 'LD-' + Math.floor(1000 + Math.random() * 9000),
     createdAt: new Date().toISOString(),
     customerName: customerName || "Customer",
     customerPhone: customerPhone || "+856 20 5512 8899",
@@ -390,16 +394,13 @@ async function executeOrderCreation(customerName, customerPhone) {
     couponCode: appliedCoupon ? appliedCoupon.code : null,
     tax: Number(tax) || 0,
     total: Number(grandTotal) || 0,
-    fulfillmentType: orderFulfillmentType, // 'pickup' | 'delivery'
+    fulfillmentType: orderFulfillmentType,
     deliveryAddress: deliveryAddress,
     paymentMethod: paymentType,
     slipUrl: uploadedSlipDataUrl || null,
-    note: generalNote,
     status: "pending",
     delayNotice: null
   };
-
-  console.log("🚀 [Checkout] Order Created:", newOrder);
 
   // 1. ລ້າງກະຕ່າ
   cart = [];
