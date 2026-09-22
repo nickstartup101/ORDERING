@@ -1,5 +1,5 @@
 // =======================================================
-// LA DOLCE — CORE CONFIGURATION & STORE SETTINGS
+// LA DOLCE — CORE CONFIGURATION & FIRESTORE ENGINE
 // =======================================================
 
 const firebaseConfig = {
@@ -22,16 +22,16 @@ try {
     db = firebase.firestore();
     auth = firebase.auth();
     isFirebaseReady = true;
-    console.log("✅ Cloud Firestore Ready");
+    console.log("✅ Cloud Firestore Initialized Successfully");
   }
 } catch (e) {
-  console.warn("Firestore fallback mode:", e);
+  console.warn("Firestore initialization error:", e);
 }
 
 const REGISTERED_ACCOUNTS = [
-  { email: "customer@ladolce.com", password: "123", name: "Nick test", role: "customer", phone: "+856 20 77609857" },
-  { email: "staff@ladolce.com", password: "123", name: "cashiers (Barista)", role: "staff", phone: "+856 20 77362388" },
-  { email: "owner@ladolce.com", password: "123", name: "Namfon (Superadmin)", role: "superadmin", phone: "+856 20 77362388" }
+  { email: "customer@ladolce.com", password: "123", name: "Elena Rostova", role: "customer", phone: "+856 20 5512 8899" },
+  { email: "staff@ladolce.com", password: "123", name: "Mateo (Barista Lead)", role: "staff", phone: "+856 20 7788 9900" },
+  { email: "owner@ladolce.com", password: "123", name: "Sengsavanh (Superadmin)", role: "superadmin", phone: "+856 20 9900 1122" }
 ];
 
 const DEFAULT_PAYMENTS = [
@@ -39,7 +39,6 @@ const DEFAULT_PAYMENTS = [
   { id: "pay_ldb", bankName: "LDB Bank", accountNumber: "030-01-22-98765432", borderColor: "#2563EB", qrImage: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=LDB_PAY_LADOLCE" }
 ];
 
-// ຕົວເລືອກເສີມເລີ່ມຕົ້ນ (ລວມທັງ Extra Shot ທີ່ Admin ແກ້ໄຂລາຄາໄດ້)
 const DEFAULT_MODIFIERS = [
   { id: "mod_whole", group: "milk", name: "Whole Milk (ນົມສົດແທ້)", price: 0 },
   { id: "mod_oat", group: "milk", name: "Oatly Barista (ນົມເຂົ້າໂອດ)", price: 15000 },
@@ -47,31 +46,39 @@ const DEFAULT_MODIFIERS = [
   { id: "mod_shot", group: "topping", name: "Extra Double Ristretto Shot", price: 12000 }
 ];
 
-const DEFAULT_MENU = [
-  { id: "item_cortado", name: "Double Shot Cortado", type: "drink", category: "coffee", image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80", desc: "Single-origin double espresso with micro-foam", variants: { standard: 35000, hot: 35000, iced: 40000 }, isAvailable: true },
-  { id: "item_pistachio", name: "Iced Pistachio Spanish Latte", type: "drink", category: "coffee", image: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=600&auto=format&fit=crop&q=80", desc: "Espresso with hand-ground Bronte pistachio cream", variants: { standard: 45000, hot: 45000, iced: 50000 }, isAvailable: true },
-  { id: "item_croissant", name: "Almond Croissant", type: "food", category: "bakery", image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&auto=format&fit=crop&q=80", desc: "Twice-baked almond frangipane butter croissant", variants: { standard: 32000 }, isAvailable: true }
-];
-
-// 🔥 Store Settings: Tax Rate ເລີ່ມຕົ້ນຕັ້ງເປັນ 0% ຕາມທີ່ຕ້ອງການ
-let storeSettings = JSON.parse(localStorage.getItem('ladolce_store_settings')) || {
-  isStoreOpen: true,
-  taxRatePercent: 0 // ຕອນນີ້ຮ້ານຍັງບໍ່ມີ Tax = 0%
-};
-
-// ໃນ js/config.js:
-// ❌ ຕັດ localStorage.getItem('ladolce_menu') ອອກ
-let menuItems = []; // ໃຫ້ເປັນ Array ຫວ່າງເປົ່າ ເພື່ອລໍຖ້າດຶງຂໍ້ມູນສົດໆຈາກ Cloud Firestore
+// 🔥 ຕັດ localStorage ຂອງ menuItems ອອກ 100%! ປ່ອຍໃຫ້ດຶງຈາກ Firestore ໂດຍກົງ
+let menuItems = [];
 let paymentMethods = JSON.parse(localStorage.getItem('ladolce_payment_methods')) || DEFAULT_PAYMENTS;
 let modifiers = JSON.parse(localStorage.getItem('ladolce_modifiers')) || DEFAULT_MODIFIERS;
-let orders = JSON.parse(localStorage.getItem('ladolce_orders')) || [];
+let orders = [];
 let cart = JSON.parse(localStorage.getItem('ladolce_cart')) || [];
 let currentUser = JSON.parse(localStorage.getItem('ladolce_user')) || null;
-let currentActiveOrder = JSON.parse(localStorage.getItem('ladolce_active_order')) || null;
 let userAccounts = JSON.parse(localStorage.getItem('ladolce_accounts')) || REGISTERED_ACCOUNTS;
+let storeSettings = JSON.parse(localStorage.getItem('ladolce_store_settings')) || { isStoreOpen: true, taxRatePercent: 0 };
 let cloudUsers = [];
 
+// Helper: Format LAK
 function formatLAK(amount) {
   const val = Math.round(Number(amount) || 0);
   return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " LAK";
+}
+
+// 🔥 Helper: ຄິດໄລ່ສີປະຈຳຕົວລູກຄ້າ (Customer Color Hash) ສຳລັບ Staff Panel
+const CUSTOMER_PALETTE = [
+  { bg: 'bg-emerald-50', border: 'border-emerald-400', text: 'text-emerald-900', ring: 'ring-emerald-400' },
+  { bg: 'bg-blue-50', border: 'border-blue-400', text: 'text-blue-900', ring: 'ring-blue-400' },
+  { bg: 'bg-amber-50', border: 'border-amber-400', text: 'text-amber-900', ring: 'ring-amber-400' },
+  { bg: 'bg-purple-50', border: 'border-purple-400', text: 'text-purple-900', ring: 'ring-purple-400' },
+  { bg: 'bg-rose-50', border: 'border-rose-400', text: 'text-rose-900', ring: 'ring-rose-400' },
+  { bg: 'bg-cyan-50', border: 'border-cyan-400', text: 'text-cyan-900', ring: 'ring-cyan-400' }
+];
+
+function getCustomerColorTheme(phoneOrName) {
+  if (!phoneOrName) return CUSTOMER_PALETTE[0];
+  let hash = 0;
+  for (let i = 0; i < phoneOrName.length; i++) {
+    hash = phoneOrName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % CUSTOMER_PALETTE.length;
+  return CUSTOMER_PALETTE[index];
 }
