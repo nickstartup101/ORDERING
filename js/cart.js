@@ -1,5 +1,5 @@
 // =======================================================
-// CART, FREE 500M DELIVERY & CAPPED 20% COUPON ENGINE
+// LA DOLCE — CART, FREE 500M DELIVERY & CAPPED COUPON
 // =======================================================
 
 let selectedBankMethodId = null;
@@ -7,7 +7,7 @@ let uploadedSlipDataUrl = null;
 let orderFulfillmentType = 'pickup'; // 'pickup' | 'delivery'
 let appliedCoupon = null;
 
-// 🔥 ລະບົບຄູປອງ 20% ຈຳກັດສູງສຸດ 30,000 LAK
+// 🔥 ລະບົບຄູປອງ 20% ຈຳກັດສູງສຸດບໍ່ເກີນ 30,000 LAK
 const VALID_COUPONS = [
   { code: "LADOLCE20", type: "percent", value: 20, maxDiscount: 30000, desc: "ສ່ວນຫຼຸດ 20% (ສູງສຸດ 30,000 LAK)" },
   { code: "FREE20K", type: "fixed", value: 20000, maxDiscount: 20000, desc: "ສ່ວນຫຼຸດ 20,000 LAK" },
@@ -82,6 +82,7 @@ function updateCartBadges(shouldAnimate = false) {
   renderCartList();
 }
 
+// 🔥 Render ລາຍການໃນກະຕ່າ: ລັອກຂະໜາດຮູບ 65x65px ແນ່ນອນ ບໍ່ມີລົ້ນຈໍ!
 function renderCartList() {
   const container = document.getElementById('cartListContainer');
   if (!container) return;
@@ -92,7 +93,7 @@ function renderCartList() {
         <span class="material-symbols-outlined text-[42px] text-forest-leaf/60">shopping_bag</span>
         <h3 class="font-serif-title text-[18px] text-primary font-medium">ບໍ່ມີລາຍການໃນກະຕ່າ</h3>
         <p class="text-[12px] text-taupe font-lao">ກະລຸນາເລືອກເຄື່ອງດື່ມ ຫຼື ເບເກີຣີ່ທີ່ທ່ານມັກ</p>
-        <button type="button" onclick="switchCustomerTab('menu')" class="px-5 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-semibold hover:bg-forest-leaf transition-all shadow-xs">
+        <button type="button" onclick="switchCustomerTab('menu')" class="px-5 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-semibold hover:bg-forest-leaf transition-all shadow-xs cursor-pointer">
           ໄປທີ່ເມນູສິນຄ້າ
         </button>
       </div>
@@ -110,18 +111,22 @@ function renderCartList() {
     subtotal += item.total;
     totalCups += item.quantity;
     return `
-      <div class="p-4 bg-surface-pure border border-hairline rounded-xl flex items-center justify-between shadow-xs">
-        <div class="flex items-center gap-3 min-w-0">
-          <img src="${item.image}" class="w-13 h-13 rounded-lg object-cover border border-hairline shrink-0"/>
-          <div class="min-w-0">
-            <h4 class="font-serif-title text-[14px] font-medium truncate">${item.name}</h4>
-            <p class="text-[11px] text-taupe truncate">[${item.variant.toUpperCase()}] • ${item.milk} • ຫວານ ${item.sweetness} ${item.extraShot ? '• +Shot' : ''}</p>
-            ${item.specialNote ? `<p class="text-[10px] text-amber-900 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 truncate mt-0.5">💬 ໝາຍເຫດ: ${item.specialNote}</p>` : ''}
-            <span class="font-mono text-[12px] font-bold text-forest-emerald">${formatLAK(item.unitPrice)} × ${item.quantity}</span>
-          </div>
+      <div class="p-4 bg-surface-pure border border-hairline rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+        
+        <!-- 🔥 ຮູບພາບຂະໜາດ 65x65px ລັອກແໜ້ນໜາ -->
+        <div class="w-[65px] h-[65px] rounded-xl overflow-hidden bg-surface-dim border border-hairline shrink-0">
+          <img src="${item.image}" class="w-full h-full object-cover"/>
         </div>
-        <button type="button" onclick="removeCartItem(${idx})" class="text-red-600 p-2 shrink-0">
-          <span class="material-symbols-outlined text-[18px]">delete</span>
+
+        <div class="flex-1 min-w-0">
+          <h4 class="font-serif-title text-[14px] font-bold text-primary truncate">${item.name}</h4>
+          <p class="text-[11px] text-taupe truncate mt-0.5">[${item.variant.toUpperCase()}] • ${item.milk} • ຫວານ ${item.sweetness} ${item.extraShot ? '• +Shot' : ''}</p>
+          ${item.specialNote ? `<p class="text-[10px] text-amber-900 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 truncate mt-1">💬 "${item.specialNote}"</p>` : ''}
+          <span class="font-mono text-[12px] font-bold text-forest-emerald block mt-1">${formatLAK(item.unitPrice)} × ${item.quantity}</span>
+        </div>
+
+        <button type="button" onclick="removeCartItem(${idx})" class="w-8 h-8 rounded-lg bg-surface hover:bg-red-50 text-red-600 border border-hairline flex items-center justify-center shrink-0 transition-colors cursor-pointer">
+          <span class="material-symbols-outlined text-[17px]">delete</span>
         </button>
       </div>
     `;
@@ -130,7 +135,7 @@ function renderCartList() {
   // ກວດສອບເງື່ອນໄຂສົ່ງຟຣີ 500 ແມັດ
   checkDeliveryUnlockStatus(totalCups, subtotal);
 
-  // 🔥 ຄິດໄລ່ສ່ວນຫຼຸດຄູປອງ 20% (ສູງສຸດບໍ່ເກີນ 30,000 LAK)
+  // ຄິດໄລ່ສ່ວນຫຼຸດຄູປອງ 20% (ສູງສຸດບໍ່ເກີນ 30,000 LAK)
   let discountAmount = 0;
   if (appliedCoupon) {
     if (appliedCoupon.type === 'percent') {
@@ -160,7 +165,7 @@ function renderCartList() {
   document.getElementById('summaryTotal').textContent = formatLAK(total);
 }
 
-// 🔥 ກວດສອບເງື່ອນໄຂ ສົ່ງຟຣີ 500 ແມັດ (3 ຈອກ ຫຼື 120,000 LAK)
+// ກວດສອບເງື່ອນໄຂ ສົ່ງຟຣີ 500 ແມັດ (3 ຈອກ ຫຼື 120,000 LAK)
 function checkDeliveryUnlockStatus(cups, subtotal) {
   const box = document.getElementById('deliveryUnlockBox');
   const unlockedPanel = document.getElementById('deliveryAddressPanel');
@@ -274,7 +279,7 @@ function renderCustomerPaymentOptions() {
     const isSelected = p.id === selectedBankMethodId;
     return `
       <button type="button" onclick="selectedBankMethodId='${p.id}'; renderCustomerPaymentOptions();" 
-        class="p-2.5 rounded-xl border-2 text-left transition-all ${isSelected ? 'border-forest-emerald bg-forest-emerald/10 font-bold shadow-xs' : 'border-hairline bg-surface-pure hover:border-forest-leaf'}">
+        class="p-2.5 rounded-xl border-2 text-left transition-all cursor-pointer ${isSelected ? 'border-forest-emerald bg-forest-emerald/10 font-bold shadow-xs' : 'border-hairline bg-surface-pure hover:border-forest-leaf'}">
         <span class="text-[12px] block">${p.bankName}</span>
         <span class="text-[10px] text-taupe font-mono">${p.accountNumber}</span>
       </button>
@@ -362,7 +367,6 @@ async function executeOrderCreation(customerName, customerPhone) {
 
   const subtotal = cart.reduce((s, i) => s + (Number(i.total) || 0), 0);
   
-  // ຄິດໄລ່ສ່ວນຫຼຸດຄູປອງ 20% ສູງສຸດ 30,000 LAK
   let discountAmount = 0;
   if (appliedCoupon) {
     if (appliedCoupon.type === 'percent') {
