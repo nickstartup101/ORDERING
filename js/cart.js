@@ -1,32 +1,20 @@
 // =======================================================
-// CART, CHECKOUT & RELIABLE MODAL CLOSE ENGINE
+// CART, CHECKOUT & DIRECT FIRESTORE SYNC ENGINE
 // =======================================================
 
 let selectedBankMethodId = null;
 let uploadedSlipDataUrl = null;
 
-// 🔥 ແກ້ໄຂ: ປິດ Modal ທຸກຄັ້ງຢ່າງແນ່ນອນ 100% ບໍ່ມີຕິດຄ້າງໃນເມນູທີ 2, 3
+// 1. 🔥 ຟັງຊັນເພີ່ມເຂົ້າກະຕ່າ (ແກ້ໄຂບໍ່ໃຫ້ປຸ່ມຄ້າງ ແລະ ປິດ Modal ທຸກຄັ້ງ 100%)
 function confirmAddToCart() {
   if (!activeCustomizingItem) return;
 
   const modal = document.getElementById('customizeModal');
-  const confirmBtn = document.querySelector('#customizeModal button[onclick="confirmAddToCart()"]');
 
-  // 1. ປ່ຽນປຸ່ມໃຫ້ເປັນສີຂຽວແຈ້ງເຕືອນສຳເລັດ
-  if (confirmBtn) {
-    confirmBtn.classList.add('bg-emerald-700');
-    confirmBtn.innerHTML = `
-      <span class="flex items-center justify-center gap-1.5 font-bold mx-auto text-[13px]">
-        <span class="material-symbols-outlined text-[18px]">check_circle</span>
-        <span>ເພີ່ມເຂົ້າກະຕ່າແລ້ວ!</span>
-      </span>
-    `;
-  }
-
-  // 2. ສຽງ Pop
+  // ສຽງ Pop
   if (typeof playChime === 'function') playChime(false);
 
-  // 3. ຄິດໄລ່ລາຄາ
+  // ຄິດໄລ່ລາຄາ
   let unitPrice = 35000;
   if (activeCustomizingItem.variants && activeCustomizingItem.variants[selectedVariant]) {
     unitPrice = parseFloat(activeCustomizingItem.variants[selectedVariant]) || 35000;
@@ -35,20 +23,20 @@ function confirmAddToCart() {
   const milkRadio = document.querySelector('input[name="milkOption"]:checked');
   const milk = milkRadio ? milkRadio.value : 'Whole Milk';
   if (milk.includes('Oat') || milk.includes('Almond')) {
-    const oatMod = modifiers.find(m => m.id === 'mod_oat');
+    const oatMod = (typeof modifiers !== 'undefined') ? modifiers.find(m => m.id === 'mod_oat') : null;
     unitPrice += (oatMod ? oatMod.price : 15000);
   }
 
   const extraShotEl = document.getElementById('addonExtraShot');
   const extraShot = extraShotEl ? extraShotEl.checked : false;
   if (extraShot) {
-    const shotMod = modifiers.find(m => m.id === 'mod_shot') || modifiers.find(m => m.group === 'topping');
+    const shotMod = (typeof modifiers !== 'undefined') ? (modifiers.find(m => m.id === 'mod_shot') || modifiers.find(m => m.group === 'topping')) : null;
     unitPrice += (shotMod ? shotMod.price : 12000);
   }
 
   const qty = parseInt(modalQuantity) || 1;
 
-  // ເພີ່ມລົງກະຕ່າ
+  // ເພີ່ມສິນຄ້າລົງກະຕ່າ
   cart.push({
     cartId: 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
     itemId: activeCustomizingItem.id,
@@ -65,16 +53,14 @@ function confirmAddToCart() {
 
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
 
-  // 4. 🔥 ບັງຄັບປິດ Modal ຢ່າງແນ່ນອນພາຍໃນ 0.3 ວິນາທີ ທຸກໆເມນູ!
-  setTimeout(() => {
-    if (modal) modal.classList.add('hidden');
-    if (confirmBtn) {
-      confirmBtn.classList.remove('bg-emerald-700');
-      confirmBtn.innerHTML = `<span>ເພີ່ມໃສ່ກະຕ່າ</span><span id="modalDynamicTotal" class="font-serif-title text-[15px] font-normal">0 LAK</span>`;
-    }
-    updateCartBadges(true);
-    showToast(`✓ ເພີ່ມ "${activeCustomizingItem.name}" (${qty} ລາຍການ) ເຂົ້າກະຕ່າແລ້ວ!`);
-  }, 300);
+  // 🔥 ປິດ Modal ທັນທີ (ບໍ່ປ່ຽນ innerHTML ຂອງປຸ່ມ ເພື່ອປ້ອງກັນບໍ່ໃຫ້ເມນູທີ 2 ຄ້າງ!)
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+
+  // ອັບເດດ Badge ກະຕ່າ
+  updateCartBadges(true);
+  showToast(`✓ ເພີ່ມ "${activeCustomizingItem.name}" (${qty} ລາຍການ) ເຂົ້າກະຕ່າແລ້ວ!`);
 }
 
 function updateCartBadges(shouldAnimate = false) {
@@ -175,16 +161,13 @@ function renderCustomerPaymentOptions() {
     selectedBankMethodId = paymentMethods[0].id;
   }
 
-  container.innerHTML = paymentMethods.map(p => {
-    const isSelected = p.id === selectedBankMethodId;
-    return `
-      <button type="button" onclick="selectedBankMethodId='${p.id}'; renderCustomerPaymentOptions();" 
-        class="p-2.5 rounded-xl border-2 text-left transition-all ${isSelected ? 'border-forest-emerald bg-forest-emerald/10 font-bold shadow-xs' : 'border-hairline bg-surface-pure hover:border-forest-leaf'}">
-        <span class="text-[12px] block">${p.bankName}</span>
-        <span class="text-[10px] text-taupe font-mono">${p.accountNumber}</span>
-      </button>
-    `;
-  }).join('');
+  container.innerHTML = paymentMethods.map(p => `
+    <button type="button" onclick="selectedBankMethodId='${p.id}'; renderCustomerPaymentOptions();" 
+      class="p-2.5 rounded-xl border-2 text-left transition-all ${p.id === selectedBankMethodId ? 'border-forest-emerald bg-forest-emerald/10 font-bold shadow-xs' : 'border-hairline bg-surface-pure hover:border-forest-leaf'}">
+      <span class="text-[12px] block">${p.bankName}</span>
+      <span class="text-[10px] text-taupe font-mono">${p.accountNumber}</span>
+    </button>
+  `).join('');
 
   const bank = paymentMethods.find(p => p.id === selectedBankMethodId) || paymentMethods[0];
   if (bank) {
@@ -253,6 +236,7 @@ function submitGuestOrder() {
   executeOrderCreation(name, phone);
 }
 
+// 2. 🔥 ສົ່ງອໍເດີ້ຂຶ້ນ Cloud Firestore ແທ້ 100% (ແກ້ໄຂບັນຫາ Staff ຂຶ້ນ Queue is clear)
 async function executeOrderCreation(customerName, customerPhone) {
   showToast("ກຳລັງສົ່ງອໍເດີ້...");
 
@@ -280,17 +264,24 @@ async function executeOrderCreation(customerName, customerPhone) {
     delayNotice: null
   };
 
-  // 1. ບັນທຶກລົງ Firestore ທັນທີ
+  console.log("🚀 [Firestore Push] Pushing new order to Cloud:", newOrder.id);
+
+  // 1. 🔥 ຍິງກົງຂຶ້ນ Cloud Firestore Collection 'orders'
   if (isFirebaseReady && db) {
     try {
       await db.collection("orders").doc(newOrder.id).set(newOrder);
-      console.log("✅ Order created on Firestore:", newOrder.id);
+      console.log("✅ Order successfully written to Firestore:", newOrder.id);
     } catch (err) {
-      console.error(err);
+      console.error("❌ Firestore write error:", err);
+      alert("ບໍ່ສາມາດສົ່ງອໍເດີ້ຂຶ້ນ Cloud ໄດ້: " + err.message);
+      return;
     }
   }
 
-  // 2. ລ້າງກະຕ່າ
+  // 2. ບັນທຶກລົງ Local ຂອງລູກຄ້າ
+  orders.unshift(newOrder);
+
+  // 3. ລ້າງກະຕ່າ
   cart = [];
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
   uploadedSlipDataUrl = null;
@@ -308,6 +299,7 @@ async function executeOrderCreation(customerName, customerPhone) {
   updateCartBadges();
   showToast("ສັ່ງຊື້ສຳເລັດແລ້ວ! 🎉");
 
+  // 4. ນຳທາງໄປໜ້າ Ticket ທັນທີ
   if (typeof switchCustomerTab === 'function') {
     switchCustomerTab('ticket');
   }
