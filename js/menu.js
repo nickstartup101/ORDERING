@@ -1,5 +1,5 @@
 // =======================================================
-// MENU CURATION & ADAPTIVE CUSTOMIZER ENGINE
+// MENU CURATION & STATE-CLEANED CUSTOMIZER
 // =======================================================
 
 let currentCategoryFilter = 'all';
@@ -37,7 +37,6 @@ function renderMenu() {
   filtered.forEach(item => {
     const isAvail = item.isAvailable !== false;
 
-    // ດຶງລາຄາເລີ່ມຕົ້ນແບບປອດໄພ 100%
     let minPrice = 35000;
     if (typeof item.price === 'number') {
       minPrice = item.price;
@@ -75,79 +74,90 @@ function renderMenu() {
   });
 }
 
+// 🔥 ແກ້ໄຂ: Reset State 100% ທຸກຄັ້ງທີ່ເປີດ (ແກ້ບັນຫາເລືອກເມນູທີ 3 ບໍ່ໄດ້)
 function openCustomizeModal(itemId) {
   activeCustomizingItem = menuItems.find(i => i.id === itemId);
   if (!activeCustomizingItem || activeCustomizingItem.isAvailable === false) return;
 
+  // 1. Reset State ທັງໝົດຢ່າງໝົດຈົດ
   modalQuantity = 1;
   selectedSweetnessLevel = '100%';
-  document.getElementById('modalQtyDisplay').textContent = modalQuantity;
-  document.getElementById('modalItemTitle').textContent = activeCustomizingItem.name;
-  document.getElementById('modalItemDesc').textContent = activeCustomizingItem.desc || '';
-  document.getElementById('modalItemImage').src = activeCustomizingItem.image;
+  
+  const qtyEl = document.getElementById('modalQtyDisplay');
+  const titleEl = document.getElementById('modalItemTitle');
+  const descEl = document.getElementById('modalItemDesc');
+  const imgEl = document.getElementById('modalItemImage');
 
-  // 1. Render Variants ຕາມທີ່ Superadmin ອະນຸຍາດ
+  if (qtyEl) qtyEl.textContent = modalQuantity;
+  if (titleEl) titleEl.textContent = activeCustomizingItem.name;
+  if (descEl) descEl.textContent = activeCustomizingItem.desc || '';
+  if (imgEl) imgEl.src = activeCustomizingItem.image;
+
+  // 2. Reset Extra Shot Topping
+  const extraShotEl = document.getElementById('addonExtraShot');
+  if (extraShotEl) extraShotEl.checked = false;
+
+  // 3. Reset Milk Radio ເປັນ Whole Milk
+  const defaultMilk = document.querySelector('input[name="milkOption"][value="Whole Milk"]');
+  if (defaultMilk) defaultMilk.checked = true;
+
+  // 4. Render Variants List
   const container = document.getElementById('variantButtonsGrid');
-  container.innerHTML = '';
-  const v = activeCustomizingItem.variants || {};
-  const list = [];
+  if (container) {
+    container.innerHTML = '';
+    const v = activeCustomizingItem.variants || {};
+    const list = [];
+    const baseP = typeof v === 'number' ? v : (v.standard || 35000);
 
-  const baseP = typeof v === 'number' ? v : (v.standard || 35000);
+    if (activeCustomizingItem.allowHot !== false && (v.hot || baseP)) {
+      list.push({ key: 'hot', label: 'ຮ້ອນ', price: v.hot || baseP });
+    }
+    if (activeCustomizingItem.allowIced !== false && (v.iced || baseP)) {
+      list.push({ key: 'iced', label: 'ເຢັນ', price: v.iced || (baseP + 5000) });
+    }
+    if (activeCustomizingItem.allowFrappe === true && v.frappe) {
+      list.push({ key: 'frappe', label: 'ປັ່ນ', price: v.frappe });
+    }
+    if (list.length === 0) {
+      list.push({ key: 'standard', label: 'ມາດຕະຖານ', price: baseP });
+    }
 
-  if (activeCustomizingItem.allowHot !== false && (v.hot || baseP)) {
-    list.push({ key: 'hot', label: 'ຮ້ອນ', price: v.hot || baseP });
+    selectedVariant = list[0].key;
+
+    list.forEach(varItem => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `variant-btn p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all ${varItem.key === selectedVariant ? 'border-forest-emerald bg-forest-emerald/10 font-bold' : 'border-hairline bg-surface-pure'}`;
+      btn.dataset.key = varItem.key;
+      btn.onclick = function() { selectVariantOption(varItem.key); };
+      btn.innerHTML = `<span class="text-[11px]">${varItem.label}</span><span class="font-serif-title font-bold text-forest-emerald">${formatLAK(varItem.price)}</span>`;
+      container.appendChild(btn);
+    });
   }
-  if (activeCustomizingItem.allowIced !== false && (v.iced || baseP)) {
-    list.push({ key: 'iced', label: 'ເຢັນ', price: v.iced || (baseP + 5000) });
-  }
-  if (activeCustomizingItem.allowFrappe === true && v.frappe) {
-    list.push({ key: 'frappe', label: 'ປັ່ນ', price: v.frappe });
-  }
-  if (list.length === 0) {
-    list.push({ key: 'standard', label: 'ມາດຕະຖານ', price: baseP });
-  }
 
-  selectedVariant = list[0].key;
-
-  list.forEach(varItem => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `variant-btn p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all ${varItem.key === selectedVariant ? 'border-forest-emerald bg-forest-emerald/10 font-bold' : 'border-hairline bg-surface-pure'}`;
-    btn.dataset.key = varItem.key;
-    btn.onclick = function() { selectVariantOption(varItem.key); };
-    btn.innerHTML = `<span class="text-[11px]">${varItem.label}</span><span class="font-serif-title font-bold text-forest-emerald">${formatLAK(varItem.price)}</span>`;
-    container.appendChild(btn);
-  });
-
-  // 2. ເຊື່ອງ "ຕົວເລືອກນົມ" ຖ້າ Superadmin ປິດຕົວເລືອກນີ້ (ເຊັ່ນ Americano)
+  // 5. ເຊື່ອງ/ສະແດງ Options ຕາມທີ່ Admin ຕັ້ງຄ່າ
   const milkSection = document.getElementById('milkSelectorGroup');
   if (milkSection) {
-    if (activeCustomizingItem.allowMilk === false || activeCustomizingItem.category === 'bakery') {
-      milkSection.classList.add('hidden');
-    } else {
-      milkSection.classList.remove('hidden');
-    }
+    milkSection.classList.toggle('hidden', activeCustomizingItem.allowMilk === false || activeCustomizingItem.category === 'bakery' || activeCustomizingItem.category === 'refresher');
   }
 
-  // 3. ເຊື່ອງ "ຄວາມຫວານ" ຖ້າປິດ
   const sweetSection = document.getElementById('sweetnessSelectorGroup');
   if (sweetSection) {
-    if (activeCustomizingItem.allowSweetness === false || activeCustomizingItem.category === 'bakery') {
-      sweetSection.classList.add('hidden');
-    } else {
-      sweetSection.classList.remove('hidden');
-    }
+    sweetSection.classList.toggle('hidden', activeCustomizingItem.allowSweetness === false || activeCustomizingItem.category === 'bakery');
   }
 
-  // 4. ເຊື່ອງ "Topping" ຖ້າປິດ
   const toppingSection = document.getElementById('toppingSelectorGroup');
   if (toppingSection) {
-    if (activeCustomizingItem.allowTopping === false || activeCustomizingItem.category === 'bakery') {
-      toppingSection.classList.add('hidden');
-    } else {
-      toppingSection.classList.remove('hidden');
-    }
+    toppingSection.classList.toggle('hidden', activeCustomizingItem.allowTopping === false || activeCustomizingItem.category === 'bakery');
   }
+
+  // Reset Sweetness Button Highlight
+  document.querySelectorAll('.sweet-btn').forEach(b => {
+    b.className = 'sweet-btn py-1.5 rounded text-[11px] text-taupe font-medium';
+    if (b.textContent.trim() === '100%') {
+      b.className = 'sweet-btn py-1.5 rounded text-[11px] bg-forest-emerald text-white font-medium';
+    }
+  });
 
   updateModalPrice();
   document.getElementById('customizeModal')?.classList.remove('hidden');
@@ -199,43 +209,11 @@ function updateModalPrice() {
   if (activeCustomizingItem.allowMilk !== false) {
     const milkRadio = document.querySelector('input[name="milkOption"]:checked');
     if (milkRadio && (milkRadio.value.includes('Oat') || milkRadio.value.includes('Almond'))) {
-      unitPrice += 15000;
-    }
-  }
-
-  const extraShot = document.getElementById('addonExtraShot')?.checked;
-  if (extraShot && activeCustomizingItem.allowTopping !== false) {
-    unitPrice += 12000;
-  }
-
-  document.getElementById('modalItemBasePrice').textContent = formatLAK(unitPrice);
-  document.getElementById('modalDynamicTotal').textContent = formatLAK(unitPrice * modalQuantity);
-}
-// ໃນ js/menu.js:
-function updateModalPrice() {
-  if (!activeCustomizingItem) return;
-  const v = activeCustomizingItem.variants || {};
-  let unitPrice = 35000;
-
-  if (typeof v === 'number') {
-    unitPrice = v;
-  } else if (v[selectedVariant]) {
-    unitPrice = v[selectedVariant];
-  } else if (v.standard) {
-    unitPrice = v.standard;
-  }
-
-  // 1. ບວກຄ່ານົມຈາກ Modifiers
-  if (activeCustomizingItem.allowMilk !== false) {
-    const milkRadio = document.querySelector('input[name="milkOption"]:checked');
-    if (milkRadio && (milkRadio.value.includes('Oat') || milkRadio.value.includes('Almond'))) {
-      // ດຶງລາຄານົມຈາກ modifiers ທີ່ admin ຕັ້ງໄວ້
       const oatMod = modifiers.find(m => m.id === 'mod_oat');
       unitPrice += (oatMod ? oatMod.price : 15000);
     }
   }
 
-  // 2. 🔥 ບວກຄ່າ Extra Shot ຈາກ Modifiers ທີ່ Admin ຕັ້ງໄວ້ແທ້ໆ
   const extraShot = document.getElementById('addonExtraShot')?.checked;
   if (extraShot && activeCustomizingItem.allowTopping !== false) {
     const shotMod = modifiers.find(m => m.id === 'mod_shot') || modifiers.find(m => m.group === 'topping');
@@ -245,13 +223,3 @@ function updateModalPrice() {
   document.getElementById('modalItemBasePrice').textContent = formatLAK(unitPrice);
   document.getElementById('modalDynamicTotal').textContent = formatLAK(unitPrice * modalQuantity);
 }
-// ໃນ js/menu.js ສ່ວນ openCustomizeModal:
-  const milkSection = document.getElementById('milkSelectorGroup');
-  if (milkSection) {
-    // ຖ້າເປັນ Bakery ຫຼື Refresher ໃຫ້ເຊື່ອງຕົວເລືອກນົມອັດຕະໂນມັດ
-    if (activeCustomizingItem.allowMilk === false || activeCustomizingItem.category === 'bakery' || activeCustomizingItem.category === 'refresher') {
-      milkSection.classList.add('hidden');
-    } else {
-      milkSection.classList.remove('hidden');
-    }
-  }
