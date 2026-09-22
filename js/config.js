@@ -29,9 +29,9 @@ try {
 }
 
 const REGISTERED_ACCOUNTS = [
-  { email: "customer@ladolce.com", password: "123", name: "Elena Rostova", role: "customer", phone: "+856 20 5512 8899" },
-  { email: "staff@ladolce.com", password: "123", name: "Mateo (Barista Lead)", role: "staff", phone: "+856 20 7788 9900" },
-  { email: "owner@ladolce.com", password: "123", name: "Sengsavanh (Superadmin)", role: "superadmin", phone: "+856 20 9900 1122" }
+  { email: "customer@ladolce.com", password: "123", name: "Nick Test", role: "customer", phone: "+856 20 5512 8899" },
+  { email: "staff@ladolce.com", password: "123", name: "Cashiers (Barista Lead)", role: "staff", phone: "+856 20 7788 9900" },
+  { email: "owner@ladolce.com", password: "123", name: "Namfon (Superadmin)", role: "superadmin", phone: "+856 20 9900 1122" }
 ];
 
 const DEFAULT_PAYMENTS = [
