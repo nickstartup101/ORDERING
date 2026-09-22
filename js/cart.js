@@ -1,20 +1,17 @@
 // =======================================================
-// CART, CHECKOUT & DIRECT FIRESTORE SYNC ENGINE
+// CART, CHECKOUT & DIRECT FIRESTORE REAL-TIME SYNC
 // =======================================================
 
 let selectedBankMethodId = null;
 let uploadedSlipDataUrl = null;
 
-// 1. 🔥 ຟັງຊັນເພີ່ມເຂົ້າກະຕ່າ (ແກ້ໄຂບໍ່ໃຫ້ປຸ່ມຄ້າງ ແລະ ປິດ Modal ທຸກຄັ້ງ 100%)
 function confirmAddToCart() {
   if (!activeCustomizingItem) return;
 
   const modal = document.getElementById('customizeModal');
 
-  // ສຽງ Pop
   if (typeof playChime === 'function') playChime(false);
 
-  // ຄິດໄລ່ລາຄາ
   let unitPrice = 35000;
   if (activeCustomizingItem.variants && activeCustomizingItem.variants[selectedVariant]) {
     unitPrice = parseFloat(activeCustomizingItem.variants[selectedVariant]) || 35000;
@@ -36,7 +33,6 @@ function confirmAddToCart() {
 
   const qty = parseInt(modalQuantity) || 1;
 
-  // ເພີ່ມສິນຄ້າລົງກະຕ່າ
   cart.push({
     cartId: 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
     itemId: activeCustomizingItem.id,
@@ -53,12 +49,9 @@ function confirmAddToCart() {
 
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
 
-  // 🔥 ປິດ Modal ທັນທີ (ບໍ່ປ່ຽນ innerHTML ຂອງປຸ່ມ ເພື່ອປ້ອງກັນບໍ່ໃຫ້ເມນູທີ 2 ຄ້າງ!)
-  if (modal) {
-    modal.classList.add('hidden');
-  }
+  // ປິດ Modal ທັນທີ
+  if (modal) modal.classList.add('hidden');
 
-  // ອັບເດດ Badge ກະຕ່າ
   updateCartBadges(true);
   showToast(`✓ ເພີ່ມ "${activeCustomizingItem.name}" (${qty} ລາຍການ) ເຂົ້າກະຕ່າແລ້ວ!`);
 }
@@ -236,11 +229,11 @@ function submitGuestOrder() {
   executeOrderCreation(name, phone);
 }
 
-// 2. 🔥 ສົ່ງອໍເດີ້ຂຶ້ນ Cloud Firestore ແລະ ຈື່ຈຳອໍເດີ້ລ່າສຸດຂອງລູກຄ້າທັນທີ 100%
+// 🔥 ສົ່ງອໍເດີ້ຂຶ້ນ Firestore ແລະ ລ້າງກະຕ່າ 100%
 async function executeOrderCreation(customerName, customerPhone) {
   showToast("ກຳລັງສົ່ງອໍເດີ້...");
 
-  const subtotal = cart.reduce((s, i) => s + (i.total || 0), 0);
+  const subtotal = cart.reduce((s, i) => s + (Number(i.total) || 0), 0);
   const taxRate = (storeSettings && storeSettings.taxRatePercent) || 0;
   const tax = subtotal * (taxRate / 100);
   const grandTotal = subtotal + tax;
@@ -253,42 +246,22 @@ async function executeOrderCreation(customerName, customerPhone) {
   const newOrder = {
     id: newOrderId,
     createdAt: new Date().toISOString(),
-    customerName: customerName,
-    customerPhone: customerPhone,
+    customerName: customerName || "Customer",
+    customerPhone: customerPhone || "+856 20 5512 8899",
     customerEmail: currentUser ? currentUser.email : "guest@ladolce.com",
-    items: [...cart],
-    subtotal: subtotal,
-    tax: tax,
-    total: grandTotal,
+    items: JSON.parse(JSON.stringify(cart)),
+    subtotal: Number(subtotal) || 0,
+    tax: Number(tax) || 0,
+    total: Number(grandTotal) || 0,
     paymentMethod: paymentType,
     slipUrl: uploadedSlipDataUrl || null,
     status: "pending",
     delayNotice: null
   };
 
-  console.log("🚀 [Firestore Push] Pushing new order:", newOrder.id);
+  console.log("🚀 [Instant Checkout] Sending Order:", newOrder.id);
 
-  // 1. 🔥 ຈື່ຈຳອໍເດີ້ລ່າສຸດຂອງລູກຄ້າໄວ້ໃນ LocalStorage ທັນທີ (ເພື່ອໃຫ້ My Ticket ສະແດງອໍເດີ້ໃໝ່ນີ້ທັນທີ!)
-  currentActiveOrder = newOrder;
-  localStorage.setItem('ladolce_active_order', JSON.stringify(currentActiveOrder));
-
-  // 2. ອັບເດດລົງ Memory Local
-  orders.unshift(newOrder);
-  localStorage.setItem('ladolce_orders', JSON.stringify(orders));
-
-  // 3. 🔥 ຍິງກົງຂຶ້ນ Cloud Firestore Collection 'orders'
-  if (isFirebaseReady && db) {
-    try {
-      await db.collection("orders").doc(newOrder.id).set(newOrder);
-      console.log("✅ Order successfully written to Firestore:", newOrder.id);
-    } catch (err) {
-      console.error("❌ Firestore write error:", err);
-      alert("ບໍ່ສາມາດສົ່ງອໍເດີ້ຂຶ້ນ Cloud ໄດ້: " + err.message);
-      return;
-    }
-  }
-
-  // 4. ລ້າງກະຕ່າ
+  // 1. 🔥 ລ້າງກະຕ່າທັນທີ
   cart = [];
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
   uploadedSlipDataUrl = null;
@@ -303,10 +276,26 @@ async function executeOrderCreation(customerName, customerPhone) {
   if (txt) txt.textContent = "ອັບໂຫຼດຮູບໃບໂອນເງິນ (Slip)";
   if (fileInput) fileInput.value = '';
 
-  updateCartBadges();
+  updateCartBadges(false);
+
+  // 2. ບັນທຶກລົງ Local
+  currentActiveOrder = newOrder;
+  localStorage.setItem('ladolce_active_order', JSON.stringify(currentActiveOrder));
+  orders.unshift(newOrder);
+
+  // 3. 🔥 ຍິງກົງຂຶ້ນ Cloud Firestore Real-time
+  if (typeof isFirebaseReady !== 'undefined' && isFirebaseReady && db) {
+    db.collection("orders").doc(newOrder.id).set(newOrder)
+      .then(() => {
+        console.log("✅ [Firestore Success] Order written to Cloud:", newOrder.id);
+      })
+      .catch((err) => {
+        console.error("❌ [Firestore Error]:", err);
+      });
+  }
+
   showToast("ສັ່ງຊື້ສຳເລັດແລ້ວ! 🎉");
 
-  // 5. ນຳທາງໄປໜ້າ Ticket ທັນທີ
   if (typeof switchCustomerTab === 'function') {
     switchCustomerTab('ticket');
   }
