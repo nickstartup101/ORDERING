@@ -1,5 +1,5 @@
 // =======================================================
-// LA DOLCE — CART, FREE 500M DELIVERY & CAPPED COUPON
+// LA DOLCE — CART, 500M DELIVERY & ADVANCED COUPON ENGINE
 // =======================================================
 
 let selectedBankMethodId = null;
@@ -7,11 +7,10 @@ let uploadedSlipDataUrl = null;
 let orderFulfillmentType = 'pickup'; // 'pickup' | 'delivery'
 let appliedCoupon = null;
 
-// 🔥 ລະບົບຄູປອງ 20% ຈຳກັດສູງສຸດບໍ່ເກີນ 30,000 LAK
-const VALID_COUPONS = [
-  { code: "LADOLCE20", type: "percent", value: 20, maxDiscount: 30000, desc: "ສ່ວນຫຼຸດ 20% (ສູງສຸດ 30,000 LAK)" },
-  { code: "FREE20K", type: "fixed", value: 20000, maxDiscount: 20000, desc: "ສ່ວນຫຼຸດ 20,000 LAK" },
-  { code: "ATELIERVIP", type: "percent", value: 15, maxDiscount: 50000, desc: "ສ່ວນຫຼຸດ VIP 15%" }
+// ລາຍຊື່ຄູປອງເລີ່ມຕົ້ນ
+let activeCouponsList = [
+  { id: "cpn_LADOLCE20", code: "LADOLCE20", type: "percent", value: 20, maxDiscount: 30000, minOrder: 0, totalBudget: 500000, budgetUsed: 0, expiryDate: null, desc: "ສ່ວນຫຼຸດ 20% ສູງສຸດ 30,000 LAK", isActive: true },
+  { id: "cpn_FREE20K", code: "FREE20K", type: "fixed", value: 20000, maxDiscount: 20000, minOrder: 100000, totalBudget: 1000000, budgetUsed: 0, expiryDate: null, desc: "ຫຼຸດ 20,000 LAK (ສັ່ງຂັ້ນຕ່ຳ 100,000 LAK)", isActive: true }
 ];
 
 function confirmAddToCart() {
@@ -82,7 +81,7 @@ function updateCartBadges(shouldAnimate = false) {
   renderCartList();
 }
 
-// 🔥 Render ລາຍການໃນກະຕ່າ: ລັອກຂະໜາດຮູບ 65x65px ແນ່ນອນ ບໍ່ມີລົ້ນຈໍ!
+// 🔥 Render Cart List: ຮູບ 65x65px ລັອກແໜ້ນໜາ ບໍ່ລົ້ນຈໍ
 function renderCartList() {
   const container = document.getElementById('cartListContainer');
   if (!container) return;
@@ -112,8 +111,6 @@ function renderCartList() {
     totalCups += item.quantity;
     return `
       <div class="p-4 bg-surface-pure border border-hairline rounded-2xl flex items-center justify-between gap-3 shadow-xs">
-        
-        <!-- 🔥 ຮູບພາບຂະໜາດ 65x65px ລັອກແໜ້ນໜາ -->
         <div class="w-[65px] h-[65px] rounded-xl overflow-hidden bg-surface-dim border border-hairline shrink-0">
           <img src="${item.image}" class="w-full h-full object-cover"/>
         </div>
@@ -121,7 +118,12 @@ function renderCartList() {
         <div class="flex-1 min-w-0">
           <h4 class="font-serif-title text-[14px] font-bold text-primary truncate">${item.name}</h4>
           <p class="text-[11px] text-taupe truncate mt-0.5">[${item.variant.toUpperCase()}] • ${item.milk} • ຫວານ ${item.sweetness} ${item.extraShot ? '• +Shot' : ''}</p>
-          ${item.specialNote ? `<p class="text-[10px] text-amber-900 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 truncate mt-1">💬 "${item.specialNote}"</p>` : ''}
+          ${item.specialNote ? `
+            <p class="text-[10px] text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 truncate mt-1 flex items-center gap-1">
+              <span class="material-symbols-outlined text-[13px]">chat</span>
+              <span>"${item.specialNote}"</span>
+            </p>
+          ` : ''}
           <span class="font-mono text-[12px] font-bold text-forest-emerald block mt-1">${formatLAK(item.unitPrice)} × ${item.quantity}</span>
         </div>
 
@@ -132,10 +134,10 @@ function renderCartList() {
     `;
   }).join('');
 
-  // ກວດສອບເງື່ອນໄຂສົ່ງຟຣີ 500 ແມັດ
+  // ກວດສອບປົດລັອກສົ່ງຟຣີ 500 ແມັດ
   checkDeliveryUnlockStatus(totalCups, subtotal);
 
-  // ຄິດໄລ່ສ່ວນຫຼຸດຄູປອງ 20% (ສູງສຸດບໍ່ເກີນ 30,000 LAK)
+  // ຄິດໄລ່ສ່ວນຫຼຸດຄູປອງ (Capped Discount)
   let discountAmount = 0;
   if (appliedCoupon) {
     if (appliedCoupon.type === 'percent') {
@@ -165,7 +167,7 @@ function renderCartList() {
   document.getElementById('summaryTotal').textContent = formatLAK(total);
 }
 
-// ກວດສອບເງື່ອນໄຂ ສົ່ງຟຣີ 500 ແມັດ (3 ຈອກ ຫຼື 120,000 LAK)
+// ກວດສອບເງື່ອນໄຂສົ່ງຟຣີ 500 ແມັດ (3 ຈອກ ຫຼື 120,000 LAK) - ໃຊ້ Google Symbols
 function checkDeliveryUnlockStatus(cups, subtotal) {
   const box = document.getElementById('deliveryUnlockBox');
   const unlockedPanel = document.getElementById('deliveryAddressPanel');
@@ -188,8 +190,9 @@ function checkDeliveryUnlockStatus(cups, subtotal) {
             <span class="material-symbols-outlined text-[18px]">verified</span>
             <span>ຍິນດີດ້ວຍ! ທ່ານປົດລັອກສິດ "ຈັດສົ່ງ Delivery" ແລ້ວ</span>
           </span>
-          <span class="text-[11px] text-emerald-800 font-semibold block mt-0.5">
-            🛵 <strong>ບໍລິການສົ່ງຟຣີ</strong> ໃນບໍລິເວນ 500 ແມັດ ອ້ອມຮອບຮ້ານ!
+          <span class="text-[11px] text-emerald-800 font-semibold block mt-0.5 flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px]">two_wheeler</span>
+            <span><strong>ບໍລິການສົ່ງຟຣີ</strong> ໃນບໍລິເວນ 500 ແມັດ ອ້ອມຮອບຮ້ານ!</span>
           </span>
         </div>
       `;
@@ -207,8 +210,9 @@ function checkDeliveryUnlockStatus(cups, subtotal) {
 
     if (progressText) {
       progressText.innerHTML = `
-        <span class="text-taupe text-[11px] block leading-relaxed">
-          🛵 <strong>ເງື່ອນໄຂສົ່ງຟຣີ (ໄລຍະ 500ມ):</strong> ສັ່ງອີກ <strong>${cupsNeeded} ຈອກ</strong> ຫຼື ເພີ່ມອີກ <strong>${formatLAK(amountNeeded)}</strong> ເພື່ອປົດລັອກຈັດສົ່ງຟຣີ!
+        <span class="text-taupe text-[11px] block leading-relaxed flex items-center gap-1 flex-wrap">
+          <span class="material-symbols-outlined text-[15px] text-forest-emerald">two_wheeler</span>
+          <span><strong>ເງື່ອນໄຂສົ່ງຟຣີ (ໄລຍະ 500ມ):</strong> ສັ່ງອີກ <strong>${cupsNeeded} ຈອກ</strong> ຫຼື ເພີ່ມອີກ <strong>${formatLAK(amountNeeded)}</strong> ເພື່ອປົດລັອກຈັດສົ່ງຟຣີ!</span>
         </span>
       `;
     }
@@ -225,6 +229,7 @@ function setFulfillmentType(type) {
   document.getElementById('deliveryInputFields')?.classList.toggle('hidden', type !== 'delivery');
 }
 
+// ລະບົບຄູປອງຂັ້ນສູງ
 function applyCouponCode() {
   const input = document.getElementById('couponCodeInput');
   const code = input ? input.value.trim().toUpperCase() : '';
@@ -234,9 +239,25 @@ function applyCouponCode() {
     return;
   }
 
-  const match = VALID_COUPONS.find(c => c.code === code);
+  const match = activeCouponsList.find(c => c.code === code && c.isActive !== false);
   if (!match) {
-    alert("ລະຫັດຄູປອງບໍ່ຖືກຕ້ອງ ຫຼື ໝົດອາຍຸ! (ລອງໃຊ້ໂຄດ: LADOLCE20 ຫຼື FREE20K)");
+    alert("ລະຫັດຄູປອງບໍ່ຖືກຕ້ອງ ຫຼື ບໍ່ມີໃນລະບົບ!");
+    return;
+  }
+
+  if (match.expiryDate && new Date(match.expiryDate) < new Date()) {
+    alert("ຄູປອງນີ້ໝົດອາຍຸການໃຊ້ງານແລ້ວ!");
+    return;
+  }
+
+  if (match.totalBudget && (match.budgetUsed >= match.totalBudget)) {
+    alert("ຄູປອງນີ້ຖືກໃຊ້ຄົບຕາມວົງເງິນໂປຣໂມຊັ່ນແລ້ວ (Expired)!");
+    return;
+  }
+
+  const subtotal = cart.reduce((s, i) => s + (Number(i.total) || 0), 0);
+  if (match.minOrder && subtotal < match.minOrder) {
+    alert(`ຄູປອງນີ້ຮຽກຮ້ອງຍອດບິນຂັ້ນຕ່ຳ ${formatLAK(match.minOrder)} ຂຶ້ນໄປ!`);
     return;
   }
 
@@ -362,6 +383,7 @@ function submitGuestOrder() {
   executeOrderCreation(name, phone);
 }
 
+// ສົ່ງອໍເດີ້ຂຶ້ນ Firestore ແລະ ຕັດງົບປະມານຄູປອງ
 async function executeOrderCreation(customerName, customerPhone) {
   showToast("ກຳລັງສົ່ງອໍເດີ້...");
 
@@ -406,7 +428,12 @@ async function executeOrderCreation(customerName, customerPhone) {
     delayNotice: null
   };
 
-  // 1. ລ້າງກະຕ່າ
+  // ຕັດງົບປະມານຄູປອງ
+  if (appliedCoupon && typeof deductCouponBudget === 'function') {
+    deductCouponBudget(appliedCoupon, discountAmount);
+  }
+
+  // ລ້າງກະຕ່າ
   cart = [];
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
   uploadedSlipDataUrl = null;
@@ -424,9 +451,7 @@ async function executeOrderCreation(customerName, customerPhone) {
 
   updateCartBadges(false);
 
-  // 2. ບັນທຶກລົງ Firestore
-  orders.unshift(newOrder);
-
+  // ຍິງຂຶ້ນ Firestore Real-time
   if (typeof isFirebaseReady !== 'undefined' && isFirebaseReady && db) {
     db.collection("orders").doc(newOrder.id).set(newOrder).catch(err => console.warn(err));
   }
