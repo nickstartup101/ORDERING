@@ -1,216 +1,134 @@
 // =======================================================
-// STAFF KDS (QUOTA-SAFE & CLOUD-FIRST REALTIME ENGINE)
+// STAFF KITCHEN DISPLAY LOGIC (SHOWING PROMINENT REMARKS)
 // =======================================================
 
-let staffSubTab = 'active';
-let activeRejectOrderId = null;
-let currentModalOrderId = null;
+let staffOrdersUnsubscribe = null;
+let currentStaffSubTab = 'active';
 
-function switchStaffSubTab(tab) {
-  staffSubTab = tab;
-  document.getElementById('staff-tab-active').className = tab === 'active' ? "px-4 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold" : "px-4 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px]";
-  document.getElementById('staff-tab-history').className = tab === 'history' ? "px-4 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold" : "px-4 py-1.5 rounded-lg bg-surface border border-hairline text-taupe text-[12px]";
-  document.getElementById('staffOrdersContainer').classList.toggle('hidden', tab !== 'active');
-  document.getElementById('staffHistoryContainer').classList.toggle('hidden', tab !== 'history');
-  renderStaffOrders();
-}
+function initStaffRealtimeListener() {
+  if (staffOrdersUnsubscribe) staffOrdersUnsubscribe();
 
-function renderStaffOrders() {
-  const activeContainer = document.getElementById('staffOrdersContainer');
-  const historyContainer = document.getElementById('staffHistoryContainer');
-  if (!activeContainer || !historyContainer) return;
+  const ordersRef = firebase.firestore().collection('orders').orderBy('createdAt', 'desc').limit(50);
 
-  const activeOrders = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled');
-  const completedOrders = orders.filter(o => o.status === 'completed');
+  staffOrdersUnsubscribe = ordersRef.onSnapshot(snapshot => {
+    const orders = [];
+    snapshot.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
 
-  // ນັບຈຳນວນອໍເດີ້ຂອງລູກຄ້າແຕ່ລະຄົນໃນຄິວປັດຈຸບັນ (ຄິວພວງ)
-  const customerOrderCounts = {};
-  activeOrders.forEach(o => {
-    const key = o.customerPhone || o.customerName;
-    customerOrderCounts[key] = (customerOrderCounts[key] || 0) + 1;
+    // ກວດສອບສຽງເຕືອນອໍເດີ້ໃໝ່ (pending)
+    const hasNewPending = orders.some(o => o.status === 'pending');
+    const indicator = document.getElementById('staffRingingIndicator');
+    if (indicator) {
+      indicator.classList.toggle('hidden', !hasNewPending);
+      indicator.classList.toggle('flex', hasNewPending);
+    }
+
+    renderStaffOrders(orders);
   });
+}
 
-  // Active Queue
-  if (activeOrders.length === 0) {
-    activeContainer.innerHTML = `<div class="col-span-full p-8 bg-surface-pure border border-hairline rounded-2xl text-center"><p class="text-taupe">Queue is clear</p></div>`;
-  } else {
-    activeContainer.innerHTML = activeOrders.map(o => {
-      const customerKey = o.customerPhone || o.customerName;
-      const totalFromCustomer = customerOrderCounts[customerKey] || 1;
-      const theme = getCustomerColorTheme(customerKey);
+function renderStaffOrders(orders) {
+  const containerActive = document.getElementById('staffOrdersContainer');
+  const containerHistory = document.getElementById('staffOrdersContainerHistory');
+  const containerCancelled = document.getElementById('staffOrdersContainerCancelled');
 
-      return `
-        <div class="p-4 bg-surface-pure border-2 ${o.status === 'pending' ? 'border-red-400 animate-pulse' : 'border-hairline'} rounded-2xl space-y-3 relative overflow-hidden shadow-xs">
-          
-          <div class="p-2 rounded-xl ${theme.bg} border ${theme.border} flex items-center justify-between">
-            <div class="flex items-center gap-1.5">
-              <span class="w-6 h-6 rounded-full bg-white border ${theme.border} flex items-center justify-center font-bold text-[11px] ${theme.text}">
-                ${o.customerName.charAt(0).toUpperCase()}
-              </span>
-              <div>
-                <span class="text-[12px] font-bold ${theme.text} block leading-tight">${o.customerName}</span>
-                <a href="tel:${o.customerPhone}" class="text-[10px] font-mono opacity-80 hover:underline">📞 ${o.customerPhone}</a>
-              </div>
-            </div>
+  if (!containerActive) return;
 
-            ${totalFromCustomer > 1 ? `
-              <span class="px-2 py-0.5 rounded-full bg-white border ${theme.border} text-[9px] font-bold ${theme.text} shadow-2xs">
-                🔗 ຄິວພວງ (${totalFromCustomer} ປີ້)
-              </span>
-            ` : ''}
-          </div>
+  const activeOrders = orders.filter(o => o.status === 'pending' || o.status === 'preparing' || o.status === 'ready');
+  const historyOrders = orders.filter(o => o.status === 'completed');
+  const cancelledOrders = orders.filter(o => o.status === 'cancelled');
 
-          <div class="flex justify-between items-center border-b border-hairline pb-2">
-            <span class="font-mono font-bold text-forest-emerald text-[14px]">${o.id}</span>
-            <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-amber-100 text-amber-900">${o.status}</span>
-          </div>
+  containerActive.innerHTML = activeOrders.map(order => createStaffOrderCard(order)).join('');
+  if (containerHistory) containerHistory.innerHTML = historyOrders.map(order => createStaffOrderCard(order)).join('');
+  if (containerCancelled) containerCancelled.innerHTML = cancelledOrders.map(order => createStaffOrderCard(order)).join('');
+}
 
-          <div class="text-[11px] divide-y divide-hairline">
-            ${(o.items || []).map(i => `<div class="py-1 flex justify-between"><span>${i.quantity}× ${i.name} [${(i.variant||'std').toUpperCase()}]</span><span>${formatLAK(i.total)}</span></div>`).join('')}
-          </div>
+function createStaffOrderCard(order) {
+  const isPending = order.status === 'pending';
+  const isPreparing = order.status === 'preparing';
+  const isReady = order.status === 'ready';
 
-          <div class="flex justify-between items-center pt-2 border-t border-hairline">
-            <span class="font-mono font-bold">${formatLAK(o.total)}</span>
-            ${o.slipUrl ? `<button type="button" onclick="viewSlip('${o.id}')" class="px-2.5 py-1 rounded bg-forest-emerald/10 text-forest-emerald text-[11px] font-bold">ກວດສະລິບ</button>` : '<span class="text-[10px] text-taupe">ເງິນສົດ</span>'}
-          </div>
-
-          <div class="pt-2 border-t border-hairline flex flex-wrap gap-2">
-            ${o.status === 'pending' ? `
-              <button type="button" onclick="updateOrderStatus('${o.id}','crafting')" class="flex-1 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-bold shadow-xs">ຮັບອໍເດີ້</button>
-              <button type="button" onclick="openRejectModal('${o.id}')" class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-[11px] font-bold">ປະຕິເສດ</button>
-            ` : ''}
-            ${o.status === 'crafting' ? `
-              <button type="button" onclick="sendDelayNotice('${o.id}')" class="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-[11px] text-amber-900 font-bold flex items-center gap-1">
-                <span class="material-symbols-outlined text-[14px]">hourglass_top</span>
-                <span>+5m ລ່າຊ້າ</span>
-              </button>
-              <button type="button" onclick="updateOrderStatus('${o.id}','ready')" class="flex-1 py-1.5 rounded-lg bg-emerald-800 text-white text-[11px] font-bold shadow-xs">ພ້ອມຮັບ</button>
-            ` : ''}
-            ${o.status === 'ready' ? `<button type="button" onclick="updateOrderStatus('${o.id}','completed')" class="w-full py-1.5 rounded-lg bg-primary text-white text-[11px] font-bold">ມອບແລ້ວ (Completed)</button>` : ''}
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  // Completed History
-  if (completedOrders.length === 0) {
-    historyContainer.innerHTML = `<div class="col-span-full p-8 bg-surface-pure border border-hairline rounded-2xl text-center"><p class="text-taupe">ຍັງບໍ່ມີປະຫວັດອໍເດີ້ທີ່ສຳເລັດ</p></div>`;
-  } else {
-    historyContainer.innerHTML = completedOrders.map(o => `
-      <div class="p-4 bg-surface-pure border border-hairline rounded-2xl space-y-2 opacity-85">
-        <div class="flex justify-between"><span class="font-mono font-bold text-forest-emerald">${o.id}</span><span class="text-emerald-800 text-[11px] font-bold">✓ ສຳເລັດແລ້ວ</span></div>
-        <p class="text-[12px] font-bold">${o.customerName} (${o.customerPhone})</p>
-        <p class="text-[11px] text-taupe">${(o.items||[]).map(i=>i.name).join(', ')}</p>
-        <span class="font-mono font-bold block text-[13px] pt-1 border-t border-hairline">${formatLAK(o.total)}</span>
+  // 🔥 ແຕ້ມລາຍການພ້ອມກ່ອງ REMARK ແບບຊັດເຈນ
+  const itemsHtml = (order.items || []).map(item => `
+    <div class="py-2.5 border-b border-hairline last:border-0">
+      <div class="flex justify-between items-start">
+        <span class="font-bold text-[13px] text-primary">
+          ${item.quantity}x ${item.name} 
+          <span class="text-forest-leaf font-medium">[${item.variant === 'hot' ? 'ຮ້ອນ' : (item.variant === 'iced' ? 'ເຢັນ' : 'ປັ່ນ')}]</span>
+        </span>
+        <span class="text-[12px] font-mono font-bold text-taupe">${formatLAK(item.totalPrice || item.price)}</span>
       </div>
-    `).join('');
+
+      <div class="text-[11px] text-taupe mt-1 flex flex-wrap gap-2">
+        ${item.sweetness ? `<span>ຫວານ: <strong>${item.sweetness}</strong></span>` : ''}
+        ${item.milk ? `<span>• ນົມ: <strong>${item.milk}</strong></span>` : ''}
+        ${item.hasExtraShot ? `<span class="text-forest-emerald font-bold">• +Extra Shot</span>` : ''}
+      </div>
+
+      <!-- 🔥🔥🔥 REMARK CALLOUT BOX (ບ່ອນສະແດງໝາຍເຫດພິເສດ) 🔥🔥🔥 -->
+      ${item.note ? `
+        <div class="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-300 text-amber-950 flex items-start gap-1.5 shadow-2xs">
+          <span class="material-symbols-outlined text-[16px] text-amber-700 shrink-0">edit_note</span>
+          <span class="text-[11px] font-bold leading-snug font-lao">ໝາຍເຫດ: ${item.note}</span>
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+
+  return `
+    <div class="p-4 rounded-xl bg-surface-pure border-2 ${isPending ? 'border-amber-400 shadow-md animate-pulse-border' : 'border-hairline'} flex flex-col justify-between space-y-3">
+      <div>
+        <div class="flex items-center justify-between pb-2 border-b border-hairline">
+          <div>
+            <span class="font-serif-title font-bold text-[16px] text-primary">${order.orderCode || 'Order'}</span>
+            <span class="text-[11px] text-taupe block font-medium">${order.customerName || 'Customer'} (${order.customerPhone || 'Walk-in'})</span>
+          </div>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+            isPending ? 'bg-amber-100 text-amber-900 border border-amber-300' :
+            isPreparing ? 'bg-blue-100 text-blue-900 border border-blue-300' :
+            isReady ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-gray-100 text-gray-700'
+          }">
+            ${order.status}
+          </span>
+        </div>
+
+        <div class="py-1 divide-y divide-hairline">
+          ${itemsHtml}
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-hairline space-y-2">
+        <div class="flex justify-between text-[12px] font-bold">
+          <span>ຍອດລວມ:</span>
+          <span class="text-forest-emerald font-serif-title text-[15px]">${formatLAK(order.totalAmount)}</span>
+        </div>
+
+        <!-- ປຸ່ມປ່ຽນສະຖານະ -->
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          ${isPending ? `
+            <button type="button" onclick="updateOrderStatus('${order.id}', 'cancelled')" class="py-2 rounded-lg border border-red-200 text-red-700 text-[11px] font-bold hover:bg-red-50">ປະຕິເສດ</button>
+            <button type="button" onclick="updateOrderStatus('${order.id}', 'preparing')" class="py-2 rounded-lg bg-forest-emerald text-white text-[11px] font-bold hover:bg-forest-leaf">ຮັບອໍເດີ້</button>
+          ` : ''}
+
+          ${isPreparing ? `
+            <button type="button" onclick="updateOrderStatus('${order.id}', 'ready')" class="col-span-2 py-2 rounded-lg bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700">ເຄື່ອງດື່ມພ້ອມຮັບແລ້ວ</button>
+          ` : ''}
+
+          ${isReady ? `
+            <button type="button" onclick="updateOrderStatus('${order.id}', 'completed')" class="col-span-2 py-2 rounded-lg bg-primary text-white text-[11px] font-bold hover:bg-primary-dark">ສຳເລັດ / ສົ່ງເຄື່ອງແລ້ວ</button>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function updateOrderStatus(orderId, nextStatus) {
+  try {
+    await firebase.firestore().collection('orders').doc(orderId).update({
+      status: nextStatus,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) {
+    alert("Error updating order: " + e.message);
   }
-}
-
-function viewSlip(orderId) {
-  const o = orders.find(x => x.id === orderId);
-  if (!o || !o.slipUrl) return;
-  document.getElementById('slipAuditImage').src = o.slipUrl;
-  document.getElementById('slipAuditOrderRef').textContent = "Order ID: " + orderId;
-  document.getElementById('slipAuditModal').classList.remove('hidden');
-}
-
-function closeSlipAuditModal() {
-  document.getElementById('slipAuditModal').classList.add('hidden');
-}
-
-// 🔥 ອັບເດດສະຖານະ (ຕັດ QuotaExceededError ອອກ 100%)
-async function updateOrderStatus(id, status) {
-  if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
-
-  // 1. ອັບເດດ Memory ທັນທີ
-  const order = orders.find(o => o.id === id);
-  if (order) {
-    order.status = status;
-    if (status === 'completed') {
-      order.completedAt = new Date().toISOString();
-    }
-  }
-
-  renderStaffOrders();
-
-  // 2. 🔥 ຍິງກົງຂຶ້ນ Cloud Firestore (ບ່ອນດຽວ ບໍ່ຕ້ອງຍັດລົງ localStorage ໃຫ້ເກີນ Quota)
-  if (isFirebaseReady && db) {
-    try {
-      await db.collection("orders").doc(id).update({
-        status: status,
-        completedAt: status === 'completed' ? new Date().toISOString() : null
-      });
-      console.log("✅ [Firestore Updated] Order", id, "status set to:", status);
-    } catch (e) {
-      console.error("Firestore update error:", e);
-    }
-  }
-
-  showToast(`ອັບເດດ ${id} ເປັນ ${status}`);
-}
-
-async function sendDelayNotice(id) {
-  const order = orders.find(o => o.id === id);
-  if (order) {
-    order.delayNotice = "ຄິວຫຼາຍ ຂໍເວລາເພີ່ມ 5 ນາທີ ເພື່ອຄວາມສົດໃໝ່";
-    if (isFirebaseReady && db) {
-      await db.collection("orders").doc(id).update({ delayNotice: order.delayNotice });
-    }
-    showToast("ສົ່ງແຈ້ງເຕືອນລ່າຊ້າຫາລູກຄ້າແລ້ວ!");
-  }
-}
-
-function openRejectModal(id) {
-  activeRejectOrderId = id;
-  document.getElementById('rejectInputReason').value = "ໃບສະລິບໂອນເງິນບໍ່ຖືກຕ້ອງ";
-  document.getElementById('staffRejectModal').classList.remove('hidden');
-}
-
-function closeRejectModal() {
-  document.getElementById('staffRejectModal').classList.add('hidden');
-}
-
-async function confirmRejectOrder() {
-  const reason = document.getElementById('rejectInputReason').value.trim();
-  if (!reason) return;
-  if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
-
-  const order = orders.find(o => o.id === activeRejectOrderId);
-  if (order) {
-    order.status = 'cancelled';
-    order.cancelReason = reason;
-
-    if (isFirebaseReady && db) {
-      await db.collection("orders").doc(activeRejectOrderId).update({
-        status: 'cancelled',
-        cancelReason: reason
-      });
-    }
-
-    renderStaffOrders();
-    closeRejectModal();
-    showToast("ປະຕິເສດອໍເດີ້ແລ້ວ");
-  }
-}
-
-function triggerStaffIncomingModal(order) {
-  currentModalOrderId = order.id;
-  document.getElementById('staffNotifOrderId').textContent = "Order #" + order.id;
-  document.getElementById('staffNotifCustomer').textContent = `${order.customerName} (${order.customerPhone})`;
-  document.getElementById('staffNotifTotal').textContent = formatLAK(order.total);
-  document.getElementById('staffNewOrderModal')?.classList.remove('hidden');
-}
-
-function closeStaffNewOrderModal() {
-  if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
-  document.getElementById('staffNewOrderModal')?.classList.add('hidden');
-}
-
-function acceptStaffNewOrderFromModal() {
-  if (currentModalOrderId) {
-    updateOrderStatus(currentModalOrderId, 'crafting');
-  }
-  closeStaffNewOrderModal();
 }
