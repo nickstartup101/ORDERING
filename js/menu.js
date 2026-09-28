@@ -54,8 +54,10 @@ function renderMenu() {
     card.innerHTML = `
       <div>
         <div class="relative w-full aspect-[4/3] rounded-lg bg-surface-dim overflow-hidden mb-3">
-          <img src="${item.image || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600'}" class="w-full h-full object-cover ${!isAvail ? 'grayscale' : 'transform hover:scale-105 transition-transform duration-500'}"/>
-          <span class="absolute top-2 left-2 px-2 py-0.5 rounded bg-surface/90 text-[9px] uppercase font-bold border border-hairline">${item.category || 'coffee'}</span>
+          <img src="${item.image || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600'}" 
+           loading="lazy" 
+           decoding="async" 
+           class="w-full h-full object-cover ${!isAvail ? 'grayscale' : 'transform hover:scale-105 transition-transform duration-500'}"/>
           ${!isAvail ? `<span class="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-[12px] font-bold font-lao">ສິນຄ້າໝົດຊົ່ວຄາວ</span>` : ''}
         </div>
         <h4 class="font-serif-title text-[15px] text-primary font-medium mb-1">${item.name}</h4>
