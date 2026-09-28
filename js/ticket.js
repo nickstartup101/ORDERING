@@ -1,127 +1,79 @@
 // =======================================================
-// REAL-TIME MULTI-TICKET PASS (ACTIVE ORDERS ONLY)
+// CUSTOMER TICKET LOGIC (SHOWING APPLIED REMARK TO USER)
 // =======================================================
+
+let activeTicketUnsubscribe = null;
 
 function renderCustomerTicket() {
   const container = document.getElementById('activeTicketContainer');
   if (!container) return;
 
-  let myPhone = currentUser ? currentUser.phone : null;
-  let myEmail = currentUser ? currentUser.email : null;
-
-  if (!myPhone) {
-    const guestContact = JSON.parse(localStorage.getItem('ladolce_guest_contact'));
-    if (guestContact) myPhone = guestContact.phone;
-  }
-
-  // 🔥 ກັ່ນຕອງສະເພາະອໍເດີ້ທີ່ "ກຳລັງດຳເນີນການ" ເທົ່ານັ້ນ (Completed ຈະຖືກຍ້າຍໄປ Profile ອັດຕະໂນມັດ!)
-  const myActiveOrders = orders.filter(o => 
-    (o.status === 'pending' || o.status === 'crafting' || o.status === 'ready') &&
-    ((myPhone && o.customerPhone === myPhone) || (myEmail && o.customerEmail === myEmail))
-  );
-
-  if (myActiveOrders.length === 0) {
+  const activeOrderId = localStorage.getItem('activeOrderId');
+  if (!activeOrderId) {
     container.innerHTML = `
-      <div class="p-8 bg-surface-pure border border-hairline rounded-2xl text-center space-y-3 shadow-xs">
-        <span class="material-symbols-outlined text-[42px] text-forest-leaf/60">receipt_long</span>
-        <h3 class="font-serif-title text-[18px] text-primary font-medium">ບໍ່ມີອໍເດີ້ທີ່ກຳລັງດຳເນີນການ</h3>
-        <p class="text-[12px] text-taupe font-lao">ອໍເດີ້ທີ່ຮັບເຄື່ອງສຳເລັດແລ້ວ ຖືກຍ້າຍໄປເກັບໄວ້ໃນໜ້າ "ໂປຣໄຟລ໌ -> ປະຫວັດການສັ່ງຊື້"</p>
-        <button type="button" onclick="switchCustomerTab('menu')" class="px-5 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-semibold hover:bg-forest-leaf transition-all shadow-xs">
-          ສັ່ງເຄື່ອງດື່ມເພີ່ມ
-        </button>
+      <div class="p-8 text-center bg-surface-pure rounded-2xl border border-hairline space-y-3">
+        <span class="material-symbols-outlined text-[48px] text-taupe">receipt_long</span>
+        <h4 class="font-serif-title text-[17px] text-primary">ບໍ່ມີອໍເດີ້ທີ່ກຳລັງດຳເນີນການ</h4>
+        <p class="text-[12px] text-taupe">ທ່ານຍັງບໍ່ໄດ້ສັ່ງຊື້ເທື່ອ ຫຼື ອໍເດີ້ກ່ອນໜ້ານີ້ສຳເລັດແລ້ວ</p>
+        <button type="button" onclick="switchCustomerTab('menu')" class="px-4 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-bold">ສັ່ງເຄື່ອງດື່ມເລີຍ</button>
       </div>
     `;
     return;
   }
 
-  // Render Multi-Ticket Stack Real-time
-  container.innerHTML = `
-    <div class="space-y-4">
-      <div class="flex justify-between items-center px-1">
-        <span class="text-[12px] font-bold text-primary font-serif-title">ປີ້ຮັບເຄື່ອງ Real-time</span>
-        <span class="px-2.5 py-0.5 rounded-full bg-forest-emerald text-white text-[10px] font-bold font-mono">
-          ${myActiveOrders.length} ອໍເດີ້ພວມຊົງ
-        </span>
-      </div>
+  // ດັກຟັງສະຖານະອໍເດີ້ Realtime
+  if (activeTicketUnsubscribe) activeTicketUnsubscribe();
 
-      <div class="space-y-5">
-        ${myActiveOrders.map(order => {
-          const status = order.status;
-          let statusTitle = "Order Received";
-          let statusDesc = "ລໍຖ້າບາຣິສຕ້າກວດສະລິບ ແລະ ຮັບອໍເດີ້";
-          let bgClass = "bg-forest-emerald";
+  activeTicketUnsubscribe = firebase.firestore().collection('orders').doc(activeOrderId)
+    .onSnapshot(doc => {
+      if (!doc.exists) {
+        localStorage.removeItem('activeOrderId');
+        renderCustomerTicket();
+        return;
+      }
 
-          if (status === 'crafting') {
-            statusTitle = "Crafting in Progress ☕";
-            statusDesc = "ບາຣິສຕ້າກຳລັງສະກັດກາເຟ ແລະ ປຸງແຕ່ງ";
-          } else if (status === 'ready') {
-            statusTitle = "Ready for Pick-up! 🎉";
-            statusDesc = "ເຄື່ອງດື່ມພ້ອມແລ້ວ! ເຊີນຮັບໄດ້ທີ່ Counter 02";
-            bgClass = "bg-emerald-800";
-          }
+      const order = doc.data();
+      container.innerHTML = `
+        <div class="p-6 rounded-2xl bg-surface-pure border border-hairline shadow-md space-y-5">
+          <div class="text-center space-y-1 pb-3 border-b border-hairline">
+            <span class="text-[10px] uppercase tracking-widest text-forest-leaf font-bold">Order Receipt</span>
+            <h3 class="font-serif-title text-[24px] text-primary font-bold">${order.orderCode}</h3>
+            <span class="inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+              order.status === 'pending' ? 'bg-amber-100 text-amber-900' :
+              order.status === 'preparing' ? 'bg-blue-100 text-blue-900' :
+              order.status === 'ready' ? 'bg-emerald-100 text-emerald-900' : 'bg-gray-100 text-gray-800'
+            }">
+              ສະຖານະ: ${order.status === 'pending' ? 'ລໍຖ້າຮ້ານຮັບ' : (order.status === 'preparing' ? 'ກຳລັງປຸງແຕ່ງ' : (order.status === 'ready' ? 'ພ້ອມຮັບເຄື່ອງແລ້ວ' : 'ສຳເລັດແລ້ວ'))}
+            </span>
+          </div>
 
-          return `
-            <div class="bg-surface-pure border-2 ${status === 'ready' ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-hairline'} rounded-2xl overflow-hidden shadow-sm space-y-4">
-              <div class="p-5 ${bgClass} text-white">
-                <div class="flex justify-between text-[11px] mb-1">
-                  <span class="uppercase tracking-wider font-bold">${status}</span>
-                  <span class="font-mono font-bold">${order.id}</span>
+          <!-- ລາຍການສິນຄ້າ -->
+          <div class="space-y-3 divide-y divide-hairline">
+            ${(order.items || []).map(item => `
+              <div class="pt-2.5 first:pt-0">
+                <div class="flex justify-between items-baseline font-bold text-[13px]">
+                  <span>${item.quantity}x ${item.name}</span>
+                  <span class="font-mono text-forest-emerald">${formatLAK(item.totalPrice)}</span>
                 </div>
-                <h3 class="font-serif-title text-[20px] font-bold leading-snug">${statusTitle}</h3>
-                <p class="text-[12px] opacity-85 mt-0.5">${statusDesc}</p>
+                <div class="text-[11px] text-taupe mt-0.5">
+                  [${item.variant}] ${item.sweetness ? `• ${item.sweetness}` : ''} ${item.milk ? `• ${item.milk}` : ''}
+                </div>
 
-                <!-- 🔥 ແຖບລ່າຊ້າກະພິບ Real-time ໂດຍບໍ່ຕ້ອງ Refresh -->
-                ${order.delayNotice ? `
-                  <div class="mt-3 p-2.5 rounded-xl bg-amber-500/30 border border-amber-300/50 text-[11px] text-amber-200 font-bold flex items-center gap-2 animate-pulse">
-                    <span class="material-symbols-outlined text-[16px]">hourglass_top</span>
-                    <span>${order.delayNotice}</span>
+                <!-- 🔥 ສະແດງ Remark ທີ່ລູກຄ້າໃສ່ -->
+                ${item.note ? `
+                  <div class="mt-1 px-2 py-1 rounded bg-surface border border-hairline text-taupe text-[11px]">
+                    <span class="font-bold text-forest-emerald">ໝາຍເຫດ:</span> ${item.note}
                   </div>
                 ` : ''}
               </div>
+            `).join('')}
+          </div>
 
-              <!-- Realtime Stepper with Pulse -->
-              <div class="px-5">
-                <div class="grid grid-cols-4 gap-1.5 py-1">
-                  <div class="h-1.5 rounded-full ${status === 'pending' ? 'bg-forest-emerald animate-pulse' : 'bg-forest-emerald'}"></div>
-                  <div class="h-1.5 rounded-full ${status === 'crafting' ? 'bg-forest-emerald animate-pulse' : (status === 'ready' ? 'bg-forest-emerald' : 'bg-hairline')}"></div>
-                  <div class="h-1.5 rounded-full ${status === 'ready' ? 'bg-emerald-600 animate-pulse' : 'bg-hairline'}"></div>
-                  <div class="h-1.5 rounded-full bg-hairline"></div>
-                </div>
-                <div class="flex justify-between text-[10px] text-taupe uppercase tracking-wider pt-1 font-lao">
-                  <span>ຮັບແລ້ວ</span><span>ກຳລັງຊົງ</span><span>ພ້ອມຮັບ</span><span>ສຳເລັດ</span>
-                </div>
-              </div>
-
-              <div class="px-5 space-y-2 text-[12px]">
-                <div class="flex justify-between font-serif-title text-[14px] text-primary border-b border-hairline pb-1">
-                  <span>ລາຍການ (${order.customerName})</span>
-                  <span class="font-mono font-bold">${formatLAK(order.total)}</span>
-                </div>
-                ${order.items.map(i => `
-                  <div class="flex justify-between py-0.5 text-taupe">
-                    <span>${i.quantity}× ${i.name} [${(i.variant||'std').toUpperCase()}]</span>
-                    <span class="font-mono font-bold">${formatLAK(i.total)}</span>
-                  </div>
-                `).join('')}
-              </div>
-
-              <div class="p-5 pt-2 text-center border-t border-hairline bg-surface/50">
-                <div class="p-3 bg-surface-pure rounded-xl border border-hairline">
-                  <div class="w-full h-9 barcode-pattern mb-1"></div>
-                  <span class="font-mono text-[11px] font-bold text-forest-emerald tracking-[0.25em]">${order.id}</span>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-
-      <div class="pt-2 text-center">
-        <button type="button" onclick="switchCustomerTab('menu')" class="px-5 py-2.5 rounded-xl border-2 border-forest-emerald text-forest-emerald hover:bg-forest-emerald hover:text-white transition-all text-[12px] font-bold inline-flex items-center gap-1.5 shadow-xs">
-          <span class="material-symbols-outlined text-[17px]">add_shopping_cart</span>
-          <span>ສັ່ງເຄື່ອງດື່ມ ຫຼື ອາຫານເພີ່ມອີກ</span>
-        </button>
-      </div>
-    </div>
-  `;
+          <div class="pt-3 border-t border-hairline flex justify-between items-baseline">
+            <span class="font-bold text-[14px]">ຍອດລວມທັງໝົດ:</span>
+            <span class="font-serif-title font-bold text-[20px] text-forest-emerald">${formatLAK(order.totalAmount)}</span>
+          </div>
+        </div>
+      `;
+    });
 }
