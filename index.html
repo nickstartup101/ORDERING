@@ -6,9 +6,13 @@
   <link rel="icon" href="data:,">
   <title>LA DOLCE — Atelier & Coffee Management</title>
   
-  <!-- Fonts -->
+  <!-- Preconnect CDN ສໍາລັບໂຫຼດໄວຂຶ້ນ 300% -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="preconnect" href="https://firestore.googleapis.com"/>
+  <link rel="dns-prefetch" href="https://firestore.googleapis.com"/>
+
+  <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Noto+Sans+Lao:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,300..400,0..1,0" rel="stylesheet"/>
 
@@ -104,7 +108,7 @@
         </div>
       </div>
 
-      <!-- Staff Alarm Indicator -->
+      <!-- Staff Repeating Alarm Indicator -->
       <div id="staffRingingIndicator" class="hidden items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-full animate-pulse">
         <span class="w-2 h-2 rounded-full bg-red-600"></span>
         <span class="text-[11px] font-medium text-red-700">ມີອໍເດີ້ໃໝ່ເຂົ້າມາ!</span>
@@ -153,16 +157,24 @@
       <!-- TAB: MENU -->
       <section id="tab-customer-menu" class="space-y-6">
         
-        <!-- Store Banner + Cart Button -->
+        <!-- 🔥 Store Banner ພ້ອມຈຸດສີຂຽວກະພິບ 07:00-20:00 (ບໍ່ມີກອບ) -->
         <div class="p-4 rounded-2xl bg-surface-pure border border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
           <div class="flex items-center gap-3">
             <span class="w-10 h-10 rounded-xl bg-forest-emerald/10 text-forest-emerald flex items-center justify-center shrink-0">
               <span class="material-symbols-outlined text-[24px]">storefront</span>
             </span>
             <div>
-              <div class="flex items-center gap-2 flex-wrap">
+              <div class="flex items-center gap-2.5 flex-wrap">
                 <h2 class="font-serif-title text-[16px] text-primary font-bold brand-branch-display">Downtown Flagship Roastery</h2>
-                <span id="customerStoreOpenBadge" class="px-2 py-0.5 rounded text-[9px] uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold">ເປີດບໍລິການ</span>
+                
+                <!-- 🔥 ຈຸດສີຂຽວ Live Pulse ກະພິບ ແທນກອບເກົ່າ -->
+                <div id="customerStoreOpenBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
+                  <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+                  </span>
+                  <span class="text-[11px] font-bold text-emerald-900 tracking-wide font-lao">ເປີດບໍລິການ (07:00 – 20:00)</span>
+                </div>
               </div>
               <p class="text-[12px] text-taupe mt-0.5 flex items-center gap-1.5 flex-wrap">
                 <span>ສັ່ງລ່ວງໜ້າ • ຮັບທີ່ເຄົາເຕີ້ພາຍໃນ 8–15 ນາທີ</span>
@@ -174,6 +186,7 @@
             </div>
           </div>
 
+          <!-- ປຸ່ມກະຕ່າສັ່ງຊື້ -->
           <button type="button" onclick="switchCustomerTab('cart')" class="self-stretch sm:self-auto flex items-center justify-center gap-2.5 px-5 py-2.5 rounded-xl bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] font-bold shadow-sm transition-all transform active:scale-95 cursor-pointer shrink-0">
             <span class="material-symbols-outlined text-[19px]">shopping_bag</span>
             <span>ກະຕ່າສັ່ງຊື້</span>
@@ -208,7 +221,6 @@
                   <span id="summarySubtotal" class="font-medium text-charcoal">0 LAK</span>
                 </div>
 
-                <!-- ແຖວສະຫຼຸບ Coupon Discount -->
                 <div id="couponDiscountRow" class="flex justify-between text-emerald-800 text-[13px] font-bold hidden">
                   <span class="flex items-center gap-1">
                     <span class="material-symbols-outlined text-[16px]">local_activity</span>
@@ -229,14 +241,13 @@
                 </div>
               </div>
 
-              <!-- ກ່ອງປົດລັອກສົ່ງຟຣີ 500 ແມັດ (3 ຈອກ ຫຼື 120,000 LAK) -->
+              <!-- ກ່ອງປົດລັອກສົ່ງຟຣີ 500 ແມັດ -->
               <div id="deliveryUnlockBox" class="p-3.5 rounded-xl bg-surface border border-hairline space-y-2">
                 <div id="deliveryProgressText"></div>
                 <div class="w-full bg-hairline h-1.5 rounded-full overflow-hidden">
                   <div id="deliveryProgressBar" class="bg-forest-emerald h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
                 </div>
 
-                <!-- ແຖບເລືອກ Delivery / Pickup -->
                 <div id="deliveryAddressPanel" class="hidden pt-2 border-t border-hairline space-y-2">
                   <span class="block text-[11px] font-bold text-forest-emerald">ເລືອກຮູບແບບການຮັບ:</span>
                   <div class="grid grid-cols-2 gap-2">
@@ -322,7 +333,6 @@
         <button onclick="logoutUser()" class="text-[11px] px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white uppercase tracking-wider">Sign Out</button>
       </div>
 
-      <!-- 3 Tabs ສໍາລັບ Staff -->
       <div class="flex gap-2 border-b border-hairline pb-2">
         <button type="button" onclick="switchStaffSubTab('active')" id="staff-tab-active" class="px-4 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold shadow-xs">
           ຄິວທີ່ກຳລັງດຳເນີນການ
@@ -393,7 +403,7 @@
         </button>
       </div>
 
-      <!-- Panel 1: Analytics -->
+      <!-- Panel 1: Analytics & Transaction Log -->
       <div id="adm-panel-analytics" class="space-y-4">
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div class="p-4 rounded-xl bg-surface-pure border border-hairline shadow-xs">
@@ -610,7 +620,6 @@
           </div>
         </div>
 
-        <!-- ຊ່ອງ Special Request ສະເພາະຈອກ -->
         <div class="space-y-1">
           <label class="block text-[11px] uppercase tracking-wider font-semibold text-charcoal">05. ໝາຍເຫດພິເສດເຖິງບາຣິສຕ້າ (Optional):</label>
           <input type="text" id="modalItemSpecialNote" placeholder="ເຊັ່ນ: ຂໍແຍກນ້ຳກ້ອນ, ຂໍນົມຫຼາຍໜ້ອຍໜຶ່ງ..." class="w-full text-[12px] rounded-lg border border-hairline p-2 bg-surface"/>
@@ -1028,7 +1037,7 @@
     <span id="toastMsg">Action completed</span>
   </div>
 
-  <!-- ================= LOAD MODULAR SCRIPTS IN ORDER ================= -->
+  <!-- ================= LOAD SCRIPTS ================= -->
   <script src="js/config.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/auth.js"></script>
