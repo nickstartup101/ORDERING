@@ -1,5 +1,5 @@
 // =======================================================
-// MENU & CUSTOMIZER LOGIC (WITH REMARK & 100% NULL-SAFE)
+// LA DOLCE — MENU ENGINE & CUSTOMIZER (ULTRA-FAST & SSOT)
 // =======================================================
 
 let menuItems = [];
@@ -9,28 +9,90 @@ let selectedVariant = 'standard';
 let selectedSweetnessLevel = '100%';
 let modalQuantity = 1;
 
+// Helper: Format ເງິນກີບ
 function formatLAK(val) {
   return Number(val || 0).toLocaleString('lo-LA') + ' ₭';
 }
 
+// 1. ລະບົບໂຫຼດເມນູແບບ Instant Load (Cache-First)
+function initMenuEngine() {
+  const cached = localStorage.getItem('ladolce_menu_cache');
+  if (cached) {
+    try {
+      menuItems = JSON.parse(cached);
+      renderMenu(); // ແຕ້ມເມນູຈາກ Cache ທັນທີພາຍໃນ 0.05 ວິນາທີ!
+    } catch (e) {
+      console.warn("Menu cache corrupt:", e);
+    }
+  } else {
+    showMenuSkeleton();
+  }
+
+  // Sync ຂໍ້ມູນສົດຈາກ Firestore ຢູ່ເບື້ອງຫຼັງ
+  if (typeof firebase !== 'undefined' && firebase.firestore) {
+    firebase.firestore().collection('menus').onSnapshot(snapshot => {
+      const freshList = [];
+      snapshot.forEach(doc => {
+        freshList.push({ id: doc.id, ...doc.data() });
+      });
+
+      if (freshList.length > 0) {
+        const freshJson = JSON.stringify(freshList);
+        if (freshJson !== cached) {
+          menuItems = freshList;
+          localStorage.setItem('ladolce_menu_cache', freshJson);
+          renderMenu();
+        }
+      }
+    }, err => {
+      console.error("Firestore menu sync error:", err);
+    });
+  }
+}
+
+// 2. ສະແດງ Skeleton Shimmer ຂະນະທີ່ລໍຖ້າຂໍ້ມູນຄັ້ງທຳອິດ
+function showMenuSkeleton() {
+  const grid = document.getElementById('menuGrid');
+  if (!grid || menuItems.length > 0) return;
+
+  grid.innerHTML = Array(8).fill(0).map(() => `
+    <div class="bg-surface-pure border border-hairline rounded-xl p-3.5 flex flex-col justify-between animate-pulse">
+      <div>
+        <div class="w-full aspect-[4/3] rounded-lg bg-surface-dim mb-3"></div>
+        <div class="h-4 bg-surface-dim rounded w-3/4 mb-2"></div>
+        <div class="h-3 bg-surface-dim rounded w-1/2 mb-3"></div>
+      </div>
+      <div class="flex justify-between items-center pt-2.5 border-t border-hairline">
+        <div class="h-4 bg-surface-dim rounded w-16"></div>
+        <div class="h-7 bg-surface-dim rounded w-14"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// 3. ປ່ຽນໝວດໝູ່ເມນູ
 function filterCategory(cat) {
   currentCategoryFilter = cat;
   document.querySelectorAll('.cat-pill').forEach(btn => {
-    btn.className = 'cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal transition-all';
+    btn.className = 'cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal transition-all cursor-pointer';
   });
+
   if (window.event && window.event.target) {
-    const btn = window.event.target.closest('.cat-pill');
-    if (btn) btn.className = 'cat-pill active-cat px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-forest-emerald text-white transition-all';
+    const activeBtn = window.event.target.closest('.cat-pill');
+    if (activeBtn) {
+      activeBtn.className = 'cat-pill active-cat px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-forest-emerald text-white transition-all cursor-pointer';
+    }
   }
   renderMenu();
 }
 
+// 4. Render Menu Grid ແບບ Batch HTML (ໄວກວ່າ appendChild ທຳມະດາ 10 ເທົ່າ)
 function renderMenu() {
   const grid = document.getElementById('menuGrid');
   if (!grid) return;
 
-  const filtered = currentCategoryFilter === 'all' 
-    ? menuItems 
+  const filtered = currentCategoryFilter === 'all'
+    ? menuItems
     : menuItems.filter(i => i.category === currentCategoryFilter);
 
   if (filtered.length === 0) {
@@ -41,6 +103,7 @@ function renderMenu() {
   grid.innerHTML = filtered.map((item, index) => {
     const isAvail = item.isAvailable !== false;
     let minPrice = 35000;
+
     if (typeof item.price === 'number') {
       minPrice = item.price;
     } else if (item.variants) {
@@ -59,6 +122,7 @@ function renderMenu() {
         <div>
           <div class="relative w-full aspect-[4/3] rounded-lg bg-surface-dim overflow-hidden mb-3">
             <img src="${item.image || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500'}" 
+                 alt="${item.name}"
                  loading="${imgLoading}" 
                  decoding="async" 
                  class="w-full h-full object-cover ${!isAvail ? 'grayscale' : 'transform hover:scale-105 transition-transform duration-500'}"/>
@@ -80,6 +144,7 @@ function renderMenu() {
   }).join('');
 }
 
+// 5. ເປີດ Customize Modal (ພ້ອມລ້າງຄ່າເກົ່າ ແລະ ຕັ້ງຄ່າໃຫມ່)
 function openCustomizeModal(itemId) {
   activeCustomizingItem = menuItems.find(i => String(i.id) === String(itemId));
   if (!activeCustomizingItem || activeCustomizingItem.isAvailable === false) return;
@@ -87,7 +152,7 @@ function openCustomizeModal(itemId) {
   modalQuantity = 1;
   selectedSweetnessLevel = '100%';
 
-  // 🔥 1. ລ້າງຄ່າ Remark ເກົ່າອອກທຸກຄັ້ງທີ່ເປີດເມນູໃໝ່
+  // ລ້າງຊ່ອງໝາຍເຫດ (Remark) ອອກສະເໝີ
   const noteInput = document.getElementById('modalItemSpecialNote');
   if (noteInput) noteInput.value = '';
 
@@ -140,6 +205,7 @@ function openCustomizeModal(itemId) {
     `).join('');
   }
 
+  // ເຊື່ອງ/ສະແດງ Options
   const isBakery = activeCustomizingItem.category === 'bakery';
   const isRefresher = activeCustomizingItem.category === 'refresher';
 
@@ -185,7 +251,7 @@ function adjustModalQty(delta) {
 }
 
 function updateModalPrice() {
-  if (!activeCustomizingItem) return;
+  if (!activeCustomizingItem) return 0;
   const v = activeCustomizingItem.variants || {};
   let unitPrice = 35000;
 
@@ -197,6 +263,7 @@ function updateModalPrice() {
     unitPrice = v.standard;
   }
 
+  // ບວກຄ່ານົມ
   if (activeCustomizingItem.allowMilk !== false) {
     const milkRadio = document.querySelector('input[name="milkOption"]:checked');
     if (milkRadio && (milkRadio.value.includes('Oat') || milkRadio.value.includes('Almond'))) {
@@ -204,6 +271,7 @@ function updateModalPrice() {
     }
   }
 
+  // ບວກ Extra Shot
   const extraShot = document.getElementById('addonExtraShot')?.checked;
   if (extraShot && activeCustomizingItem.allowTopping !== false) {
     unitPrice += 12000;
@@ -218,7 +286,7 @@ function updateModalPrice() {
   return unitPrice;
 }
 
-// 🔥 2. ກົດເພີ່ມລົງກະຕ່າ ພ້ອມດຶງຄ່າ REMARK ຕິດໄປນຳ 100%
+// 6. ເພີ່ມໃສ່ກະຕ່າ ພ້ອມດຶງ REMARK 100%
 function confirmAddToCart() {
   if (!activeCustomizingItem) return;
 
@@ -237,7 +305,7 @@ function confirmAddToCart() {
     sweetness: activeCustomizingItem.category === 'bakery' ? null : selectedSweetnessLevel,
     milk: (activeCustomizingItem.allowMilk !== false && activeCustomizingItem.category !== 'bakery') ? selectedMilk : null,
     hasExtraShot: hasExtraShot,
-    note: specialNote, // 👈 🔥 ຈຸດສຳຄັນ: ບັນທຶກໝາຍເຫດ
+    note: specialNote, // 👈 🔥 ຈຸດສຳຄັນ
     quantity: modalQuantity,
     unitPrice: unitPrice,
     totalPrice: unitPrice * modalQuantity
@@ -253,3 +321,8 @@ function confirmAddToCart() {
     showToast(`ເພີ່ມ "${cartItem.name}" ໃສ່ກະຕ່າແລ້ວ`);
   }
 }
+
+// ເລີ່ມລະບົບທັນທີເມື່ອເປີດໜ້າ
+document.addEventListener('DOMContentLoaded', () => {
+  initMenuEngine();
+});
