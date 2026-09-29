@@ -1,15 +1,8 @@
 // =======================================================
-// MENU ENGINE (SAFE SCOPE - ZERO CRASH - INSTANT LOAD)
+// LA DOLCE — SMART FIRESTORE MENU LOADER (100% AUTO-SYNC)
 // =======================================================
 
-// ປ້ອງກັນ SyntaxError: ດຶງຄ່າເກົ່າຖ້າມີ, ຖ້າບໍ່ມີຈຶ່ງສ້າງໃໝ່
-window.menuItems = window.menuItems || [
-  { id: 'm1', name: 'Espresso Intenso', category: 'coffee', price: 35000, desc: 'ກາເຟເຂັ້ມຂຸ້ນ ສະກັດສົດ', allowHot: true, allowIced: false, isAvailable: true, image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?w=500' },
-  { id: 'm2', name: 'Dirty Latte', category: 'coffee', price: 45000, desc: 'ນົມເຢັນຈັດ ທັອບດ້ວຍເອັສເປຣສໂຊຊັອດ', allowHot: false, allowIced: true, isAvailable: true, image: 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=500' },
-  { id: 'm3', name: 'Uji Matcha Latte', category: 'tea', price: 42000, desc: 'ມັດຊະແທ້ 100% ນຳເຂົ້າຈາກກຽວໂຕ', allowHot: true, allowIced: true, isAvailable: true, image: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=500' },
-  { id: 'm4', name: 'Classic Croissant', category: 'bakery', price: 28000, desc: 'ຄົວຊອງເນີຍຝຣັ່ງ ແປ້ງກອບນອກນຸ້ມໃນ', allowMilk: false, allowSweetness: false, allowTopping: false, isAvailable: true, image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500' }
-];
-
+window.menuItems = [];
 window.currentCategoryFilter = 'all';
 window.activeCustomizingItem = null;
 window.selectedVariant = 'standard';
@@ -20,6 +13,108 @@ function formatLAK(val) {
   return Number(val || 0).toLocaleString('lo-LA') + ' ₭';
 }
 
+// 🔥 1. ຟັງຊັນດຶງເມນູຈາກ Firestore ແບບກວດຫາ Collection ອັດຕະໂນມັດ
+async function fetchMenuFromFirestore() {
+  console.log("🔍 ກຳລັງເລີ່ມດຶງເມນູຈາກ Firestore...");
+
+  if (typeof firebase === 'undefined' || !firebase.firestore) {
+    console.error("❌ ບໍ່ພົບ Firebase SDK! ກະລຸນາກວດສອບໄຟລ໌ config.js");
+    return;
+  }
+
+  const db = firebase.firestore();
+  
+  // ລາຍຊື່ Collection ທີ່ອາດຈະຖືກໃຊ້
+  const possibleCollections = ['menus', 'menu', 'menuItems', 'items'];
+  let foundCollection = null;
+  let snapshot = null;
+
+  for (const colName of possibleCollections) {
+    try {
+      const snap = await db.collection(colName).get();
+      if (!snap.empty) {
+        foundCollection = colName;
+        snapshot = snap;
+        console.log(`✅ ພົບເມນູໃນ Collection: "${colName}" (ຈຳນວນ ${snap.size} ລາຍການ)`);
+        break;
+      }
+    } catch (e) {
+      console.warn(`ກວດສອບ collection "${colName}" ບໍ່ສຳເລັດ:`, e.message);
+    }
+  }
+
+  // ຖ້າບໍ່ພົບເລີຍ
+  if (!snapshot || snapshot.empty) {
+    console.warn("⚠️ ບໍ່ພົບຂໍ້ມູນເມນູໃນ Firestore ເລີຍ! (ກະລຸນາກວດເບິ່ງວ່າໃນ Firestore ມີ Collection ຊື່ຫຍັງ)");
+    showEmptyMenuMessage();
+    return;
+  }
+
+  // 🔥 ແປງຂໍ້ມູນ (Normalize) ໃຫ້ເຂົ້າກັບລະບົບ 100% ບໍ່ວ່າຈະຕັ້ງຊື່ Field ແນວໃດ
+  const loadedItems = [];
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    
+    // ແປງຊື່ Field ໃຫ້ອັດຕະໂນມັດ
+    const item = {
+      id: doc.id,
+      name: data.name || data.itemName || data.title || 'ບໍ່ມີຊື່',
+      category: (data.category || data.cat || 'coffee').toLowerCase(),
+      desc: data.desc || data.description || '',
+      image: data.image || data.img || data.imageUrl || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500',
+      price: Number(data.price || data.itemPrice || data.standardPrice || 35000),
+      isAvailable: data.isAvailable !== false,
+      allowHot: data.allowHot !== false,
+      allowIced: data.allowIced !== false,
+      allowFrappe: data.allowFrappe === true,
+      allowMilk: data.allowMilk !== false,
+      allowSweetness: data.allowSweetness !== false,
+      allowTopping: data.allowTopping !== false,
+      variants: data.variants || { standard: Number(data.price || 35000) }
+    };
+
+    loadedItems.push(item);
+  });
+
+  window.menuItems = loadedItems;
+  localStorage.setItem('ladolce_menu_cache', JSON.stringify(loadedItems));
+  renderMenu();
+
+  // ເປີດ Realtime Listener ຕາມ Collection ທີ່ພົບ
+  db.collection(foundCollection).onSnapshot(liveSnap => {
+    const updated = [];
+    liveSnap.forEach(d => {
+      const dData = d.data();
+      updated.push({
+        id: d.id,
+        name: dData.name || dData.itemName || dData.title || 'ບໍ່ມີຊື່',
+        category: (dData.category || dData.cat || 'coffee').toLowerCase(),
+        desc: dData.desc || dData.description || '',
+        image: dData.image || dData.img || dData.imageUrl || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500',
+        price: Number(dData.price || dData.itemPrice || 35000),
+        isAvailable: dData.isAvailable !== false,
+        variants: dData.variants || { standard: Number(dData.price || 35000) }
+      });
+    });
+    window.menuItems = updated;
+    renderMenu();
+  });
+}
+
+function showEmptyMenuMessage() {
+  const grid = document.getElementById('menuGrid');
+  if (grid) {
+    grid.innerHTML = `
+      <div class="col-span-full p-8 text-center bg-surface-pure rounded-xl border border-hairline space-y-3">
+        <span class="material-symbols-outlined text-[40px] text-taupe">restaurant_menu</span>
+        <h4 class="font-serif-title text-[16px] text-primary">ຍັງບໍ່ມີເມນູໃນຖານຂໍ້ມູນ Firestore</h4>
+        <p class="text-[12px] text-taupe font-lao">ກະລຸນາເຂົ້າໜ້າ Superadmin ແລ້ວກົດ "+ ເພີ່ມເມນູໃໝ່" ເພື່ອເລີ່ມຕົ້ນ</p>
+      </div>
+    `;
+  }
+}
+
+// 2. Render Menu Card
 function renderMenu() {
   const grid = document.getElementById('menuGrid');
   if (!grid) return;
@@ -37,28 +132,30 @@ function renderMenu() {
   grid.innerHTML = filtered.map((item, index) => {
     const isAvail = item.isAvailable !== false;
     let minPrice = item.price || 35000;
+
     if (item.variants && typeof item.variants === 'object') {
-      const v = Object.values(item.variants).filter(p => typeof p === 'number' && p > 0);
-      if (v.length > 0) minPrice = Math.min(...v);
+      const valid = Object.values(item.variants).filter(v => typeof v === 'number' && v > 0);
+      if (valid.length > 0) minPrice = Math.min(...valid);
     }
 
     return `
       <div class="bg-surface-pure border border-hairline rounded-xl p-3.5 flex flex-col justify-between shadow-xs ${isAvail ? 'hover:border-forest-leaf' : 'opacity-60 bg-gray-50'}">
         <div>
           <div class="relative w-full aspect-[4/3] rounded-lg bg-surface-dim overflow-hidden mb-3">
-            <img src="${item.image || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500'}" 
+            <img src="${item.image}" 
+                 alt="${item.name}"
                  loading="${index < 4 ? 'eager' : 'lazy'}" 
                  decoding="async" 
                  class="w-full h-full object-cover ${!isAvail ? 'grayscale' : 'hover:scale-105 transition-transform duration-500'}"/>
             ${!isAvail ? `<span class="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-[12px] font-bold">ໝົດຊົ່ວຄາວ</span>` : ''}
           </div>
           <h4 class="font-serif-title text-[15px] text-primary font-medium mb-1">${item.name}</h4>
-          <p class="text-[12px] text-taupe line-clamp-2 mb-3">${item.desc || ''}</p>
+          <p class="text-[12px] text-taupe line-clamp-2 mb-3 leading-relaxed">${item.desc || ''}</p>
         </div>
         <div class="flex items-center justify-between pt-2.5 border-t border-hairline">
           <span class="font-serif-title text-[15px] font-bold ${isAvail ? 'text-forest-emerald' : 'text-gray-400'}">${formatLAK(minPrice)}</span>
           ${isAvail ? `
-            <button type="button" onclick="openCustomizeModal('${item.id}')" class="px-3.5 py-1.5 rounded-lg bg-surface hover:bg-forest-emerald hover:text-white border border-hairline text-[11px] font-medium transition-all">ເລືອກ</button>
+            <button type="button" onclick="openCustomizeModal('${item.id}')" class="px-3.5 py-1.5 rounded-lg bg-surface hover:bg-forest-emerald hover:text-white border border-hairline text-[11px] font-medium transition-all cursor-pointer">ເລືອກ</button>
           ` : `<span class="px-3 py-1 text-[11px] text-gray-400 bg-gray-100 rounded-lg">ໝົດ</span>`}
         </div>
       </div>
@@ -78,27 +175,28 @@ function filterCategory(cat) {
   renderMenu();
 }
 
+// 3. Customize Modal
 function openCustomizeModal(itemId) {
   window.activeCustomizingItem = (window.menuItems || []).find(i => String(i.id) === String(itemId));
   if (!window.activeCustomizingItem) return;
 
+  const item = window.activeCustomizingItem;
   window.modalQuantity = 1;
   window.selectedSweetnessLevel = '100%';
 
   const noteInput = document.getElementById('modalItemSpecialNote');
   if (noteInput) noteInput.value = '';
 
-  const item = window.activeCustomizingItem;
   document.getElementById('modalQtyDisplay').textContent = window.modalQuantity;
   document.getElementById('modalItemTitle').textContent = item.name;
   document.getElementById('modalItemDesc').textContent = item.desc || '';
-  document.getElementById('modalItemImage').src = item.image || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500';
+  document.getElementById('modalItemImage').src = item.image;
 
-  // Variants Generator
+  // Variants
   const container = document.getElementById('variantButtonsGrid');
   if (container) {
     const v = item.variants || {};
-    const baseP = typeof v === 'number' ? v : (v.standard || item.price || 35000);
+    const baseP = item.price || 35000;
     const list = [];
 
     if (item.allowHot !== false && (v.hot || baseP)) list.push({ key: 'hot', label: 'ຮ້ອນ', price: v.hot || baseP });
@@ -115,7 +213,6 @@ function openCustomizeModal(itemId) {
     `).join('');
   }
 
-  // Toggle Visibility
   const isBakery = item.category === 'bakery';
   document.getElementById('milkSelectorGroup')?.classList.toggle('hidden', item.allowMilk === false || isBakery);
   document.getElementById('sweetnessSelectorGroup')?.classList.toggle('hidden', item.allowSweetness === false || isBakery);
@@ -128,8 +225,7 @@ function openCustomizeModal(itemId) {
 function selectVariantOption(key) {
   window.selectedVariant = key;
   document.querySelectorAll('.variant-btn').forEach(btn => {
-    const isSel = btn.dataset.key === key;
-    btn.className = `variant-btn p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all ${isSel ? 'border-forest-emerald bg-forest-emerald/10 font-bold' : 'border-hairline bg-surface-pure'}`;
+    btn.className = `variant-btn p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all ${btn.dataset.key === key ? 'border-forest-emerald bg-forest-emerald/10 font-bold' : 'border-hairline bg-surface-pure'}`;
   });
   updateModalPrice();
 }
@@ -152,7 +248,7 @@ function adjustModalQty(delta) {
 
 function updateModalPrice() {
   const item = window.activeCustomizingItem;
-  if (!item) return;
+  if (!item) return 0;
 
   let unit = item.price || 35000;
   if (item.variants && item.variants[window.selectedVariant]) {
@@ -181,7 +277,7 @@ function confirmAddToCart() {
     name: item.name,
     variant: window.selectedVariant,
     sweetness: window.selectedSweetnessLevel,
-    note: note, // 👈 Remark
+    note: note,
     quantity: window.modalQuantity,
     unitPrice: unit,
     totalPrice: unit * window.modalQuantity
@@ -190,7 +286,6 @@ function confirmAddToCart() {
   window.cart = window.cart || [];
   window.cart.push(cartObj);
 
-  // Update Badge
   const count = window.cart.reduce((s, i) => s + i.quantity, 0);
   const badge = document.getElementById('cartBadgeCount');
   if (badge) badge.textContent = count;
@@ -199,19 +294,16 @@ function confirmAddToCart() {
   alert(`ເພີ່ມ "${item.name}" ໃສ່ກະຕ່າແລ້ວ!`);
 }
 
-// ໂຫຼດເມນູທັນທີເມື່ອເປີດໜ້າ
+// ເລີ່ມໂຫຼດເມນູ
 document.addEventListener('DOMContentLoaded', () => {
-  renderMenu(); // ແຕ້ມທັນທີ 0.01 ວິນາທີ
-
-  // Sync Firebase ເບື້ອງຫຼັງ
-  if (typeof firebase !== 'undefined' && firebase.firestore) {
-    firebase.firestore().collection('menus').onSnapshot(snap => {
-      if (!snap.empty) {
-        const list = [];
-        snap.forEach(d => list.push({ id: d.id, ...d.data() }));
-        window.menuItems = list;
-        renderMenu();
-      }
-    }, err => console.log("Firebase sync fallback to local."));
+  // ລອງດຶງ Cache ເດີມມາກ່ອນ
+  const cached = localStorage.getItem('ladolce_menu_cache');
+  if (cached) {
+    try {
+      window.menuItems = JSON.parse(cached);
+      renderMenu();
+    } catch(e) {}
   }
+  // ດຶງຂໍ້ມູນສົດຈາກ Firestore ທັນທີ
+  fetchMenuFromFirestore();
 });
