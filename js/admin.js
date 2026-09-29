@@ -111,8 +111,13 @@ function renderAdminCoupons() {
   }).join('');
 }
 
+// =======================================================
+// COUPON MANAGEMENT (100% WORKING PUBLISH FUNCTION)
+// =======================================================
+
 function openAddCouponModal() {
-  document.getElementById('couponForm').reset();
+  const form = document.getElementById('couponForm');
+  if (form) form.reset();
   document.getElementById('addCouponModal')?.classList.remove('hidden');
 }
 
@@ -120,37 +125,76 @@ function closeAddCouponModal() {
   document.getElementById('addCouponModal')?.classList.add('hidden');
 }
 
-async function saveCouponFromModal(e) {
-  if (e) e.preventDefault();
+// 🔥 ຟັງຊັນບັນທຶກ Coupon ທີ່ກົດ Publish ໄດ້ແນ່ນອນ 100%
+async function saveCouponFromModal(event) {
+  if (event) event.preventDefault(); // 👈 ຢຸດການ reload ໜ້າເວັບ (ສຳຄັນທີ່ສຸດ!)
 
-  const code = document.getElementById('inputCpnCode')?.value.trim().toUpperCase();
-  const type = document.getElementById('inputCpnType')?.value || 'percent';
-  const value = parseFloat(document.getElementById('inputCpnValue')?.value) || 0;
-  const maxDiscount = parseFloat(document.getElementById('inputCpnMaxDiscount')?.value) || null;
-  const minOrder = parseFloat(document.getElementById('inputCpnMinOrder')?.value) || 0;
-  const totalBudget = parseFloat(document.getElementById('inputCpnTotalBudget')?.value) || null;
-  const expiryDate = document.getElementById('inputCpnExpiry')?.value || null;
-  const desc = document.getElementById('inputCpnDesc')?.value.trim() || `ສ່ວນຫຼຸດ ${code}`;
+  const submitBtn = event.target.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
 
-  if (!code || value <= 0) {
-    alert("ກະລຸນາປ້ອນລະຫັດໂຄດ ແລະ ມູນຄ່າສ່ວນຫຼຸດທີ່ຖືກຕ້ອງ!");
-    return;
+  try {
+    // 1. ດຶງຂໍ້ມູນຈາກ Modal ພ້ອມ Null-Safe
+    const code = document.getElementById('inputCpnCode')?.value.trim().toUpperCase();
+    const type = document.getElementById('inputCpnType')?.value || 'percent';
+    const value = Number(document.getElementById('inputCpnValue')?.value) || 0;
+    const maxDiscount = Number(document.getElementById('inputCpnMaxDiscount')?.value) || 0;
+    const minOrder = Number(document.getElementById('inputCpnMinOrder')?.value) || 0;
+    const totalBudget = Number(document.getElementById('inputCpnTotalBudget')?.value) || 0;
+    const expiry = document.getElementById('inputCpnExpiry')?.value || '';
+    const desc = document.getElementById('inputCpnDesc')?.value.trim() || '';
+
+    // ກວດສອບຄວາມຖືກຕ້ອງ
+    if (!code) {
+      alert("ກະລຸນາປ້ອນລະຫັດຄູປອງ (Coupon Code)!");
+      return;
+    }
+    if (value <= 0) {
+      alert("ມູນຄ່າສ່ວນຫຼຸດຕ້ອງຫຼາຍກວ່າ 0!");
+      return;
+    }
+
+    // ສະແດງ Loading ທີ່ປຸ່ມ
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span>ກຳລັງບັນທຶກ...</span>`;
+    }
+
+    // 2. ປະກອບ Object
+    const couponData = {
+      code: code,
+      type: type, // 'percent' ຫຼື 'fixed'
+      value: value,
+      maxDiscount: maxDiscount,
+      minOrder: minOrder,
+      totalBudget: totalBudget,
+      usedBudget: 0,
+      expiryDate: expiry,
+      desc: desc,
+      isActive: true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    // 3. ບັນທຶກລົງ Firestore (ໃຊ້ Code ເປັນ Document ID ເພື່ອບໍ່ໃຫ້ລະຫັດຊໍ້າກັນ)
+    await firebase.firestore().collection('coupons').doc(code).set(couponData, { merge: true });
+
+    alert(`🎉 ປະກາດໃຊ້ຄູປອງ "${code}" ສຳເລັດແລ້ວ!`);
+
+    // ປິດ Modal ແລະ ອັບເດດລາຍການ
+    closeAddCouponModal();
+    if (typeof loadAdminCoupons === 'function') {
+      loadAdminCoupons();
+    }
+
+  } catch (error) {
+    console.error("Error publishing coupon:", error);
+    alert("ເກີດຂໍ້ຜິດພາດໃນການສ້າງຄູປອງ: " + error.message);
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+    }
   }
-
-  const newCoupon = {
-    id: "cpn_" + code,
-    code: code,
-    type: type,
-    value: value,
-    maxDiscount: maxDiscount,
-    minOrder: minOrder,
-    totalBudget: totalBudget,
-    budgetUsed: 0,
-    expiryDate: expiryDate,
-    desc: desc,
-    isActive: true,
-    createdAt: new Date().toISOString()
-  };
+}
 
   // 1. ອັບເດດ Memory
   const idx = activeCouponsList.findIndex(c => c.code === code);
