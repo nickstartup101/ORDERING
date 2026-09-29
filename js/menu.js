@@ -43,12 +43,127 @@ async function fetchMenuFromFirestore() {
     }
   }
 
-  // ຖ້າບໍ່ພົບເລີຍ
-  if (!snapshot || snapshot.empty) {
-    console.warn("⚠️ ບໍ່ພົບຂໍ້ມູນເມນູໃນ Firestore ເລີຍ! (ກະລຸນາກວດເບິ່ງວ່າໃນ Firestore ມີ Collection ຊື່ຫຍັງ)");
-    showEmptyMenuMessage();
-    return;
+// 🔥 ຟັງຊັນສະແດງປຸ່ມສ້າງເມນູຕົວຢ່າງເຂົ້າ Firebase ທັນທີ
+function showEmptyMenuMessage() {
+  const grid = document.getElementById('menuGrid');
+  if (grid) {
+    grid.innerHTML = `
+      <div class="col-span-full p-8 text-center bg-surface-pure rounded-2xl border border-hairline space-y-4 max-w-md mx-auto shadow-xs">
+        <span class="w-14 h-14 rounded-full bg-forest-emerald/10 text-forest-emerald flex items-center justify-center mx-auto">
+          <span class="material-symbols-outlined text-[32px]">coffee</span>
+        </span>
+        <div>
+          <h4 class="font-serif-title text-[18px] text-primary font-bold">ຍັງບໍ່ມີເມນູໃນຖານຂໍ້ມູນ Firestore</h4>
+          <p class="text-[12px] text-taupe mt-1">ກົດປຸ່ມດ້ານລຸ່ມນີ້ ເພື່ອສ້າງເມນູຕົວຢ່າງ (ກາເຟ, ຊາ, ເບເກີຣີ່) ເຂົ້າລະບົບທັນທີ</p>
+        </div>
+        
+        <button type="button" onclick="seedSampleMenus()" class="w-full py-3 rounded-xl bg-forest-emerald hover:bg-forest-leaf text-white text-[13px] font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer">
+          <span class="material-symbols-outlined text-[18px]">add_circle</span>
+          <span>+ ສ້າງເມນູຕົວຢ່າງ 5 ລາຍການດຽວນີ້</span>
+        </button>
+      </div>
+    `;
   }
+}
+
+// 🔥 ຟັງຊັນບັນທຶກເມນູຕົວຢ່າງລົງ Firestore ອັດຕະໂນມັດ
+async function seedSampleMenus() {
+  const sampleItems = [
+    {
+      name: "Downtown Dirty Latte",
+      category: "coffee",
+      price: 45000,
+      desc: "ນົມສົດເຢັນຈັດ ສູດພິເສດ ທັອບດ້ວຍເອັສເປຣສໂຊຊັອດເຂັ້ມຂຸ້ນ",
+      image: "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=600",
+      allowHot: false,
+      allowIced: true,
+      allowFrappe: false,
+      allowMilk: true,
+      allowSweetness: true,
+      allowTopping: true,
+      isAvailable: true,
+      variants: { standard: 45000, iced: 45000 }
+    },
+    {
+      name: "Classic Iced Americano",
+      category: "coffee",
+      price: 35000,
+      desc: "ກາເຟອາຣາບິກ້າແທ້ 100% ຄົ່ວລະດັບກາງ ຫອມລະມຸນ ສົດຊື່ນ",
+      image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600",
+      allowHot: true,
+      allowIced: true,
+      allowFrappe: false,
+      allowMilk: false,
+      allowSweetness: true,
+      allowTopping: true,
+      isAvailable: true,
+      variants: { standard: 35000, hot: 35000, iced: 40000 }
+    },
+    {
+      name: "Kyoto Uji Matcha Latte",
+      category: "tea",
+      price: 42000,
+      desc: "ມັດຊະແທ້ 100% ຈາກເມືອງອູຈິ ປະເທດຍີ່ປຸ່ນ ຕີສົດໆຈອກຕໍ່ຈອກ",
+      image: "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600",
+      allowHot: true,
+      allowIced: true,
+      allowFrappe: true,
+      allowMilk: true,
+      allowSweetness: true,
+      allowTopping: true,
+      isAvailable: true,
+      variants: { standard: 42000, hot: 42000, iced: 45000, frappe: 50000 }
+    },
+    {
+      name: "Peach & Berry Sparkler",
+      category: "refresher",
+      price: 38000,
+      desc: "ໂຊດາພີຊປະສົມສະຕໍເບີຣີ່ສົດ ສົດຊື່ນດັບຮ້ອນ",
+      image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=600",
+      allowHot: false,
+      allowIced: true,
+      allowFrappe: false,
+      allowMilk: false,
+      allowSweetness: true,
+      allowTopping: false,
+      isAvailable: true,
+      variants: { standard: 38000, iced: 38000 }
+    },
+    {
+      name: "French Butter Croissant",
+      category: "bakery",
+      price: 28000,
+      desc: "ຄົວຊອງເນີຍຝຣັ່ງແທ້ ອົບສົດໃໝ່ທຸກເຊົ້າ ກອບນອກນຸ້ມໃນ",
+      image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600",
+      allowHot: false,
+      allowIced: false,
+      allowFrappe: false,
+      allowMilk: false,
+      allowSweetness: false,
+      allowTopping: false,
+      isAvailable: true,
+      variants: { standard: 28000 }
+    }
+  ];
+
+  try {
+    const btn = event.target.closest('button');
+    if (btn) btn.innerHTML = "<span>ກຳລັງສ້າງເມນູ...</span>";
+
+    const db = firebase.firestore();
+    for (const item of sampleItems) {
+      await db.collection('menus').add({
+        ...item,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    alert("🎉 ສ້າງເມນູຕົວຢ່າງ 5 ລາຍການເຂົ້າ Firebase ສຳເລັດແລ້ວ!");
+    fetchMenuFromFirestore(); // ດຶງມາສະແດງທັນທີ
+  } catch (err) {
+    alert("ເກີດຂໍ້ຜິດພາດ: " + err.message);
+  }
+}
 
   // 🔥 ແປງຂໍ້ມູນ (Normalize) ໃຫ້ເຂົ້າກັບລະບົບ 100% ບໍ່ວ່າຈະຕັ້ງຊື່ Field ແນວໃດ
   const loadedItems = [];
