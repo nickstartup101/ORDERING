@@ -434,7 +434,9 @@ async function executeOrderCreation(customerName, customerPhone) {
   }
 
   // ລ້າງກະຕ່າ
-  cart = [];
+  window.cart = window.cart || [];
+  var appliedCoupon = null;
+  var fulfillmentType = 'pickup';
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
   uploadedSlipDataUrl = null;
   selectedBankMethodId = null;
