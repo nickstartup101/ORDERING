@@ -1,8 +1,8 @@
 // =======================================================
-// LA DOLCE — INSTANT MENU ENGINE (DIRECT EXECUTION)
+// LA DOLCE — DIRECT FIRESTORE MENU LOADER (menu_items)
 // =======================================================
 
-console.log("🚀 [menu.js] Loaded and starting...");
+console.log("🚀 [menu.js] Connecting to Firestore: 'menu_items'...");
 
 window.menuItems = window.menuItems || [];
 window.currentCategoryFilter = 'all';
@@ -15,7 +15,7 @@ function formatLAK(val) {
   return Number(val || 0).toLocaleString('lo-LA') + ' ₭';
 }
 
-// 1. ຟັງຊັນກວດສອບໝວດໝູ່ (Smart Category Matcher)
+// 1. Smart Category Matcher (ຮອງຮັບທຸກພາສາ)
 function isMatchingCategory(itemCat, filter) {
   if (!filter || filter === 'all') return true;
   const c = String(itemCat || '').toLowerCase().trim();
@@ -25,29 +25,24 @@ function isMatchingCategory(itemCat, filter) {
   if (f === 'tea' && (c.includes('tea') || c.includes('matcha') || c.includes('ຊາ') || c.includes('ມັດຊະ'))) return true;
   if (f === 'coffee' && (c.includes('coffee') || c.includes('espresso') || c.includes('latte') || c.includes('ກາເຟ'))) return true;
   if (f === 'refresher' && (c.includes('refresher') || c.includes('soda') || c.includes('spark') || c.includes('ໂຊດາ'))) return true;
-  if (f === 'bakery' && (c.includes('bakery') || c.includes('food') || c.includes('cake') || c.includes('croissant') || c.includes('ເຂົ້າຈີ່') || c.includes('ອາຫານ'))) return true;
+  if (f === 'bakery' && (c.includes('bakery') || c.includes('food') || c.includes('cake') || c.includes('croissant') || c.includes('ເຂົ້າຈີ່') || c.includes('ເບເກີຣີ່'))) return true;
 
   return false;
 }
 
-// 2. Render Menu Card
+// 2. Render Menu Grid
 function renderMenu() {
   const grid = document.getElementById('menuGrid');
-  if (!grid) {
-    console.warn("⚠️ [menu.js] menuGrid element not found!");
-    return;
-  }
+  if (!grid) return;
 
   const list = window.menuItems || [];
-  console.log(`🎨 [menu.js] Rendering menu... Total items in memory: ${list.length}, Current filter: "${window.currentCategoryFilter}"`);
-
   const filtered = list.filter(item => isMatchingCategory(item.category, window.currentCategoryFilter));
 
   if (filtered.length === 0) {
     if (list.length === 0) {
       grid.innerHTML = `
         <div class="col-span-full p-8 text-center text-taupe bg-surface-pure rounded-xl border border-hairline font-lao">
-          <p class="text-[14px] font-bold text-primary mb-1">ກຳລັງໂຫຼດເມນູຈາກຖານຂໍ້ມູນ...</p>
+          <p class="text-[14px] font-bold text-primary mb-1">ກຳລັງໂຫຼດເມນູ...</p>
         </div>
       `;
     } else {
@@ -116,91 +111,67 @@ function filterCategory(cat) {
   renderMenu();
 }
 
-// 4. ຟັງຊັນດຶງເມນູຈາກ Firestore (ຄົ້ນຫາທຸກ Collection ທີ່ເປັນໄປໄດ້)
+// 🔥 4. ດຶງຂໍ້ມູນຈາກ Collection: 'menu_items' ໂດຍກົງ 100%!
 async function fetchMenuFromFirestore() {
-  console.log("🔍 [menu.js] fetchMenuFromFirestore() executing...");
-
-  if (typeof firebase === 'undefined' || !firebase.firestore) {
-    console.error("❌ [menu.js] Firebase SDK not found!");
-    return;
-  }
+  if (typeof firebase === 'undefined' || !firebase.firestore) return;
 
   const db = firebase.firestore();
-  
-  // ລາຍຊື່ Collection ທີ່ Admin ອາດຈະໃຊ້
-  const possibleCollections = ['menus', 'menu', 'products', 'items'];
-  let foundCollection = null;
-  let snapshot = null;
+  console.log("📥 [menu.js] ກຳລັງອ່ານ collection 'menu_items'...");
 
-  for (const colName of possibleCollections) {
-    try {
-      const snap = await db.collection(colName).get();
-      if (!snap.empty) {
-        foundCollection = colName;
-        snapshot = snap;
-        console.log(`✅ [menu.js] ພົບເມນູໃນ Collection: "${colName}" (ຈຳນວນ ${snap.size} ລາຍການ)`);
-        break;
-      }
-    } catch (e) {
-      console.warn(`[menu.js] collection "${colName}" error:`, e.message);
+  try {
+    const snapshot = await db.collection('menu_items').get();
+
+    if (snapshot.empty) {
+      console.warn("⚠️ [menu.js] collection 'menu_items' ຫວ່າງເປົ່າ!");
+      return;
     }
-  }
 
-  if (!snapshot || snapshot.empty) {
-    console.warn("⚠️ [menu.js] ບໍ່ພົບຂໍ້ມູນເມນູໃນ Firestore!");
-    return;
-  }
+    console.log(`🎉 [menu.js] ສຳເລັດ! ພົບເມນູທັງໝົດ ${snapshot.size} ລາຍການໃນ 'menu_items'`);
 
-  const loadedItems = [];
-  snapshot.forEach(doc => {
-    const data = doc.data();
-    const item = {
-      id: doc.id,
-      name: data.name || data.itemName || data.title || 'ບໍ່ມີຊື່',
-      category: (data.category || data.cat || 'coffee').toLowerCase().trim(),
-      desc: data.desc || data.description || '',
-      image: data.image || data.img || data.imageUrl || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500',
-      price: Number(data.price || data.itemPrice || data.standardPrice || 35000),
-      isAvailable: data.isAvailable !== false,
-      allowHot: data.allowHot !== false,
-      allowIced: data.allowIced !== false,
-      allowFrappe: data.allowFrappe === true,
-      allowMilk: data.allowMilk !== false,
-      allowSweetness: data.allowSweetness !== false,
-      allowTopping: data.allowTopping !== false,
-      variants: data.variants || { standard: Number(data.price || 35000) }
-    };
-    loadedItems.push(item);
-  });
-
-  window.menuItems = loadedItems;
-  console.log(`🎉 [menu.js] ບັນທຶກເມນູເຂົ້າ Memory สำເລັດ: ${loadedItems.length} ລາຍການ`);
-  
-  // Render ທັນທີ
-  renderMenu();
-
-  // ເປີດ Realtime Sync
-  db.collection(foundCollection).onSnapshot(liveSnap => {
-    const updated = [];
-    liveSnap.forEach(d => {
-      const dData = d.data();
-      updated.push({
-        id: d.id,
-        name: dData.name || dData.itemName || dData.title || 'ບໍ່ມີຊື່',
-        category: (dData.category || dData.cat || 'coffee').toLowerCase().trim(),
-        desc: dData.desc || dData.description || '',
-        image: dData.image || dData.img || dData.imageUrl || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500',
-        price: Number(dData.price || dData.itemPrice || 35000),
-        isAvailable: dData.isAvailable !== false,
-        variants: dData.variants || { standard: Number(dData.price || 35000) }
+    const loadedItems = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      loadedItems.push({
+        id: doc.id,
+        name: data.name || data.itemName || data.title || 'ບໍ່ມີຊື່',
+        category: (data.category || data.cat || 'coffee').toLowerCase().trim(),
+        desc: data.desc || data.description || '',
+        image: data.image || data.img || data.imageUrl || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500',
+        price: Number(data.price || data.itemPrice || data.standardPrice || 35000),
+        isAvailable: data.isAvailable !== false,
+        variants: data.variants || { standard: Number(data.price || 35000) }
       });
     });
-    window.menuItems = updated;
+
+    window.menuItems = loadedItems;
     renderMenu();
-  });
+
+    // Realtime Sync: ເມື່ອ Admin ແກ້ໄຂເມນູ ໜ້າ Customer ຈະປ່ຽນທັນທີ
+    db.collection('menu_items').onSnapshot(liveSnap => {
+      const liveList = [];
+      liveSnap.forEach(d => {
+        const dData = d.data();
+        liveList.push({
+          id: d.id,
+          name: dData.name || dData.itemName || 'ບໍ່ມີຊື່',
+          category: (dData.category || dData.cat || 'coffee').toLowerCase().trim(),
+          desc: dData.desc || '',
+          image: dData.image || dData.imageUrl || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500',
+          price: Number(dData.price || dData.itemPrice || 35000),
+          isAvailable: dData.isAvailable !== false,
+          variants: dData.variants || { standard: Number(dData.price || 35000) }
+        });
+      });
+      window.menuItems = liveList;
+      renderMenu();
+    });
+
+  } catch (err) {
+    console.error("❌ [menu.js] Error reading 'menu_items':", err);
+  }
 }
 
-// 5. Customize Modal
+// 5. Customize Modal (ພ້ອມເກັບ Remark)
 function openCustomizeModal(itemId) {
   window.activeCustomizingItem = (window.menuItems || []).find(i => String(i.id) === String(itemId));
   if (!window.activeCustomizingItem) return;
@@ -319,17 +290,6 @@ function confirmAddToCart() {
   alert(`ເພີ່ມ "${item.name}" ໃສ່ກະຕ່າແລ້ວ!`);
 }
 
-// 🔥 6. ສັ່ງໃຫ້ດຶງເມນູທັນທີ (ບໍ່ລໍຖ້າ DOMContentLoaded ເພາະ DOM ອາດຈະພ້ອມແລ້ວ)
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', fetchMenuFromFirestore);
-} else {
-  fetchMenuFromFirestore();
-}
-
-// ກວດສອບອີກຄັ້ງຫຼັງຈາກ 500ms ເພື່ອຄວາມແນ່ນອນ 100%
-setTimeout(() => {
-  if (window.menuItems.length === 0) {
-    console.log("🔄 [menu.js] Retrying fetch...");
-    fetchMenuFromFirestore();
-  }
-}, 500);
+// 6. ເອີ້ນເຮັດວຽກທັນທີ
+fetchMenuFromFirestore();
+setTimeout(fetchMenuFromFirestore, 500);
