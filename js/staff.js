@@ -1,14 +1,12 @@
 // =======================================================
-// LA DOLCE — BARISTA KITCHEN DISPLAY (BULLETPROOF 100%)
+// LA DOLCE — BARISTA DISPLAY (AUTO POP-UP & REALTIME)
 // =======================================================
-
-console.log("🚀 [staff.js] Loaded successfully");
 
 window.currentStaffSubTab = 'active';
 window.allStaffOrders = [];
-window.activePendingAlertId = null;
+window.currentAlertingOrderId = null;
 
-// 1. ປ່ຽນແຖບ (Active / History / Cancelled)
+// 1. ປ່ຽນແຖບ Staff
 window.switchStaffSubTab = function(tabName) {
   window.currentStaffSubTab = tabName;
 
@@ -42,20 +40,13 @@ window.switchStaffSubTab = function(tabName) {
   window.renderStaffOrders(window.allStaffOrders);
 };
 
-// 2. Render Orders ແບບປ້ອງກັນ Undefined 100% (ແກ້ reading 'filter' ຖາວອນ)
+// 2. Render Orders ພ້ອມກວດຫາ New Pending ເພື່ອເປີດ Pop-up
 window.renderStaffOrders = function(ordersInput) {
   let list = [];
-
-  // ກວດສອບທຸກຮູບແບບທີ່ app.js ອາດຈະສົ່ງມາ
-  if (Array.isArray(ordersInput)) {
-    list = ordersInput;
-  } else if (ordersInput && ordersInput.docs && Array.isArray(ordersInput.docs)) {
-    list = ordersInput.docs.map(d => ({ id: d.id, ...d.data() }));
-  } else if (Array.isArray(window.orders) && window.orders.length > 0) {
-    list = window.orders;
-  } else if (Array.isArray(window.allStaffOrders)) {
-    list = window.allStaffOrders;
-  }
+  if (Array.isArray(ordersInput)) list = ordersInput;
+  else if (ordersInput && ordersInput.docs) list = ordersInput.docs.map(d => ({ id: d.id, ...d.data() }));
+  else if (Array.isArray(window.orders)) list = window.orders;
+  else if (Array.isArray(window.allStaffOrders)) list = window.allStaffOrders;
 
   window.allStaffOrders = list;
 
@@ -69,18 +60,23 @@ window.renderStaffOrders = function(ordersInput) {
   const historyOrders = list.filter(o => o && o.status === 'completed');
   const cancelledOrders = list.filter(o => o && o.status === 'cancelled');
 
-  // ນັບຈຳນວນອໍເດີ້ຂອງລູກຄ້າແຕ່ລະຄົນ (Same customer)
+  // ນັບຈຳນວນອໍເດີ້ລູກຄ້າຄົນດຽວກັນ
   const customerCounts = {};
   activeOrders.forEach(o => {
     const key = o.customerPhone || o.customerName || 'Unknown';
     customerCounts[key] = (customerCounts[key] || 0) + 1;
   });
 
-  // 🔥 ກວດສອບອໍເດີ້ໃໝ່ທີ່ເປັນ 'pending' ແລ້ວເປີດ Pop-up ທັນທີ!
-  const latestPending = activeOrders.find(o => o.status === 'pending');
-  if (latestPending && latestPending.id !== window.activePendingAlertId) {
-    window.activePendingAlertId = latestPending.id;
-    window.triggerStaffNewOrderAlert(latestPending);
+  // 🔥🔥🔥 ກວດສອບອໍເດີ້ 'pending' ໃໝ່ ແລ້ວສັ່ງເປີດ Pop-up ທັນທີ! 🔥🔥🔥
+  const pendingOrder = activeOrders.find(o => o.status === 'pending');
+  if (pendingOrder) {
+    if (pendingOrder.id !== window.currentAlertingOrderId) {
+      window.currentAlertingOrderId = pendingOrder.id;
+      window.triggerStaffNewOrderAlert(pendingOrder);
+    }
+  } else {
+    // ຖ້າບໍ່ມີ pending ແລ້ວ ໃຫ້ປິດສຽງເຕືອນ
+    window.closeStaffNewOrderModal();
   }
 
   containerActive.innerHTML = activeOrders.length === 0 
@@ -100,7 +96,6 @@ window.renderStaffOrders = function(ordersInput) {
   }
 };
 
-// 3. ແຕ້ມບັດອໍເດີ້ ພ້ອມ Remark ແລະ ແທັກ "ລູກຄ້າຄົນດຽວກັນ"
 function createStaffOrderCard(order, customerCounts) {
   const isPending = order.status === 'pending';
   const isPreparing = order.status === 'preparing';
@@ -122,10 +117,8 @@ function createStaffOrderCard(order, customerCounts) {
       <div class="text-[11px] text-taupe mt-0.5 space-x-1.5 font-lao">
         ${item.sweetness ? `<span>ຫວານ ${item.sweetness}</span>` : ''}
         ${item.milk ? `<span>• ນົມ: ${item.milk}</span>` : ''}
-        ${item.hasExtraShot ? `<span class="text-forest-emerald font-bold">• +Extra Shot</span>` : ''}
       </div>
 
-      <!-- 📝 ໝາຍເຫດ (Remark) ຂອງລູກຄ້າ -->
       ${item.note ? `
         <div class="mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-300 text-amber-950 flex items-start gap-1.5 shadow-2xs font-lao">
           <span class="material-symbols-outlined text-[15px] text-amber-700 shrink-0">edit_note</span>
@@ -142,8 +135,6 @@ function createStaffOrderCard(order, customerCounts) {
           <div>
             <div class="flex items-center gap-2">
               <span class="font-serif-title font-bold text-[17px] text-primary">${order.orderCode || 'Order'}</span>
-              
-              <!-- 🔥 ແທັກບອກລູກຄ້າຄົນດຽວກັນສັ່ງຫຼາຍອໍເດີ້ -->
               ${isMultiOrder ? `
                 <span class="px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 font-lao animate-bounce">
                   <span class="material-symbols-outlined text-[12px]">group</span>
@@ -167,9 +158,7 @@ function createStaffOrderCard(order, customerCounts) {
           </span>
         </div>
 
-        <div class="py-1 divide-y divide-hairline">
-          ${itemsHtml}
-        </div>
+        <div class="py-1 divide-y divide-hairline">${itemsHtml}</div>
       </div>
 
       <div class="pt-2 border-t border-hairline space-y-2 font-lao">
@@ -202,9 +191,12 @@ function createStaffOrderCard(order, customerCounts) {
   `;
 }
 
-// 4. 🔥 Pop-up ອໍເດີ້ໃໝ່ເຂົ້າມາ (ເດັ້ງກາງໜ້າຈໍທັນທີ)
+// 🔥 Pop-up ເດັ້ງກາງໜ້າຈໍ Staff ທັນທີ
 window.triggerStaffNewOrderAlert = function(order) {
   const modal = document.getElementById('staffNewOrderModal');
+  const indicator = document.getElementById('staffRingingIndicator');
+  if (indicator) indicator.classList.remove('hidden');
+
   if (!modal) return;
 
   const orderIdEl = document.getElementById('staffNotifOrderId');
@@ -215,25 +207,21 @@ window.triggerStaffNewOrderAlert = function(order) {
   if (custEl) custEl.textContent = `${order.customerName || 'Guest'} (${order.customerPhone || 'Walk-in'})`;
   if (totalEl) totalEl.textContent = formatLAK(order.totalAmount);
 
-  // ເປີດສຽງເຕືອນ
-  if (typeof playStaffAlarm === 'function') playStaffAlarm();
-
   modal.classList.remove('hidden');
 };
 
 window.closeStaffNewOrderModal = function() {
   document.getElementById('staffNewOrderModal')?.classList.add('hidden');
-  if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
+  document.getElementById('staffRingingIndicator')?.classList.add('hidden');
 };
 
 window.acceptStaffNewOrderFromModal = function() {
-  if (window.activePendingAlertId) {
-    window.updateOrderStatus(window.activePendingAlertId, 'preparing');
+  if (window.currentAlertingOrderId) {
+    window.updateOrderStatus(window.currentAlertingOrderId, 'preparing');
   }
   window.closeStaffNewOrderModal();
 };
 
-// 5. ອັບເດດສະຖານະລົງ Firestore
 window.updateOrderStatus = async function(orderId, nextStatus) {
   try {
     const firestore = db || firebase.firestore();
