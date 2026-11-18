@@ -1,11 +1,11 @@
 // =======================================================
-// LA DOLCE — ADVANCED MEMBER PROFILE & BIRTHDAY PRIVILEGE
+// LA DOLCE — AUTHENTICATION & MEMBER PROFILE (PURE SVG)
 // =======================================================
 
 let isRegisterMode = false;
 let sessionTimer = null;
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 ນາທີ
-let profileSubTab = 'info'; // 'info' | 'history'
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+let profileSubTab = 'info';
 
 function openAuthModal() {
   document.getElementById('authModal')?.classList.remove('hidden');
@@ -41,7 +41,7 @@ function autoLogoutSession() {
   localStorage.removeItem('ladolce_user');
   updateUserSessionUI();
   dispatchRoleView('customer');
-  alert("ໝົດເວລາເຊດຊັນ 30 ນາທີ ລະບົບໄດ້ອອກຈາກລະບົບອັດຕະໂນມັດ");
+  showAtelierAlert({ title: 'ໝົດເວລາເຊດຊັນ', message: 'ບໍ່ມີການເຄື່ອນໄຫວ 30 ນາທີ ລະບົບໄດ້ອອກຈາກລະບົບອັດຕະໂນມັດ', type: 'warning' });
 }
 
 async function handleAuthSubmit() {
@@ -50,11 +50,11 @@ async function handleAuthSubmit() {
   const nameInput = document.getElementById('authName')?.value.trim();
 
   if (!emailInput || !passInput) {
-    alert("ກະລຸນາປ້ອນອີເມວ ແລະ ລະຫັດຜ່ານ!");
+    showAtelierToast("ກະລຸນາປ້ອນອີເມວ ແລະ ລະຫັດຜ່ານ!", "warning");
     return;
   }
 
-  showToast("ກຳລັງກວດສອບ...");
+  showAtelierToast("ກຳລັງກວດສອບ...");
 
   if (isRegisterMode) {
     const newUser = {
@@ -80,7 +80,7 @@ async function handleAuthSubmit() {
     localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
     closeAuthModal();
     dispatchRoleView(currentUser.role);
-    showToast("ລົງທະບຽນສຳເລັດ!");
+    showAtelierToast("ລົງທະບຽນສຳເລັດ!");
   } else {
     let authenticatedUser = null;
 
@@ -92,17 +92,14 @@ async function handleAuthSubmit() {
     if (!authenticatedUser && isFirebaseReady && db) {
       try {
         const doc = await db.collection("users").doc(emailInput).get();
-        if (doc.exists) {
-          const userData = doc.data();
-          if (userData.password === passInput) {
-            authenticatedUser = userData;
-          }
+        if (doc.exists && doc.data().password === passInput) {
+          authenticatedUser = doc.data();
         }
-      } catch (cloudErr) {}
+      } catch (_) {}
     }
 
     if (!authenticatedUser) {
-      alert("Email ຫຼື Password ບໍ່ຖືກຕ້ອງ!");
+      showAtelierToast("Email ຫຼື Password ບໍ່ຖືກຕ້ອງ!", "error");
       return;
     }
 
@@ -111,7 +108,7 @@ async function handleAuthSubmit() {
     resetSessionTimer();
     closeAuthModal();
     dispatchRoleView(currentUser.role);
-    showToast(`ຍິນດີຕ້ອນຮັບ, ${currentUser.name}!`);
+    showAtelierToast(`ຍິນດີຕ້ອນຮັບ, ${currentUser.name}!`);
   }
 }
 
@@ -119,8 +116,9 @@ function logoutUser() {
   currentUser = null;
   localStorage.removeItem('ladolce_user');
   if (sessionTimer) clearTimeout(sessionTimer);
+  if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
   dispatchRoleView('customer');
-  showToast("ອອກຈາກລະບົບແລ້ວ");
+  showAtelierToast("ອອກຈາກລະບົບແລ້ວ");
 }
 
 function dispatchRoleView(role) {
@@ -128,7 +126,7 @@ function dispatchRoleView(role) {
   document.getElementById('adminStaffAppView')?.classList.toggle('hidden', role !== 'staff');
   document.getElementById('superAdminAppView')?.classList.toggle('hidden', role !== 'superadmin');
   document.getElementById('customerBottomNav')?.classList.toggle('hidden', role !== 'customer');
-  
+
   const roleBadge = document.getElementById('currentRoleBadge');
   if (roleBadge) {
     roleBadge.textContent = role === 'staff' ? "Barista Display" : role === 'superadmin' ? "Superadmin" : "Customer View";
@@ -137,15 +135,11 @@ function dispatchRoleView(role) {
   updateUserSessionUI();
 
   if (role === 'staff') {
-    if (typeof renderStaffOrders === 'function') renderStaffOrders();
-    if ("Notification" in window && Notification.permission !== "granted") {
-      Notification.requestPermission();
-    }
+    if (typeof renderStaffOrders === 'function') renderStaffOrders(orders);
+    if (typeof updateStaffNotifyBadge === 'function') updateStaffNotifyBadge();
   }
   if (role === 'superadmin') {
-    if (typeof renderAdminMenu === 'function') renderAdminMenu();
-    if (typeof renderModifierSettings === 'function') renderModifierSettings();
-    if (typeof renderPaymentSettings === 'function') renderPaymentSettings();
+    if (typeof loadAllOwnerData === 'function') loadAllOwnerData();
   }
 }
 
@@ -172,37 +166,37 @@ function updateUserSessionUI() {
       if (currentUser.role === 'superadmin') {
         roleLinksContainer.innerHTML = `
           <button type="button" onclick="dispatchRoleView('superadmin'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-bold text-forest-emerald hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
-            <span class="material-symbols-outlined text-[17px]">admin_panel_settings</span>
+            ${svgIcon('shield', 'w-4 h-4')}
             <span>ສູນຄວບຄຸມ (Control Center)</span>
           </button>
           <button type="button" onclick="dispatchRoleView('staff'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
-            <span class="material-symbols-outlined text-[17px]">coffee_maker</span>
+            ${svgIcon('coffee', 'w-4 h-4')}
             <span>ໜ້າຈໍຄົວ (Kitchen Display)</span>
           </button>
           <button type="button" onclick="dispatchRoleView('customer'); switchCustomerTab('ticket'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
-            <span class="material-symbols-outlined text-[17px]">receipt_long</span>
+            ${svgIcon('ticket', 'w-4 h-4')}
             <span>ບິນສັ່ງຊື້ (Orders Audit)</span>
           </button>
         `;
       } else if (currentUser.role === 'staff') {
         roleLinksContainer.innerHTML = `
           <button type="button" onclick="dispatchRoleView('staff'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-bold text-forest-emerald hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
-            <span class="material-symbols-outlined text-[17px]">coffee_maker</span>
+            ${svgIcon('coffee', 'w-4 h-4')}
             <span>ໜ້າຈໍຄົວ (Kitchen Display)</span>
           </button>
           <button type="button" onclick="dispatchRoleView('customer'); switchCustomerTab('ticket'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
-            <span class="material-symbols-outlined text-[17px]">receipt_long</span>
+            ${svgIcon('ticket', 'w-4 h-4')}
             <span>ບິນຮັບເຄື່ອງ (Ticket)</span>
           </button>
         `;
       } else {
         roleLinksContainer.innerHTML = `
           <button type="button" onclick="switchCustomerTab('profile'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
-            <span class="material-symbols-outlined text-[17px] text-forest-emerald">account_circle</span>
+            <span class="text-forest-emerald">${svgIcon('user', 'w-4 h-4')}</span>
             <span>ໂປຣໄຟລ໌ຂອງຂ້ອຍ</span>
           </button>
           <button type="button" onclick="switchCustomerTab('ticket'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
-            <span class="material-symbols-outlined text-[17px] text-forest-emerald">receipt_long</span>
+            <span class="text-forest-emerald">${svgIcon('ticket', 'w-4 h-4')}</span>
             <span>ປີ້ຮັບເຄື່ອງ (My Ticket)</span>
           </button>
         `;
@@ -214,9 +208,6 @@ function updateUserSessionUI() {
   }
 }
 
-// -------------------------------------------------------------
-// 🔥 PROFILE SUB-TABS & ADVANCED MEMBER REWARDS
-// -------------------------------------------------------------
 function switchProfileSubTab(tab) {
   profileSubTab = tab;
   renderCustomerProfile();
@@ -229,7 +220,9 @@ function renderCustomerProfile() {
   if (!currentUser) {
     container.innerHTML = `
       <div class="p-8 bg-surface-pure border border-hairline rounded-2xl text-center space-y-3 shadow-xs">
-        <span class="material-symbols-outlined text-[42px] text-forest-leaf/60">account_circle</span>
+        <div class="w-12 h-12 rounded-full bg-surface mx-auto flex items-center justify-center text-forest-leaf/70">
+          ${svgIcon('user', 'w-6 h-6')}
+        </div>
         <h3 class="font-serif-title text-[18px] text-primary font-medium">ເຂົ້າສູ່ລະບົບສະມາຊິກ</h3>
         <p class="text-[12px] text-taupe font-lao">ເຂົ້າສູ່ລະບົບເພື່ອສະສົມຄະແນນ Beans, ຮັບຂອງຂວັນວັນເກີດ ແລະ ເບິ່ງປະຫວັດໃບບິນ</p>
         <button type="button" onclick="openAuthModal()" class="px-5 py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] font-semibold hover:bg-forest-leaf transition-all shadow-xs cursor-pointer">
@@ -240,29 +233,23 @@ function renderCustomerProfile() {
     return;
   }
 
-  // ດຶງປະຫວັດບິນທີ່ສຳເລັດ
-  const myHistory = orders.filter(o => 
-    (o.customerEmail === currentUser.email || o.customerPhone === currentUser.phone) &&
+  const myHistory = (orders || []).filter(o =>
+    (o.customerEmail === currentUser.email || o.customerPhone === currentUser.phone || o.customerName === currentUser.name) &&
     o.status === 'completed'
   );
 
-  const totalSpent = myHistory.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  const totalSpent = myHistory.reduce((sum, o) => sum + (Number(o.totalAmount || o.total) || 0), 0);
   const totalCups = myHistory.reduce((sum, o) => sum + (o.items ? o.items.reduce((s, i) => s + (i.quantity || 1), 0) : 0), 0);
 
-  // 🔥 ກວດສອບວັນເກີດ: ຖ້າຮອດເດືອນວັນເກີດ ຈະມີ Birthday Privilege Card ເດັ້ງຂຶ້ນມາ!
   const today = new Date();
   let isBirthdayMonth = false;
   if (currentUser.dob) {
     const birthDate = new Date(currentUser.dob);
-    if (birthDate.getMonth() === today.getMonth()) {
-      isBirthdayMonth = true;
-    }
+    if (birthDate.getMonth() === today.getMonth()) isBirthdayMonth = true;
   }
 
   container.innerHTML = `
     <div class="max-w-lg mx-auto space-y-4">
-      
-      <!-- Luxury Gold Card -->
       <div class="p-5 bg-forest-gradient text-white rounded-2xl shadow-md space-y-3.5 relative overflow-hidden">
         <div class="flex justify-between items-start">
           <div>
@@ -272,7 +259,7 @@ function renderCustomerProfile() {
           </div>
           <span class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center font-serif text-[16px] font-bold">LD</span>
         </div>
-        
+
         <div class="p-3 rounded-xl bg-white/10 border border-white/10 flex justify-between items-center text-[12px]">
           <div>
             <span class="block text-[10px] opacity-75">ຄະແນນສະສົມ (Beans Loyalty):</span>
@@ -284,43 +271,41 @@ function renderCustomerProfile() {
         </div>
       </div>
 
-      <!-- 🎂 Birthday Privilege Card (ກາດອວຍພອນວັນເກີດ ແລກຟຣີ 1 ຈອກ) -->
       ${isBirthdayMonth ? `
-        <div class="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-400 p-4 space-y-2 relative overflow-hidden animate-slide-down">
+        <div class="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-400 space-y-2 animate-slide-down">
           <div class="flex items-center gap-2 text-amber-900 font-bold text-[13px]">
-            <span class="text-[20px]">🎂</span>
+            ${svgIcon('gift', 'w-5 h-5 text-amber-700')}
             <span>Happy Birthday Month, ${currentUser.name}!</span>
           </div>
           <p class="text-[11px] text-amber-900/80 leading-relaxed font-lao">
             ສຸກສັນເດືອນເກີດຂອງທ່ານ! LA DOLCE ມອບສິດທິພິເສດ <strong>ດື່ມກາເຟ ຫຼື ເຄື່ອງດື່ມຟຣີ 1 ຈອກ</strong> ໃນເດືອນນີ້.
           </p>
-          <button type="button" onclick="claimBirthdayDrink()" class="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold transition-all shadow-xs cursor-pointer">
-            🎁 ກົດຮັບສິດດື່ມຟຣີເລີຍ
+          <button type="button" onclick="claimBirthdayDrink()" class="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer">
+            ${svgIcon('gift', 'w-4 h-4')}
+            <span>ກົດຮັບສິດດື່ມຟຣີເລີຍ</span>
           </button>
         </div>
       ` : ''}
 
-      <!-- Sub-tabs: "Customer Info" vs "Order History" -->
       <div class="flex gap-2 border-b border-hairline pb-2">
         <button type="button" onclick="switchProfileSubTab('info')" class="flex-1 py-2 rounded-xl text-[12px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${profileSubTab === 'info' ? 'bg-forest-emerald text-white shadow-xs' : 'bg-surface border border-hairline text-taupe hover:text-charcoal'}">
-          <span class="material-symbols-outlined text-[16px]">badge</span>
-          <span>ຂໍ້ມູນລູກຄ້າ (Customer Info)</span>
+          ${svgIcon('badge', 'w-4 h-4')}
+          <span>ຂໍ້ມູນລູກຄ້າ</span>
         </button>
 
         <button type="button" onclick="switchProfileSubTab('history')" class="flex-1 py-2 rounded-xl text-[12px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${profileSubTab === 'history' ? 'bg-forest-emerald text-white shadow-xs' : 'bg-surface border border-hairline text-taupe hover:text-charcoal'}">
-          <span class="material-symbols-outlined text-[16px]">receipt_long</span>
+          ${svgIcon('ticket', 'w-4 h-4')}
           <span>ປະຫວັດບິນ (${myHistory.length})</span>
         </button>
       </div>
 
-      <!-- 3. TAB 1: CUSTOMER INFO -->
       ${profileSubTab === 'info' ? `
         <div class="space-y-4 animate-slide-down">
           <div class="grid grid-cols-2 gap-3">
             <div class="p-3.5 bg-surface-pure border border-hairline rounded-xl shadow-xs">
               <span class="text-[10px] uppercase font-bold text-taupe block">ຈຳນວນຈອກທີ່ເຄີຍສັ່ງ</span>
               <span class="font-serif-title text-[20px] font-bold text-primary mt-0.5 block">${totalCups} ຈອກ</span>
-              <span class="text-[10px] text-emerald-800">☕ Coffee Lover</span>
+              <span class="text-[10px] text-emerald-800 inline-flex items-center gap-1 mt-0.5">${svgIcon('coffee', 'w-3 h-3')} Coffee Lover</span>
             </div>
             <div class="p-3.5 bg-surface-pure border border-hairline rounded-xl shadow-xs">
               <span class="text-[10px] uppercase font-bold text-taupe block">ຍອດຊື້ສະສົມ</span>
@@ -331,39 +316,33 @@ function renderCustomerProfile() {
 
           <div class="p-5 bg-surface-pure border border-hairline rounded-2xl space-y-3 shadow-xs text-[12px]">
             <h4 class="font-serif-title font-bold text-[15px] text-primary border-b border-hairline pb-2">ລາຍລະອຽດບັນຊີສະມາຊິກ</h4>
-
             <div>
               <label class="block text-taupe mb-1 font-medium">ຊື່ເຕັມ (Full Name):</label>
               <input type="text" id="profNameInput" value="${currentUser.name || ''}" class="w-full rounded-lg border border-hairline p-2 text-charcoal font-medium"/>
             </div>
-
             <div>
               <label class="block text-taupe mb-1 font-medium">ເບີໂທລະສັບ:</label>
               <div class="flex items-center gap-2">
                 <input type="tel" id="profPhoneInput" value="${currentUser.phone || ''}" class="flex-1 rounded-lg border border-hairline p-2 font-mono"/>
                 <button type="button" onclick="verifyCustomerPhone()" class="px-3 py-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${currentUser.isPhoneVerified ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-surface hover:bg-forest-emerald hover:text-white border-forest-emerald text-forest-emerald'}">
-                  ${currentUser.isPhoneVerified ? '✓ ຢືນຢັນແລ້ວ' : 'ຢືນຢັນ OTP'}
+                  ${currentUser.isPhoneVerified ? 'ຢືນຢັນແລ້ວ' : 'ຢືນຢັນ OTP'}
                 </button>
               </div>
             </div>
-
             <div>
-              <label class="block text-taupe mb-1 font-medium">ວັນເດືອນປີເກີດ (🎂 ຮັບສິດທິພິເສດວັນເກີດ):</label>
+              <label class="block text-taupe mb-1 font-medium">ວັນເດືອນປີເກີດ (ຮັບສິດທິພິເສດວັນເກີດ):</label>
               <input type="date" id="profDobInput" value="${currentUser.dob || ''}" class="w-full rounded-lg border border-hairline p-2"/>
             </div>
-
             <div>
-              <label class="block text-taupe mb-1 font-medium">ລົດຊາດກາເຟທີ່ມັກ (Tasting Notes / Favorite Roast):</label>
+              <label class="block text-taupe mb-1 font-medium">ລົດຊາດກາເຟທີ່ມັກ (Tasting Notes):</label>
               <input type="text" id="profRoastInput" placeholder="ເຊັ່ນ: ຄົ້ວອ່ອນ Guji, ນົມໂອດ, ຫວານ 50%" value="${currentUser.preferredRoast || ''}" class="w-full rounded-lg border border-hairline p-2"/>
             </div>
-
             <button type="button" onclick="saveCustomerInfoDetails()" class="w-full py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold hover:bg-forest-leaf transition-all shadow-xs cursor-pointer">
               ບັນທຶກຂໍ້ມູນໂປຣໄຟລ໌
             </button>
           </div>
         </div>
       ` : `
-        <!-- 4. TAB 2: ORDER HISTORY (ໃບບິນ e-Receipt & ສັ່ງຊ້ຳ) -->
         <div class="p-5 bg-surface-pure border border-hairline rounded-2xl space-y-3 shadow-xs animate-slide-down">
           <div class="flex justify-between items-center border-b border-hairline pb-2">
             <h4 class="font-serif-title font-bold text-[16px] text-primary">ປະຫວັດໃບບິນທີ່ສັ່ງສຳເລັດ</h4>
@@ -373,35 +352,67 @@ function renderCustomerProfile() {
           <div class="divide-y divide-hairline">
             ${myHistory.length === 0 ? `
               <p class="text-center text-taupe text-[12px] py-6">ຍັງບໍ່ມີປະຫວັດອໍເດີ້ທີ່ສຳເລັດ</p>
-            ` : myHistory.map(o => `
-              <div class="py-3.5 flex justify-between items-start gap-2">
-                <div>
-                  <span class="font-mono font-bold text-forest-emerald text-[13px]">${o.id}</span>
-                  <p class="text-[12px] font-medium text-charcoal">${(o.items || []).map(i => `${i.quantity}× ${i.name}`).join(', ')}</p>
-                  <span class="text-[10px] text-taupe block mt-0.5">${new Date(o.createdAt).toLocaleDateString()} • ${o.paymentMethod || 'LAK'}</span>
-                </div>
-                <div class="text-right shrink-0">
-                  <span class="font-bold text-forest-emerald font-mono block text-[13px]">${formatLAK(o.total)}</span>
-                  <div class="flex items-center gap-1.5 mt-1.5 justify-end">
-                    <button type="button" onclick="openOrderReceiptModal('${o.id}')" class="text-[10px] px-2.5 py-1 rounded-lg bg-surface hover:bg-forest-emerald hover:text-white border border-hairline text-charcoal font-bold inline-flex items-center gap-0.5 transition-colors cursor-pointer">
-                      <span class="material-symbols-outlined text-[13px]">receipt</span> ໃບບິນ
-                    </button>
-                    <button type="button" onclick="reorderPreviousItems('${o.id}')" class="text-[10px] text-forest-emerald bg-forest-emerald/10 hover:bg-forest-emerald hover:text-white px-2.5 py-1 rounded-lg font-bold transition-colors inline-flex items-center gap-0.5 cursor-pointer">
-                      <span class="material-symbols-outlined text-[13px]">refresh</span> ສັ່ງຊ້ຳ
-                    </button>
+            ` : myHistory.map(o => {
+              const dateStr = o.createdAt?.seconds ? new Date(o.createdAt.seconds * 1000).toLocaleDateString() : new Date(o.createdAt || Date.now()).toLocaleDateString();
+              return `
+                <div class="py-3.5 flex justify-between items-start gap-2">
+                  <div>
+                    <span class="font-mono font-bold text-forest-emerald text-[13px]">#${o.orderCode || o.id}</span>
+                    <p class="text-[12px] font-medium text-charcoal">${(o.items || []).map(i => `${i.quantity}x ${i.name}`).join(', ')}</p>
+                    <span class="text-[10px] text-taupe block mt-0.5">${dateStr} • ${o.paymentMethod || 'LAK'}</span>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <span class="font-bold text-forest-emerald font-mono block text-[13px]">${formatLAK(o.totalAmount || o.total)}</span>
+                    <div class="flex items-center gap-1.5 mt-1.5 justify-end">
+                      <button type="button" onclick="openOrderReceiptModal('${o.id}')" class="text-[10px] px-2.5 py-1 rounded-lg bg-surface hover:bg-forest-emerald hover:text-white border border-hairline text-charcoal font-bold inline-flex items-center gap-1 transition-colors cursor-pointer">
+                        ${svgIcon('ticket', 'w-3 h-3')} <span>ໃບບິນ</span>
+                      </button>
+                      <button type="button" onclick="reorderPreviousItems('${o.id}')" class="text-[10px] text-forest-emerald bg-forest-emerald/10 hover:bg-forest-emerald hover:text-white px-2.5 py-1 rounded-lg font-bold transition-colors inline-flex items-center gap-1 cursor-pointer">
+                        ${svgIcon('refresh', 'w-3 h-3')} <span>ສັ່ງຊ້ຳ</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
         </div>
       `}
-
     </div>
   `;
 }
 
-// ບັນທຶກ Customer Info ຂຶ້ນ Firestore
+function redeemBeanReward() {
+  const beans = Number(currentUser?.beans || 0);
+  if (beans < 400) {
+    showAtelierAlert({
+      title: 'ຄະແນນຍັງບໍ່ຄົບ',
+      message: `ທ່ານມີ ${beans} / 400 Beans. ສະສົມເພີ່ມອີກ ${400 - beans} Beans ເພື່ອແລກກາເຟຟຣີ 1 ຈອກ!`,
+      type: 'info'
+    });
+    return;
+  }
+  currentUser.beans = beans - 400;
+  localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
+  cart.push({
+    cartItemId: 'item_beans_' + Date.now(),
+    id: 'beans_reward',
+    name: 'Beans Reward Coffee (Free)',
+    image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400',
+    variant: 'iced',
+    sweetness: '100%',
+    milk: 'Whole Milk',
+    quantity: 1,
+    unitPrice: 0,
+    totalPrice: 0
+  });
+  localStorage.setItem('ladolce_cart', JSON.stringify(cart));
+  if (typeof updateCartBadge === 'function') updateCartBadge();
+  renderCustomerProfile();
+  showAtelierToast('ແລກກາເຟຟຣີໃສ່ກະຕ່າແລ້ວ!');
+  switchCustomerTab('cart');
+}
+
 function saveCustomerInfoDetails() {
   const name = document.getElementById('profNameInput')?.value.trim();
   const phone = document.getElementById('profPhoneInput')?.value.trim();
@@ -409,7 +420,7 @@ function saveCustomerInfoDetails() {
   const roast = document.getElementById('profRoastInput')?.value.trim();
 
   if (!name) {
-    alert("ກະລຸນາໃສ່ຊື່ຂອງທ່ານ!");
+    showAtelierToast("ກະລຸນາໃສ່ຊື່ຂອງທ່ານ!", "warning");
     return;
   }
 
@@ -417,7 +428,6 @@ function saveCustomerInfoDetails() {
   currentUser.phone = phone || currentUser.phone;
   currentUser.dob = dob || "";
   currentUser.preferredRoast = roast || "";
-
   localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
 
   if (isFirebaseReady && db) {
@@ -426,68 +436,78 @@ function saveCustomerInfoDetails() {
       phone: currentUser.phone,
       dob: currentUser.dob,
       preferredRoast: currentUser.preferredRoast
-    }).then(() => console.log("Profile updated on Firestore"));
+    }).catch(() => {});
   }
 
   updateUserSessionUI();
-  showToast("ບັນທຶກຂໍ້ມູນໂປຣໄຟລ໌ຮຽບຮ້ອຍ! 🎉");
+  showAtelierToast("ບັນທຶກຂໍ້ມູນໂປຣໄຟລ໌ຮຽບຮ້ອຍ!");
 }
 
 function verifyCustomerPhone() {
   if (currentUser.isPhoneVerified) {
-    alert("ເບີໂທລະສັບນີ້ໄດ້ຮັບການຢືນຢັນແລ້ວ!");
+    showAtelierToast("ເບີໂທລະສັບນີ້ໄດ້ຮັບການຢືນຢັນແລ້ວ");
     return;
   }
-  const otp = prompt("ລະບົບໄດ້ສົ່ງລະຫັດ OTP ໄປຫາເບີ " + currentUser.phone + " (ລະຫັດທົດສອບແມ່ນ: 8899):");
+  const otp = prompt("ລະບົບໄດ້ສົ່ງລະຫັດ OTP ໄປຫາເບີ " + currentUser.phone + " (ລະຫັດທົດສອບ: 8899):");
   if (otp === "8899") {
     currentUser.isPhoneVerified = true;
     localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
-    if (isFirebaseReady && db) db.collection("users").doc(currentUser.email).update({ isPhoneVerified: true });
+    if (isFirebaseReady && db) db.collection("users").doc(currentUser.email).update({ isPhoneVerified: true }).catch(() => {});
     renderCustomerProfile();
-    showToast("ເບີໂທລະສັບຢືນຢັນສຳເລັດ!");
+    showAtelierToast("ເບີໂທລະສັບຢືນຢັນສຳເລັດ!");
   } else if (otp) {
-    alert("ລະຫັດ OTP ບໍ່ຖືກຕ້ອງ!");
+    showAtelierToast("ລະຫັດ OTP ບໍ່ຖືກຕ້ອງ!", "error");
   }
 }
 
 function claimBirthdayDrink() {
-  alert("🎉 ຍິນດີດ້ວຍ! ສິດທິພິເສດເຄື່ອງດື່ມວັນເກີດຟຣີ 1 ຈອກ ຖືກເພີ່ມເຂົ້າສູ່ກະຕ່າຂອງທ່ານແລ້ວ!");
   cart.push({
-    cartId: 'c_bday_' + Date.now(),
-    itemId: 'bday_drink',
-    name: '🎂 Birthday Special Drink (Free Privilege)',
+    cartItemId: 'item_bday_' + Date.now(),
+    id: 'bday_drink',
+    name: 'Birthday Special Drink (Free Privilege)',
     variant: 'iced',
     milk: 'Whole Milk',
     sweetness: '100%',
-    extraShot: false,
     unitPrice: 0,
     quantity: 1,
-    total: 0,
+    totalPrice: 0,
     image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=600'
   });
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
-  if (typeof updateCartBadges === 'function') updateCartBadges();
+  if (typeof updateCartBadge === 'function') updateCartBadge();
+  showAtelierToast("ເພີ່ມເຄື່ອງດື່ມວັນເກີດຟຣີໃສ່ກະຕ່າແລ້ວ!");
   switchCustomerTab('cart');
 }
 
 function reorderPreviousItems(orderId) {
-  const target = orders.find(o => o.id === orderId);
+  const target = (orders || []).find(o => o.id === orderId);
   if (!target) return;
 
-  target.items.forEach(it => {
-    cart.push({ ...it, cartId: 'c_' + Date.now() + Math.random().toString(36).substr(2, 4) });
+  (target.items || []).forEach(it => {
+    cart.push({
+      ...it,
+      cartItemId: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      totalPrice: Number(it.totalPrice || (Number(it.unitPrice || 0) * Number(it.quantity || 1)))
+    });
   });
 
   localStorage.setItem('ladolce_cart', JSON.stringify(cart));
-  if (typeof updateCartBadges === 'function') updateCartBadges();
-  showToast("ເພີ່ມສິນຄ້າຈາກອໍເດີ້ເກົ່າເຂົ້າກະຕ່າແລ້ວ!");
+  if (typeof updateCartBadge === 'function') updateCartBadge();
+  showAtelierToast("ເພີ່ມສິນຄ້າຈາກອໍເດີ້ເກົ່າເຂົ້າກະຕ່າແລ້ວ!");
   switchCustomerTab('cart');
 }
 
 function openOrderReceiptModal(orderId) {
-  const o = orders.find(x => x.id === orderId);
+  const o = (orders || []).find(x => x.id === orderId);
   if (!o) return;
-  alert(`🧾 [LA DOLCE e-RECEIPT]\n-------------------------\nເລກບິນ: ${o.id}\nວັນທີ: ${new Date(o.createdAt).toLocaleString()}\nລູກຄ້າ: ${o.customerName}\nເບີໂທ: ${o.customerPhone}\n\nລາຍການ:\n${o.items.map(i=> `- ${i.quantity}x ${i.name} [${i.variant}]: ${formatLAK(i.total)}`).join('\n')}\n-------------------------\nຍອດລວມທັງໝົດ: ${formatLAK(o.total)}\nຊຳລະຜ່ານ: ${o.paymentMethod || 'LAK'}\nສະຖານະ: ສຳເລັດແລ້ວ (Completed)\n\nຂອບໃຈທີ່ມາອຸດໜູນ LA DOLCE!`);
+  const dateStr = o.createdAt?.seconds ? new Date(o.createdAt.seconds * 1000).toLocaleString() : new Date(o.createdAt || Date.now()).toLocaleString();
+  const itemsHtml = (o.items || []).map(i => `${i.quantity}x ${i.name} [${formatVariantLabel(i.variant)}]: ${formatLAK(i.totalPrice || i.price)}`).join('<br/>');
+  showAtelierAlert({
+    title: `LA DOLCE e-RECEIPT #${o.orderCode || o.id}`,
+    message: `ວັນທີ: ${dateStr}<br/>ລູກຄ້າ: ${o.customerName}<br/><br/>${itemsHtml}<br/><br/><strong>ຍອດລວມ: ${formatLAK(o.totalAmount || o.total)}</strong> (${o.paymentMethod || 'LAK'})`,
+    type: 'success',
+    confirmText: 'ປິດໃບບິນ'
+  });
 }
 
 function toggleProfileDropdown(e) {
