@@ -1,5 +1,5 @@
 // =======================================================
-// LA DOLCE — BARISTA DISPLAY (ORDER & SLIP AUDIT BEFORE PREPARE)
+// LA DOLCE — BARISTA DISPLAY (SLIP AUDIT + STAFF CONTROLS)
 // =======================================================
 
 window.currentStaffSubTab = 'active';
@@ -9,6 +9,7 @@ window.pendingRejectOrderId = null;
 window.currentAuditingSlipOrderId = null;
 window.snoozedPendingIds = new Set();
 window.verifiedSlipOrderIds = new Set();
+window.staffMenuPanelOpen = false;
 
 function getOrderDisplayCode(order) {
   if (order.orderCode) return order.orderCode;
@@ -23,6 +24,153 @@ function getOrderDisplayTotal(order) {
 function getOrderSlipSrc(order) {
   return order?.slipImage || order?.slipUrl || '';
 }
+
+window.renderStaffHeaderBrand = function() {
+  const staffView = document.getElementById('adminStaffAppView');
+  if (!staffView) return;
+  const h2 = staffView.querySelector('h2');
+  const cafeName = (typeof brandSettings !== 'undefined' && brandSettings?.cafeName) ? brandSettings.cafeName : 'LA DOLCE';
+  if (h2) h2.textContent = `${cafeName} — Barista Kitchen Display`;
+};
+
+// ສະແດງແຖບສິດພິເສດຂອງ Staff (ຖ້າ Admin ມອບສິດໃຫ້: ເປີດ/ປິດຮ້ານ ແລະ ກົດປິດເມນູ Run Out)
+window.renderStaffControls = function() {
+  const staffView = document.getElementById('adminStaffAppView');
+  if (!staffView) return;
+
+  const isSuper = currentUser?.role === 'superadmin';
+  const perms = currentUser?.permissions || {};
+  const canStore = isSuper || perms.canToggleStore === true;
+  const canMenu = isSuper || perms.canToggleMenu === true;
+
+  let bar = document.getElementById('staffPermissionControlsBar');
+  if (!canStore && !canMenu) {
+    if (bar) bar.remove();
+    const panel = document.getElementById('staffMenuRunOutPanel');
+    if (panel) panel.remove();
+    return;
+  }
+
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'staffPermissionControlsBar';
+    const tabsBar = staffView.querySelector('.flex.gap-2.border-b');
+    if (tabsBar) staffView.insertBefore(bar, tabsBar);
+  }
+
+  const isOpen = storeSettings?.isStoreOpen !== false;
+
+  bar.className = 'p-3 rounded-xl bg-surface-pure border border-hairline flex flex-wrap items-center justify-between gap-2.5 shadow-xs font-lao';
+  bar.innerHTML = `
+    <span class="text-[11px] font-bold text-taupe uppercase tracking-wider flex items-center gap-1.5">
+      ${svgIcon('shield', 'w-4 h-4 text-forest-emerald')}
+      <span>ສິດຈັດການຮ້ານ (Staff Controls):</span>
+    </span>
+    <div class="flex flex-wrap items-center gap-2">
+      ${canStore ? `
+        <button type="button" onclick="toggleStoreStatus()"
+                class="px-3 py-1.5 rounded-lg text-[11px] font-bold text-white cursor-pointer flex items-center gap-1.5 ${isOpen ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-red-700 hover:bg-red-800'}">
+          ${svgIcon('store', 'w-3.5 h-3.5')}
+          <span>${isOpen ? 'ສະຖານະ: ເປີດຮ້ານ (ກົດເພື່ອປິດ)' : 'ສະຖານະ: ປິດຊົ່ວຄາວ (ກົດເພື່ອເປີດ)'}</span>
+        </button>
+      ` : ''}
+      ${canMenu ? `
+        <button type="button" onclick="toggleStaffRunOutPanel()"
+                class="px-3 py-1.5 rounded-lg text-[11px] font-bold border cursor-pointer flex items-center gap-1.5 ${window.staffMenuPanelOpen ? 'bg-forest-emerald text-white border-forest-emerald' : 'bg-surface text-primary border-hairline hover:border-forest-emerald'}">
+          ${svgIcon('menuList', 'w-3.5 h-3.5')}
+          <span>ຈັດການເມນູໝົດ (Run Out)</span>
+        </button>
+      ` : ''}
+    </div>
+  `;
+
+  window.renderStaffStoreControl();
+  if (canMenu && window.staffMenuPanelOpen) window.renderStaffRunOutMenuList();
+};
+
+window.renderStaffStoreControl = function() {
+  if (currentUser?.role === 'staff' || currentUser?.role === 'superadmin') {
+    const bar = document.getElementById('staffPermissionControlsBar');
+    if (bar && typeof storeSettings !== 'undefined') {
+      const btn = bar.querySelector('button[onclick="toggleStoreStatus()"]');
+      if (btn) {
+        const isOpen = storeSettings?.isStoreOpen !== false;
+        btn.className = `px-3 py-1.5 rounded-lg text-[11px] font-bold text-white cursor-pointer flex items-center gap-1.5 ${isOpen ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-red-700 hover:bg-red-800'}`;
+        btn.innerHTML = `${svgIcon('store', 'w-3.5 h-3.5')}<span>${isOpen ? 'ສະຖານະ: ເປີດຮ້ານ (ກົດເພື່ອປິດ)' : 'ສະຖານະ: ປິດຊົ່ວຄາວ (ກົດເພື່ອເປີດ)'}</span>`;
+      }
+    }
+  }
+};
+
+window.toggleStaffRunOutPanel = function() {
+  window.staffMenuPanelOpen = !window.staffMenuPanelOpen;
+  window.renderStaffControls();
+  let panel = document.getElementById('staffMenuRunOutPanel');
+  if (!window.staffMenuPanelOpen) {
+    if (panel) panel.classList.add('hidden');
+    return;
+  }
+  window.renderStaffRunOutMenuList();
+};
+
+window.renderStaffRunOutMenuList = function() {
+  const staffView = document.getElementById('adminStaffAppView');
+  if (!staffView) return;
+
+  let panel = document.getElementById('staffMenuRunOutPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'staffMenuRunOutPanel';
+    const bar = document.getElementById('staffPermissionControlsBar');
+    if (bar && bar.nextSibling) staffView.insertBefore(panel, bar.nextSibling);
+    else staffView.appendChild(panel);
+  }
+
+  panel.className = 'p-4 rounded-xl bg-surface-pure border border-hairline space-y-3 shadow-xs font-lao';
+  const list = menuItems || [];
+
+  panel.innerHTML = `
+    <div class="flex items-center justify-between border-b border-hairline pb-2">
+      <h4 class="font-bold text-[13px] text-primary">ປິດ/ເປີດເມນູທີ່ໝົດຊົ່ວຄາວ (Run Out Control)</h4>
+      <button type="button" onclick="toggleStaffRunOutPanel()" class="text-[11px] text-taupe hover:text-charcoal cursor-pointer">ປິດໜ້າຕ່າງ</button>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto">
+      ${list.map(item => {
+        const isAvail = item.isAvailable !== false;
+        return `
+          <div class="p-2.5 rounded-lg border border-hairline bg-surface flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <img src="${item.image}" class="w-9 h-9 rounded object-cover shrink-0"/>
+              <span class="text-[12px] font-bold text-primary truncate">${item.name}</span>
+            </div>
+            <button type="button" onclick="staffToggleMenuRunOut('${item.id}', ${!isAvail})"
+                    class="px-2.5 py-1 rounded-lg text-[10px] font-bold border shrink-0 cursor-pointer ${isAvail ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100' : 'bg-emerald-50 border-emerald-300 text-emerald-900 hover:bg-emerald-100'}">
+              ${isAvail ? 'ກົດປິດ (ໝົດ)' : 'ເປີດຂາຍຄືນ'}
+            </button>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+};
+
+window.staffToggleMenuRunOut = async function(itemId, nextAvail) {
+  try {
+    const firestore = db || firebase.firestore();
+    await firestore.collection('menu_items').doc(itemId).update({
+      isAvailable: nextAvail,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    if (typeof showAtelierToast === 'function') {
+      showAtelierToast(nextAvail ? 'ເປີດຂາຍເມນູຄືນແລ້ວ' : 'ປິດເມນູໝົດຊົ່ວຄາວແລ້ວ', nextAvail ? 'success' : 'warning');
+    }
+    setTimeout(() => {
+      if (window.staffMenuPanelOpen) window.renderStaffRunOutMenuList();
+    }, 250);
+  } catch (e) {
+    if (typeof showAtelierToast === 'function') showAtelierToast(e.message, 'error');
+  }
+};
 
 window.switchStaffSubTab = function(tabName) {
   window.currentStaffSubTab = tabName;
@@ -71,18 +219,19 @@ window.renderStaffOrders = function(ordersInput) {
   const containerCancelled = document.getElementById('staffOrdersContainerCancelled');
   if (!containerActive) return;
 
+  window.renderStaffHeaderBrand();
+  window.renderStaffControls();
+
   const activeOrders = list.filter(o => o && (o.status === 'pending' || o.status === 'preparing' || o.status === 'ready'));
   const historyOrders = list.filter(o => o && o.status === 'completed');
   const cancelledOrders = list.filter(o => o && (o.status === 'rejected' || o.status === 'cancelled'));
 
-  // ນັບຈຳນວນອໍເດີ້ຂອງລູກຄ້າຄົນດຽວກັນ
   const customerCounts = {};
   activeOrders.forEach(o => {
     const key = o.customerPhone || o.customerName || 'Unknown';
     customerCounts[key] = (customerCounts[key] || 0) + 1;
   });
 
-  // ກວດສອບຄິວອໍເດີ້ pending ເພື່ອເດັ້ງ Pop-up ໃຫ້ Staff ກວດສອບອໍເດີ້ & ສະລິບ
   const pendingOrders = activeOrders.filter(o => o.status === 'pending' && !window.snoozedPendingIds.has(o.id));
   const allPendingOrders = activeOrders.filter(o => o.status === 'pending');
   const isRejectModalOpen = !document.getElementById('staffRejectModal')?.classList.contains('hidden');
@@ -258,7 +407,6 @@ function createStaffOrderCard(order, customerCounts) {
   `;
 }
 
-// ເປີດ Pop-up ກວດສອບອໍເດີ້ + ສະລິບ ຈາກປຸ່ມເທິງກາດ
 window.openStaffOrderReviewModal = function(orderId) {
   const order = (window.allStaffOrders || []).find(o => o.id === orderId);
   if (!order) return;
@@ -267,9 +415,6 @@ window.openStaffOrderReviewModal = function(orderId) {
   window.triggerStaffNewOrderAlert(order, Math.max(1, pendingCount));
 };
 
-// =======================================================
-// POP-UP ກວດສອບອໍເດີ້ & ກວດສອບສະລິບການໂອນ ກ່ອນ CONFIRM ເຮັດເຄື່ອງດື່ມ
-// =======================================================
 window.triggerStaffNewOrderAlert = function(order, queueCount = 1) {
   const modal = document.getElementById('staffNewOrderModal');
   if (!modal) return;
@@ -277,8 +422,7 @@ window.triggerStaffNewOrderAlert = function(order, queueCount = 1) {
   const displayCode = getOrderDisplayCode(order);
   const displayTotal = getOrderDisplayTotal(order);
   const slipSrc = getOrderSlipSrc(order);
-  const isCash = order.paymentType === 'cash';
-  const isSlipVerified = !slipSrc || isCash || window.verifiedSlipOrderIds.has(order.id);
+  const isSlipVerified = !slipSrc || window.verifiedSlipOrderIds.has(order.id);
   const box = modal.querySelector('div');
 
   if (box) {
@@ -316,7 +460,6 @@ window.triggerStaffNewOrderAlert = function(order, queueCount = 1) {
         ` : ''}
       </div>
 
-      <!-- ກ່ອງກວດສອບສະລິບການໂອນກ່ອນ Confirm ເຮັດເຄື່ອງດື່ມ -->
       ${slipSrc ? `
         <div id="reviewSlipBox" class="p-3 rounded-xl border ${isSlipVerified ? 'bg-emerald-50 border-emerald-300' : 'bg-blue-50 border-blue-200'} space-y-2.5 font-lao">
           <div class="flex items-center justify-between gap-2">
@@ -343,11 +486,6 @@ window.triggerStaffNewOrderAlert = function(order, queueCount = 1) {
                    class="w-4 h-4 rounded text-forest-emerald focus:ring-0 cursor-pointer"/>
             <span>ຢືນຢັນວ່າກວດສອບຍອດເງິນໃນສະລິບຖືກຕ້ອງແລ້ວ</span>
           </label>
-        </div>
-      ` : isCash ? `
-        <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-900 flex items-center gap-2 font-lao">
-          ${svgIcon('cash', 'w-4 h-4')}
-          <span>ລູກຄ້າເລືອກຊຳລະດ້ວຍເງິນສົດໜ້າຮ້ານ</span>
         </div>
       ` : `
         <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] font-bold text-amber-900 flex items-center gap-2 font-lao">
@@ -427,10 +565,8 @@ window.acceptStaffNewOrderFromModal = function() {
 
   const order = (window.allStaffOrders || []).find(o => o.id === id);
   const slipSrc = getOrderSlipSrc(order);
-  const isCash = order?.paymentType === 'cash';
 
-  // ບັງຄັບໃຫ້ກວດສອບສະລິບກ່ອນຖ້າມີສະລິບແນບມາ
-  if (slipSrc && !isCash && !window.verifiedSlipOrderIds.has(id)) {
+  if (slipSrc && !window.verifiedSlipOrderIds.has(id)) {
     if (typeof showAtelierToast === 'function') {
       showAtelierToast('ກະລຸນາກວດສອບສະລິບການໂອນກ່ອນຢືນຢັນເຮັດເຄື່ອງດື່ມ', 'warning');
     }
@@ -443,9 +579,6 @@ window.acceptStaffNewOrderFromModal = function() {
   window.updateOrderStatus(id, 'preparing');
 };
 
-// =======================================================
-// REJECT MODAL (ບໍ່ຊ້ອນທັບ POP-UP ກວດສອບ + ໃສ່ເຫດຜົນ & ຣີຟັນ)
-// =======================================================
 window.openRejectModal = function(orderId, presetReason = '') {
   window.pendingRejectOrderId = orderId;
   document.getElementById('staffNewOrderModal')?.classList.add('hidden');
@@ -525,9 +658,6 @@ window.confirmRejectOrder = async function() {
   }
 };
 
-// =======================================================
-// SLIP AUDIT MODAL (ກວດສອບສະລິບແບບຊັດເຈນ ພ້ອມປຸ່ມຢືນຢັນ / ປະຕິເສດ)
-// =======================================================
 window.openSlipAuditModal = function(orderId) {
   const order = (window.allStaffOrders || []).find(o => o.id === orderId);
   const slipSrc = getOrderSlipSrc(order);
@@ -541,7 +671,6 @@ window.openSlipAuditModal = function(orderId) {
   if (img) img.src = slipSrc;
   if (ref) ref.textContent = `Ref #${getOrderDisplayCode(order)} • ${order.paymentMethod || 'QR'} • ${formatLAK(getOrderDisplayTotal(order))}`;
 
-  // ປັບປຸ່ມດ້ານລຸ່ມຂອງ Modal ໃຫ້ Staff ກົດຢືນຢັນ ຫຼື ປະຕິເສດສະລິບໄດ້ເລີຍ
   const footer = modal?.querySelector('.border-t');
   if (footer) {
     if (order.status === 'pending') {
@@ -624,3 +753,4 @@ window.updateStaffNotifyBadge = function() {
     ? `${svgIcon('bell', 'w-3.5 h-3.5 text-emerald-300')} <span>ແຈ້ງເຕືອນພ້ອມໃຊ້</span>`
     : `${svgIcon('bell', 'w-3.5 h-3.5 text-amber-300')} <span>ເປີດສຽງ & ແຈ້ງເຕືອນ</span>`;
 };
+```
