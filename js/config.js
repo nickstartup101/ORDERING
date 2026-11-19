@@ -138,7 +138,9 @@ function applyBrandSettingsUI() {
 
   document.title = `${cafeName} — ${cafeBranch}`;
   document.querySelectorAll('.brand-name-display').forEach(el => el.textContent = cafeName);
-  document.querySelectorAll('.brand-branch-display').forEach(el => el.textContent = cafeBranch);
+  document.querySelectorAll('.brand-branch-display').forEach(el => {
+    el.textContent = `${cafeName} • ${cafeBranch}`;
+  });
   document.querySelectorAll('.brand-initial-display').forEach(el => {
     el.textContent = initials;
     el.style.fontSize = initials.length >= 3 ? '11px' : '15px';
