@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="lo">
 <head>
   <meta charset="utf-8"/>
@@ -6,16 +6,13 @@
   <link rel="icon" href="data:,">
   <title>LA DOLCE — Atelier & Coffee Management</title>
 
-  <!-- Preconnect CDN ສໍາລັບໂຫຼດໄວຂຶ້ນ -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preconnect" href="https://firestore.googleapis.com"/>
   <link rel="dns-prefetch" href="https://firestore.googleapis.com"/>
 
-  <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Noto+Sans+Lao:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
 
-  <!-- Tailwind CSS Engine -->
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script>
     tailwind.config = {
@@ -44,12 +41,10 @@
   </script>
   <link rel="stylesheet" href="css/style.css"/>
 
-  <!-- Firebase Web SDK (Compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-  <!-- Global Head Router -->
   <script>
     function switchCustomerTab(tabName) {
       const tabs = ['menu', 'cart', 'ticket', 'profile'];
@@ -81,13 +76,6 @@
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-
-    function openAuthModal() {
-      document.getElementById('authModal')?.classList.remove('hidden');
-    }
-    function closeAuthModal() {
-      document.getElementById('authModal')?.classList.add('hidden');
-    }
   </script>
 </head>
 
@@ -95,27 +83,32 @@
 
   <!-- ================= TOP APP BAR ================= -->
   <header class="fixed top-0 w-full z-40 bg-surface/92 backdrop-blur-md border-b border-hairline pt-safe">
-    <div class="h-16 px-4 md:px-8 max-w-6xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <span class="w-8 h-8 rounded-full bg-forest-emerald text-white flex items-center justify-center font-serif text-[15px] font-bold shadow-xs brand-initial-display">LD</span>
-        <div class="flex flex-col">
-          <span class="font-serif-title tracking-[0.16em] text-[18px] font-semibold text-primary leading-tight brand-name-display">LA DOLCE</span>
-          <span class="text-[9px] tracking-[0.2em] text-forest-leaf uppercase font-medium" id="currentRoleBadge">Customer View</span>
+    <div class="h-16 px-3 sm:px-4 md:px-8 max-w-6xl mx-auto flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="w-8 h-8 rounded-full bg-forest-emerald text-white flex items-center justify-center font-serif text-[15px] font-bold shadow-xs shrink-0 brand-initial-display">LD</span>
+        <div class="flex flex-col min-w-0">
+          <span class="font-serif-title tracking-[0.14em] text-[16px] sm:text-[18px] font-semibold text-primary leading-tight truncate brand-name-display">LA DOLCE</span>
+          <span class="text-[9px] tracking-[0.18em] text-forest-leaf uppercase font-medium truncate" id="currentRoleBadge">Customer View</span>
         </div>
       </div>
 
       <!-- Staff Repeating Alarm Indicator -->
-      <div id="staffRingingIndicator" class="hidden items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-full animate-pulse">
+      <div id="staffRingingIndicator" class="hidden items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-full animate-pulse shrink-0">
         <span class="w-2 h-2 rounded-full bg-red-600"></span>
-        <span class="text-[11px] font-medium text-red-700">ມີອໍເດີ້ໃໝ່ເຂົ້າມາ!</span>
+        <span class="text-[11px] font-medium text-red-700 hidden sm:inline">ມີອໍເດີ້ໃໝ່ເຂົ້າມາ!</span>
         <button type="button" onclick="stopStaffAlarm()" class="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded uppercase font-bold cursor-pointer">ປິດສຽງ</button>
       </div>
 
-      <!-- Right Auth Area -->
-      <div class="flex items-center gap-2.5 relative">
-        <button type="button" onclick="openAuthModal()" id="btnLoginHeader" class="text-[11px] uppercase tracking-wider font-semibold border-2 border-forest-emerald text-forest-emerald px-3 py-1.5 rounded-lg hover:bg-forest-emerald hover:text-white transition-all shadow-2xs cursor-pointer">
-          Sign In
-        </button>
+      <!-- Right Auth Area: Sign In & ສະໝັກສະມາຊິກ -->
+      <div class="flex items-center gap-2 relative shrink-0">
+        <div id="authHeaderButtons" class="flex items-center gap-1.5">
+          <button type="button" onclick="openAuthModal('login')" id="btnLoginHeader" class="text-[11px] uppercase tracking-wider font-semibold border-2 border-forest-emerald text-forest-emerald px-2.5 sm:px-3 py-1.5 rounded-lg hover:bg-forest-emerald hover:text-white transition-all shadow-2xs cursor-pointer whitespace-nowrap">
+            Sign In
+          </button>
+          <button type="button" onclick="openAuthModal('register')" id="btnRegisterHeader" class="text-[11px] font-semibold bg-forest-emerald text-white border-2 border-forest-emerald px-2.5 sm:px-3 py-1.5 rounded-lg hover:bg-forest-leaf transition-all shadow-2xs cursor-pointer whitespace-nowrap">
+            ສະໝັກສະມາຊິກ
+          </button>
+        </div>
 
         <div id="userProfileChip" class="hidden relative">
           <button type="button" onclick="toggleProfileDropdown(event)" class="flex items-center gap-1.5 p-1 rounded-full border border-hairline hover:border-forest-emerald transition-all bg-surface-pure shadow-xs cursor-pointer">
@@ -158,7 +151,7 @@
             </span>
             <div>
               <div class="flex items-center gap-2.5 flex-wrap">
-                <h2 class="font-serif-title text-[16px] text-primary font-bold brand-branch-display">Downtown Flagship Roastery</h2>
+                <h2 class="font-serif-title text-[16px] text-primary font-bold brand-branch-display">LA DOLCE • Downtown Flagship Roastery</h2>
                 <div id="customerStoreOpenBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
                   <span class="relative flex h-2 w-2">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -185,7 +178,6 @@
           </button>
         </div>
 
-        <!-- Filter Categories -->
         <div class="flex items-center gap-2 overflow-x-auto pb-1" id="categoryFilterContainer">
           <button type="button" onclick="filterCategory('all')" class="cat-pill active-cat px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-forest-emerald text-white cursor-pointer">ທັງໝົດ</button>
           <button type="button" onclick="filterCategory('coffee')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal cursor-pointer">ກາເຟ</button>
@@ -194,7 +186,6 @@
           <button type="button" onclick="filterCategory('bakery')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal cursor-pointer">ເບເກີຣີ່ & ອາຫານ</button>
         </div>
 
-        <!-- 2 Columns on Mobile -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4" id="menuGrid"></div>
       </section>
 
@@ -233,7 +224,6 @@
                 </div>
               </div>
 
-              <!-- ກ່ອງປົດລັອກສົ່ງຟຣີ 500 ແມັດ -->
               <div id="deliveryUnlockBox" class="p-3.5 rounded-xl bg-surface border border-hairline space-y-2">
                 <div id="deliveryProgressText"></div>
                 <div class="w-full bg-hairline h-1.5 rounded-full overflow-hidden">
@@ -259,7 +249,6 @@
                 </div>
               </div>
 
-              <!-- ຊ່ອງ Coupon Code -->
               <div class="border-t border-hairline pt-3">
                 <label class="block text-[11px] uppercase tracking-wider font-semibold text-primary mb-1">Coupon ສ່ວນຫຼຸດ:</label>
                 <div class="flex gap-2">
@@ -271,14 +260,12 @@
                 <span class="text-[10px] text-taupe block mt-1">ລອງໃຊ້: <strong>LADOLCE20</strong> (ຫຼຸດ 20% ສູງສຸດ 30,000 LAK)</span>
               </div>
 
-              <!-- Multi-Bank Payment Selector -->
               <div class="border-t border-hairline pt-4 space-y-2.5">
-                <span class="block text-[11px] uppercase tracking-wider font-semibold text-primary">1. ເລືອກຊ່ອງທາງການຊຳລະເງິນ:</span>
+                <span class="block text-[11px] uppercase tracking-wider font-semibold text-primary">1. ເລືອກທະນາຄານທີ່ຕ້ອງການໂອນ:</span>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="customerBankSelectorGrid"></div>
                 <div id="activeBankQRDisplay" class="border-2 rounded-xl p-3 bg-surface text-center"></div>
               </div>
 
-              <!-- Slip Upload -->
               <div class="border-t border-hairline pt-3 text-center space-y-2">
                 <span class="block text-[11px] uppercase tracking-wider font-semibold text-primary text-left">2. ແນບໃບໂອນເງິນ (Slip):</span>
                 <label class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-pure border border-hairline hover:border-forest-emerald text-[11px] font-medium text-charcoal transition-all">
@@ -373,7 +360,6 @@
         </div>
       </div>
 
-      <!-- Superadmin Sub-tabs (Pure SVG) -->
       <div class="flex gap-2 border-b border-hairline pb-2 overflow-x-auto">
         <button type="button" onclick="switchAdminPanelTab('analytics')" id="adm-tab-analytics" class="px-3.5 py-1.5 rounded-lg bg-forest-emerald text-white text-[12px] font-bold shrink-0 flex items-center gap-1.5 cursor-pointer">
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
@@ -401,7 +387,6 @@
         </button>
       </div>
 
-      <!-- Panel 1: Analytics & Transaction Log -->
       <div id="adm-panel-analytics" class="space-y-4">
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div class="p-4 rounded-xl bg-surface-pure border border-hairline shadow-xs">
@@ -455,7 +440,6 @@
         </div>
       </div>
 
-      <!-- Panel 2: Menu Management -->
       <div id="adm-panel-menu" class="hidden space-y-3">
         <div class="flex items-center justify-between">
           <h4 class="font-serif-title text-[17px] text-primary font-medium">ລາຍການເມນູທັງໝົດໃນຮ້ານ (Firestore Synced)</h4>
@@ -464,7 +448,6 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="adminMenuListGrid"></div>
       </div>
 
-      <!-- Panel: Coupons -->
       <div id="adm-panel-coupons" class="hidden p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
         <div class="flex justify-between items-center border-b border-hairline pb-3">
           <div>
@@ -478,7 +461,6 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5" id="adminCouponsListGrid"></div>
       </div>
 
-      <!-- Panel 3: Modifiers -->
       <div id="adm-panel-modifiers" class="hidden p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
         <div class="flex items-center justify-between border-b border-hairline pb-3">
           <div>
@@ -490,7 +472,6 @@
         <div id="modifierAdminList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5"></div>
       </div>
 
-      <!-- Panel 4: Payments -->
       <div id="adm-panel-payments" class="hidden p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
         <div class="flex items-center justify-between border-b border-hairline pb-3">
           <div>
@@ -502,7 +483,6 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" id="paymentMethodsAdminList"></div>
       </div>
 
-      <!-- Panel 5: Users & Roles -->
       <div id="adm-panel-users" class="hidden p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
         <div class="flex items-center justify-between border-b border-hairline pb-3">
           <h4 class="font-serif-title text-[16px] text-primary font-medium">ລາຍຊື່ຜູ້ໃຊ້ໃນລະບົບ (Firestore Users)</h4>
@@ -514,7 +494,7 @@
                 <th class="p-2.5">ຊື່ຜູ້ໃຊ້</th>
                 <th class="p-2.5">ອີເມວ</th>
                 <th class="p-2.5">ສິດປັດຈຸບັນ</th>
-                <th class="p-2.5 text-right">ເບີໂທ</th>
+                <th class="p-2.5 text-right">ຈັດການ</th>
               </tr>
             </thead>
             <tbody id="adminUsersTableBody" class="divide-y divide-hairline"></tbody>
@@ -524,7 +504,7 @@
     </div>
   </main>
 
-  <!-- ================= CUSTOMER BOTTOM NAVIGATION (PURE SVG) ================= -->
+  <!-- ================= CUSTOMER BOTTOM NAVIGATION ================= -->
   <nav id="customerBottomNav" class="fixed bottom-0 w-full z-40 bg-surface/92 backdrop-blur-md border-t border-hairline pb-safe">
     <div class="h-16 px-6 max-w-lg mx-auto flex items-center justify-around">
       <button type="button" onclick="switchCustomerTab('menu')" id="nav-btn-menu" class="nav-tab-btn flex flex-col items-center justify-center gap-0.5 text-forest-emerald py-1 font-semibold cursor-pointer">
@@ -551,7 +531,7 @@
     </div>
   </nav>
 
-  <!-- ================= MODALS (PURE SVG) ================= -->
+  <!-- ================= MODALS ================= -->
 
   <!-- 1. CUSTOMIZE MODAL -->
   <div id="customizeModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end sm:items-center justify-center hidden">
@@ -665,7 +645,7 @@
     </div>
   </div>
 
-  <!-- 3. STAFF INCOMING ORDER MODAL (POPULATED BY staff.js) -->
+  <!-- 3. STAFF INCOMING ORDER MODAL -->
   <div id="staffNewOrderModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-md rounded-2xl border-2 border-forest-emerald p-5 shadow-2xl space-y-4 animate-scale-up"></div>
   </div>
@@ -729,20 +709,20 @@
     </div>
   </div>
 
-  <!-- 7. UNIFIED LOGIN MODAL -->
+  <!-- 7. UNIFIED LOGIN / REGISTER MODAL -->
   <div id="authModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-6 shadow-2xl space-y-4">
       <div class="text-center space-y-1">
         <h3 class="font-serif-title text-[22px] text-primary" id="authModalTitle">Sign In</h3>
-        <p class="text-[11px] text-taupe">ເຂົ້າສູ່ລະບົບດ້ວຍ Email & Password ຂອງທ່ານ</p>
+        <p class="text-[11px] text-taupe">ເຂົ້າສູ່ລະບົບ ຫຼື ສະໝັກສະມາຊິກດ້ວຍ Email & Password</p>
       </div>
       <div class="space-y-3 text-[13px]">
         <div id="authNameBox" class="hidden">
           <label class="block text-[11px] text-taupe uppercase mb-1">ຊື່ ແລະ ນາມສະກຸນ</label>
-          <input type="text" id="authName" class="w-full rounded-lg border border-hairline p-2.5"/>
+          <input type="text" id="authName" placeholder="ເຊັ່ນ: Nick" class="w-full rounded-lg border border-hairline p-2.5"/>
         </div>
         <div>
-          <label class="block text-[11px] text-taupe uppercase mb-1">ອີເມວ ຫຼື ເບີໂທ</label>
+          <label class="block text-[11px] text-taupe uppercase mb-1">ອີເມວ</label>
           <input type="email" id="authEmail" class="w-full rounded-lg border border-hairline p-2.5" placeholder="customer@ladolce.com"/>
         </div>
         <div>
@@ -754,7 +734,7 @@
         </button>
         <div class="text-center pt-1">
           <button type="button" onclick="toggleAuthMode()" id="authToggleText" class="text-[11px] text-taupe hover:text-forest-emerald underline cursor-pointer">
-            New customer? Create an account
+            ຍັງບໍ່ມີບັນຊີ? ສະໝັກສະມາຊິກໃໝ່
           </button>
         </div>
       </div>
@@ -986,7 +966,7 @@
     </div>
   </div>
 
-  <!-- 12. ADD PAYMENT MODAL -->
+  <!-- 12. ADD/EDIT PAYMENT MODAL -->
   <div id="addPaymentModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
     <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-5 shadow-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-hairline pb-2">
@@ -1021,22 +1001,22 @@
     </div>
   </div>
 
-  <!-- 13. FAST BOUTIQUE TOAST (PURE SVG) -->
+  <!-- 13. FAST BOUTIQUE TOAST -->
   <div id="atelierToast" class="fixed top-6 left-1/2 -translate-x-1/2 z-[999] opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-4 px-5 py-3 rounded-full bg-forest-gradient text-white text-[12px] font-bold shadow-2xl flex items-center gap-2 border border-white/20">
     <svg class="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
     <span id="toastMsg">Action completed</span>
   </div>
 
-  <!-- ================= LOAD SCRIPTS ================= -->
-  <script src="js/config.js"></script>
-  <script src="js/dialog.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/menu.js"></script>
-  <script src="js/cart.js"></script>
-  <script src="js/ticket.js"></script>
-  <script src="js/staff.js"></script>
-  <script src="js/admin.js"></script>
-  <script src="js/app.js"></script>
+  <!-- ================= LOAD SCRIPTS (CACHE BUSTED v5) ================= -->
+  <script src="js/config.js?v=5"></script>
+  <script src="js/dialog.js?v=5"></script>
+  <script src="js/audio.js?v=5"></script>
+  <script src="js/auth.js?v=5"></script>
+  <script src="js/menu.js?v=5"></script>
+  <script src="js/cart.js?v=5"></script>
+  <script src="js/ticket.js?v=5"></script>
+  <script src="js/staff.js?v=5"></script>
+  <script src="js/admin.js?v=5"></script>
+  <script src="js/app.js?v=5"></script>
 </body>
 </html>
