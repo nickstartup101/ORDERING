@@ -1,14 +1,26 @@
 // =======================================================
-// LA DOLCE — AUTHENTICATION, PROFILE & ROLE PERMISSIONS
+// LA DOLCE — AUTHENTICATION, PROFILE & ORDER HISTORY (NO TIMEOUT)
 // =======================================================
 
 let isRegisterMode = false;
-let sessionTimer = null;
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 let profileSubTab = 'info';
 let userDocUnsubscribe = null;
 
-function openAuthModal() {
+function openAuthModal(mode = 'login') {
+  isRegisterMode = (mode === 'register');
+  document.getElementById('authNameBox')?.classList.toggle('hidden', !isRegisterMode);
+  const titleEl = document.getElementById('authModalTitle');
+  const btnEl = document.getElementById('btnAuthSubmit');
+  const toggleEl = document.getElementById('authToggleText');
+
+  if (titleEl) titleEl.textContent = isRegisterMode ? "ສະໝັກສະມາຊິກ" : "Sign In";
+  if (btnEl) btnEl.textContent = isRegisterMode ? "ສະໝັກສະມາຊິກ" : "Sign In";
+  if (toggleEl) {
+    toggleEl.textContent = isRegisterMode
+      ? "ມີບັນຊີແລ້ວ? ເຂົ້າສູ່ລະບົບ (Sign In)"
+      : "ຍັງບໍ່ມີບັນຊີ? ສະໝັກສະມາຊິກໃໝ່";
+  }
+
   document.getElementById('authModal')?.classList.remove('hidden');
 }
 
@@ -17,32 +29,9 @@ function closeAuthModal() {
 }
 
 function toggleAuthMode() {
-  isRegisterMode = !isRegisterMode;
-  document.getElementById('authNameBox')?.classList.toggle('hidden', !isRegisterMode);
-  document.getElementById('authModalTitle').textContent = isRegisterMode ? "ລົງທະບຽນ" : "ເຂົ້າສູ່ລະບົບ";
-  document.getElementById('btnAuthSubmit').textContent = isRegisterMode ? "Sign Up" : "Sign In";
+  openAuthModal(isRegisterMode ? 'login' : 'register');
 }
 
-function resetSessionTimer() {
-  if (sessionTimer) clearTimeout(sessionTimer);
-  if (currentUser) {
-    sessionTimer = setTimeout(() => {
-      autoLogoutSession();
-    }, SESSION_TIMEOUT_MS);
-  }
-}
-
-['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
-  document.addEventListener(evt, resetSessionTimer, { passive: true });
-});
-
-function autoLogoutSession() {
-  if (!currentUser) return;
-  logoutUser();
-  showAtelierAlert({ title: 'ໝົດເວລາເຊດຊັນ', message: 'ບໍ່ມີການເຄື່ອນໄຫວ 30 ນາທີ ລະບົບໄດ້ອອກຈາກລະບົບອັດຕະໂນມັດ', type: 'warning' });
-}
-
-// Sync ສິດ ແລະ Role ຂອງຜູ້ໃຊ້ປັດຈຸບັນຈາກ Firestore ແບບ Real-time
 function startCurrentUserSync() {
   if (userDocUnsubscribe) {
     userDocUnsubscribe();
@@ -105,11 +94,10 @@ async function handleAuthSubmit() {
     startCurrentUserSync();
     closeAuthModal();
     dispatchRoleView(currentUser.role);
-    showAtelierToast("ລົງທະບຽນສຳເລັດ!");
+    showAtelierToast("ສະໝັກສະມາຊິກສຳເລັດ!");
   } else {
     let authenticatedUser = null;
 
-    // ກວດສອບຈາກ Firestore ກ່ອນ ເພື່ອໃຫ້ໄດ້ Role & Permissions ລ່າສຸດທີ່ Admin ຕັ້ງໃຫ້
     if (isFirebaseReady && db) {
       try {
         const doc = await db.collection("users").doc(emailInput).get();
@@ -138,7 +126,6 @@ async function handleAuthSubmit() {
     currentUser = authenticatedUser;
     localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
     startCurrentUserSync();
-    resetSessionTimer();
     closeAuthModal();
     dispatchRoleView(currentUser.role);
     showAtelierToast(`ຍິນດີຕ້ອນຮັບ, ${currentUser.name}!`);
@@ -152,7 +139,6 @@ function logoutUser() {
   }
   currentUser = null;
   localStorage.removeItem('ladolce_user');
-  if (sessionTimer) clearTimeout(sessionTimer);
   if (typeof stopStaffAlarm === 'function') stopStaffAlarm();
   dispatchRoleView('customer');
   showAtelierToast("ອອກຈາກລະບົບແລ້ວ");
@@ -183,12 +169,14 @@ function dispatchRoleView(role) {
 }
 
 function updateUserSessionUI() {
+  const authBtns = document.getElementById('authHeaderButtons');
   const btnLogin = document.getElementById('btnLoginHeader');
   const userChip = document.getElementById('userProfileChip');
   const roleLinksContainer = document.getElementById('dropdownRoleLinks');
 
   if (currentUser) {
-    if (btnLogin) btnLogin.classList.add('hidden');
+    if (authBtns) authBtns.classList.add('hidden');
+    else if (btnLogin) btnLogin.classList.add('hidden');
     if (userChip) userChip.classList.remove('hidden');
 
     const avatar = document.getElementById('avatarText');
@@ -242,7 +230,8 @@ function updateUserSessionUI() {
       }
     }
   } else {
-    if (btnLogin) btnLogin.classList.remove('hidden');
+    if (authBtns) authBtns.classList.remove('hidden');
+    else if (btnLogin) btnLogin.classList.remove('hidden');
     if (userChip) userChip.classList.add('hidden');
   }
 }
@@ -252,6 +241,30 @@ function switchProfileSubTab(tab) {
   renderCustomerProfile();
 }
 
+function getCustomerOrderHistoryList() {
+  const localIds = new Set([
+    ...JSON.parse(localStorage.getItem('customer_order_ids') || '[]'),
+    ...JSON.parse(localStorage.getItem('dismissed_customer_orders') || '[]')
+  ]);
+  const myEmail = currentUser?.email ? currentUser.email.toLowerCase() : null;
+  const myPhone = currentUser?.phone ? currentUser.phone.replace(/\s+/g, '') : null;
+  const myName = currentUser?.name ? currentUser.name.trim().toLowerCase() : null;
+
+  return (orders || []).filter(o => {
+    if (!o) return false;
+    const isFinished = o.status === 'completed' || o.status === 'ready' || o.status === 'rejected';
+    if (!isFinished) return false;
+
+    const matchLocal = localIds.has(o.id);
+    const matchEmail = myEmail && o.customerEmail && o.customerEmail.toLowerCase() === myEmail;
+    const matchId = myEmail && o.customerId && String(o.customerId).toLowerCase() === myEmail;
+    const matchPhone = myPhone && o.customerPhone && o.customerPhone.replace(/\s+/g, '') === myPhone;
+    const matchName = myName && o.customerName && o.customerName.trim().toLowerCase() === myName;
+
+    return matchLocal || matchEmail || matchId || matchPhone || matchName;
+  });
+}
+
 function renderCustomerProfile() {
   const container = document.getElementById('profileTabContent');
   if (!container) return;
@@ -259,29 +272,36 @@ function renderCustomerProfile() {
   const cafeName = (typeof brandSettings !== 'undefined' && brandSettings?.cafeName) ? brandSettings.cafeName : 'LA DOLCE';
   const brandInitials = (typeof brandSettings !== 'undefined' && brandSettings?.brandInitials) ? brandSettings.brandInitials : 'LD';
 
+  const myHistory = getCustomerOrderHistoryList();
+
   if (!currentUser) {
     container.innerHTML = `
-      <div class="p-8 bg-surface-pure border border-hairline rounded-2xl text-center space-y-3 shadow-xs">
-        <div class="w-12 h-12 rounded-full bg-surface mx-auto flex items-center justify-center text-forest-leaf/70">
-          ${svgIcon('user', 'w-6 h-6')}
+      <div class="max-w-lg mx-auto space-y-4">
+        <div class="p-8 bg-surface-pure border border-hairline rounded-2xl text-center space-y-3 shadow-xs">
+          <div class="w-12 h-12 rounded-full bg-surface mx-auto flex items-center justify-center text-forest-leaf/70">
+            ${svgIcon('user', 'w-6 h-6')}
+          </div>
+          <h3 class="font-serif-title text-[18px] text-primary font-medium">ເຂົ້າສູ່ລະບົບສະມາຊິກ</h3>
+          <p class="text-[12px] text-taupe font-lao">ເຂົ້າສູ່ລະບົບເພື່ອບັນທຶກຂໍ້ມູນການສັ່ງຊື້, ຮັບສິດທິພິເສດວັນເກີດ ແລະ ເບິ່ງປະຫວັດໃບບິນ</p>
+          <div class="flex items-center justify-center gap-2 pt-1">
+            <button type="button" onclick="openAuthModal('login')" class="px-4 py-2.5 rounded-lg border-2 border-forest-emerald text-forest-emerald text-[12px] font-semibold hover:bg-forest-emerald hover:text-white transition-all cursor-pointer">
+              ເຂົ້າສູ່ລະບົບ
+            </button>
+            <button type="button" onclick="openAuthModal('register')" class="px-4 py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] font-semibold hover:bg-forest-leaf transition-all shadow-xs cursor-pointer">
+              ສະໝັກສະມາຊິກ
+            </button>
+          </div>
         </div>
-        <h3 class="font-serif-title text-[18px] text-primary font-medium">ເຂົ້າສູ່ລະບົບສະມາຊິກ</h3>
-        <p class="text-[12px] text-taupe font-lao">ເຂົ້າສູ່ລະບົບເພື່ອບັນທຶກຂໍ້ມູນການສັ່ງຊື້, ຮັບສິດທິພິເສດວັນເກີດ ແລະ ເບິ່ງປະຫວັດໃບບິນ</p>
-        <button type="button" onclick="openAuthModal()" class="px-5 py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] font-semibold hover:bg-forest-leaf transition-all shadow-xs cursor-pointer">
-          ເຂົ້າສູ່ລະບົບ / ລົງທະບຽນ
-        </button>
+
+        ${myHistory.length > 0 ? renderHistoryCardHtml(myHistory) : ''}
       </div>
     `;
     return;
   }
 
-  const myHistory = (orders || []).filter(o =>
-    (o.customerEmail === currentUser.email || o.customerPhone === currentUser.phone || o.customerName === currentUser.name) &&
-    o.status === 'completed'
-  );
-
-  const totalSpent = myHistory.reduce((sum, o) => sum + (Number(o.totalAmount ?? o.total) || 0), 0);
-  const totalCups = myHistory.reduce((sum, o) => sum + (o.items ? o.items.reduce((s, i) => s + (i.quantity || 1), 0) : 0), 0);
+  const completedOnly = myHistory.filter(o => o.status === 'completed' || o.status === 'ready');
+  const totalSpent = completedOnly.reduce((sum, o) => sum + (Number(o.totalAmount ?? o.total) || 0), 0);
+  const totalCups = completedOnly.reduce((sum, o) => sum + (o.items ? o.items.reduce((s, i) => s + (i.quantity || 1), 0) : 0), 0);
 
   const today = new Date();
   let isBirthdayMonth = false;
@@ -342,7 +362,7 @@ function renderCustomerProfile() {
             <div class="p-3.5 bg-surface-pure border border-hairline rounded-xl shadow-xs">
               <span class="text-[10px] uppercase font-bold text-taupe block">ຍອດຊື້ສະສົມ</span>
               <span class="font-serif-title text-[18px] font-bold text-forest-emerald mt-0.5 block">${formatLAK(totalSpent)}</span>
-              <span class="text-[10px] text-taupe font-mono">${myHistory.length} ບິນສຳເລັດ</span>
+              <span class="text-[10px] text-taupe font-mono">${completedOnly.length} ບິນສຳເລັດ</span>
             </div>
           </div>
 
@@ -374,42 +394,53 @@ function renderCustomerProfile() {
             </button>
           </div>
         </div>
-      ` : `
-        <div class="p-5 bg-surface-pure border border-hairline rounded-2xl space-y-3 shadow-xs animate-slide-down">
-          <div class="flex justify-between items-center border-b border-hairline pb-2">
-            <h4 class="font-serif-title font-bold text-[16px] text-primary">ປະຫວັດໃບບິນທີ່ສັ່ງສຳເລັດ</h4>
-            <span class="text-[11px] text-taupe font-mono">${myHistory.length} ບິນ</span>
-          </div>
+      ` : renderHistoryCardHtml(myHistory)}
+    </div>
+  `;
+}
 
-          <div class="divide-y divide-hairline">
-            ${myHistory.length === 0 ? `
-              <p class="text-center text-taupe text-[12px] py-6">ຍັງບໍ່ມີປະຫວັດອໍເດີ້ທີ່ສຳເລັດ</p>
-            ` : myHistory.map(o => {
-              const dateStr = o.createdAt?.seconds ? new Date(o.createdAt.seconds * 1000).toLocaleDateString() : new Date(o.createdAt || Date.now()).toLocaleDateString();
-              return `
-                <div class="py-3.5 flex justify-between items-start gap-2">
-                  <div>
-                    <span class="font-mono font-bold text-forest-emerald text-[13px]">#${o.orderCode || o.id}</span>
-                    <p class="text-[12px] font-medium text-charcoal">${(o.items || []).map(i => `${i.quantity}x ${i.name}`).join(', ')}</p>
-                    <span class="text-[10px] text-taupe block mt-0.5">${dateStr} • ${o.paymentMethod || 'LAK'}</span>
-                  </div>
-                  <div class="text-right shrink-0">
-                    <span class="font-bold text-forest-emerald font-mono block text-[13px]">${formatLAK(o.totalAmount ?? o.total)}</span>
-                    <div class="flex items-center gap-1.5 mt-1.5 justify-end">
-                      <button type="button" onclick="openOrderReceiptModal('${o.id}')" class="text-[10px] px-2.5 py-1 rounded-lg bg-surface hover:bg-forest-emerald hover:text-white border border-hairline text-charcoal font-bold inline-flex items-center gap-1 transition-colors cursor-pointer">
-                        ${svgIcon('ticket', 'w-3 h-3')} <span>ໃບບິນ</span>
-                      </button>
-                      <button type="button" onclick="reorderPreviousItems('${o.id}')" class="text-[10px] text-forest-emerald bg-forest-emerald/10 hover:bg-forest-emerald hover:text-white px-2.5 py-1 rounded-lg font-bold transition-colors inline-flex items-center gap-1 cursor-pointer">
-                        ${svgIcon('refresh', 'w-3 h-3')} <span>ສັ່ງຊ້ຳ</span>
-                      </button>
-                    </div>
-                  </div>
+function renderHistoryCardHtml(myHistory) {
+  return `
+    <div class="p-5 bg-surface-pure border border-hairline rounded-2xl space-y-3 shadow-xs animate-slide-down font-lao">
+      <div class="flex justify-between items-center border-b border-hairline pb-2">
+        <h4 class="font-serif-title font-bold text-[16px] text-primary">ປະຫວັດການສັ່ງຊື້</h4>
+        <span class="text-[11px] text-taupe font-mono">${myHistory.length} ບິນ</span>
+      </div>
+
+      <div class="divide-y divide-hairline">
+        ${myHistory.length === 0 ? `
+          <p class="text-center text-taupe text-[12px] py-6">ຍັງບໍ່ມີປະຫວັດອໍເດີ້</p>
+        ` : myHistory.map(o => {
+          const dateStr = o.createdAt?.seconds ? new Date(o.createdAt.seconds * 1000).toLocaleDateString() : new Date(o.createdAt || Date.now()).toLocaleDateString();
+          const code = o.orderCode || o.id.slice(0, 6).toUpperCase();
+          const statusLabel = o.status === 'completed' ? 'ສຳເລັດ' : o.status === 'ready' ? 'ພ້ອມຮັບ' : 'ປະຕິເສດ';
+          const statusColor = o.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-emerald-50 text-emerald-800';
+
+          return `
+            <div class="py-3.5 flex justify-between items-start gap-2">
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-mono font-bold text-forest-emerald text-[13px]">#${code}</span>
+                  <span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${statusColor}">${statusLabel}</span>
                 </div>
-              `;
-            }).join('')}
-          </div>
-        </div>
-      `}
+                <p class="text-[12px] font-medium text-charcoal mt-0.5">${(o.items || []).map(i => `${i.quantity}x ${i.name}`).join(', ')}</p>
+                <span class="text-[10px] text-taupe block mt-0.5">${dateStr} • ${o.paymentMethod || 'QR'}</span>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="font-bold text-forest-emerald font-mono block text-[13px]">${formatLAK(o.totalAmount ?? o.total)}</span>
+                <div class="flex items-center gap-1.5 mt-1.5 justify-end">
+                  <button type="button" onclick="openOrderReceiptModal('${o.id}')" class="text-[10px] px-2.5 py-1 rounded-lg bg-surface hover:bg-forest-emerald hover:text-white border border-hairline text-charcoal font-bold inline-flex items-center gap-1 transition-colors cursor-pointer">
+                    ${svgIcon('ticket', 'w-3 h-3')} <span>ໃບບິນ</span>
+                  </button>
+                  <button type="button" onclick="reorderPreviousItems('${o.id}')" class="text-[10px] text-forest-emerald bg-forest-emerald/10 hover:bg-forest-emerald hover:text-white px-2.5 py-1 rounded-lg font-bold transition-colors inline-flex items-center gap-1 cursor-pointer">
+                    ${svgIcon('refresh', 'w-3 h-3')} <span>ສັ່ງຊ້ຳ</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
     </div>
   `;
 }
