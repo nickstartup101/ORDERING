@@ -968,9 +968,18 @@ window.saveBrandSettings = async function(event) {
       ...brandSettings,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
+
+    window.closeBrandModal();
+    showAtelierToast(`ອັບເດດຊື່ຮ້ານ "${cafeName}" (${brandInitials}) Sync ທຸກໜ້າແລ້ວ!`);
   } catch (e) {
-    console.warn('Brand save warning:', e);
+    console.error('Brand save error:', e);
+    showAtelierAlert({
+      title: 'ບັນທຶກຊື່ຮ້ານຂຶ້ນ Cloud ບໍ່ສຳເລັດ',
+      message: `ກວດສອບ Firestore Rules ຂອງ settings ອີກຄັ້ງ: ${e.message}`,
+      type: 'error'
+    });
   }
+};
 
   window.closeBrandModal();
   showAtelierToast(`ອັບເດດຊື່ຮ້ານ "${cafeName}" (${brandInitials}) ທົ່ວທັງລະບົບແລ້ວ!`);
