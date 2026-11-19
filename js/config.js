@@ -1,5 +1,5 @@
 // =======================================================
-// LA DOLCE — CORE CONFIGURATION, BRAND SYNC & SVG ICONS
+// LA DOLCE — CORE CONFIGURATION, BRAND & STORE SYNC
 // =======================================================
 
 const firebaseConfig = {
@@ -27,15 +27,12 @@ try {
     }
     auth = firebase.auth();
     isFirebaseReady = true;
-    console.log("Cloud Firestore Initialized Successfully (LongPolling Enabled)");
+    console.log("Cloud Firestore Initialized Successfully");
   }
 } catch (e) {
   console.warn("Firestore initialization error:", e);
 }
 
-// =======================================================
-// PURE SVG VECTOR ICON SYSTEM
-// =======================================================
 const ICONS = {
   storefront: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 3 0"/><path d="M5 11.5V20h14v-8.5"/><path d="M9 20v-5h6v5"/></svg>`,
   bike: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h3"/></svg>`,
@@ -151,6 +148,56 @@ function applyBrandSettingsUI() {
   if (typeof renderCustomerTicket === 'function') renderCustomerTicket();
 }
 
+window.updateStoreStatusUI = function() {
+  const isOpen = storeSettings?.isStoreOpen !== false;
+  const adminBtn = document.getElementById('btnToggleStore');
+  if (adminBtn) {
+    adminBtn.textContent = isOpen ? 'ສະຖານະ: ເປີດຮ້ານ (ກົດເພື່ອປິດ)' : 'ສະຖານະ: ປິດຊົ່ວຄາວ (ກົດເພື່ອເປີດ)';
+    adminBtn.className = `px-3 py-1.5 rounded-lg text-white text-[11px] font-medium cursor-pointer ${isOpen ? 'bg-emerald-800' : 'bg-red-700'}`;
+  }
+
+  const taxEl = document.getElementById('taxSettingsDisplay');
+  if (taxEl) taxEl.textContent = `Tax: ${Number(storeSettings?.taxRatePercent || 0)}% (ປັບປ່ຽນ)`;
+
+  const badge = document.getElementById('customerStoreOpenBadge');
+  if (badge) {
+    badge.innerHTML = isOpen
+      ? `<span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span></span><span class="text-[11px] font-bold text-emerald-900 tracking-wide font-lao">ເປີດບໍລິການ (07:00 – 20:00)</span>`
+      : `<span class="h-2 w-2 rounded-full bg-red-600"></span><span class="text-[11px] font-bold text-red-800 tracking-wide font-lao">ປິດບໍລິການຊົ່ວຄາວ</span>`;
+  }
+};
+
+// ປິດ/ເປີດຮ້ານ (ໃຊ້ໄດ້ທັງ Staff ທີ່ໄດ້ຮັບສິດ ແລະ Superadmin ພ້ອມ Sync ໄປລູກຄ້າ)
+window.toggleStoreStatus = async function() {
+  const nextOpen = !(storeSettings?.isStoreOpen !== false);
+  storeSettings.isStoreOpen = nextOpen;
+  localStorage.setItem('ladolce_store_settings', JSON.stringify(storeSettings));
+  window.updateStoreStatusUI();
+  if (typeof renderStaffStoreControl === 'function') renderStaffStoreControl();
+
+  try {
+    const firestore = db || firebase.firestore();
+    await firestore.collection('settings').doc('store').set({
+      isStoreOpen: nextOpen,
+      taxRatePercent: Number(storeSettings?.taxRatePercent || 0),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    if (typeof showAtelierToast === 'function') {
+      showAtelierToast(nextOpen ? 'ເປີດຮັບອໍເດີ້ແລ້ວ' : 'ປິດຮັບອໍເດີ້ຊົ່ວຄາວ', nextOpen ? 'success' : 'warning');
+    }
+  } catch (e) {
+    console.error('Toggle store error:', e);
+    if (typeof showAtelierAlert === 'function') {
+      showAtelierAlert({
+        title: 'ປ່ຽນສະຖານະຮ້ານຂຶ້ນ Cloud ບໍ່ສຳເລັດ',
+        message: `ກວດສອບ Firestore Rules ຂອງ settings: ${e.message}`,
+        type: 'error'
+      });
+    }
+  }
+};
+
 if (db) {
   db.collection('payments').onSnapshot(snap => {
     if (!snap.empty) {
@@ -178,7 +225,7 @@ if (db) {
     if (doc.exists) {
       storeSettings = { ...storeSettings, ...doc.data() };
       localStorage.setItem('ladolce_store_settings', JSON.stringify(storeSettings));
-      if (typeof updateStoreStatusUI === 'function') updateStoreStatusUI();
+      window.updateStoreStatusUI();
       if (typeof renderStaffStoreControl === 'function') renderStaffStoreControl();
       if (typeof calculateCartSummary === 'function') calculateCartSummary();
     }
@@ -186,9 +233,13 @@ if (db) {
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', applyBrandSettingsUI);
+  document.addEventListener('DOMContentLoaded', () => {
+    applyBrandSettingsUI();
+    window.updateStoreStatusUI();
+  });
 } else {
   applyBrandSettingsUI();
+  window.updateStoreStatusUI();
 }
 
 function formatLAK(amount) {
