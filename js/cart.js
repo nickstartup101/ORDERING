@@ -1,15 +1,15 @@
 // =======================================================
-// LA DOLCE — CART, PAYMENT QR, COUPON & CHECKOUT ENGINE
+// LA DOLCE — CART, QR PAYMENT, COUPON & CHECKOUT ENGINE
 // =======================================================
 
 let selectedPaymentId = null;
-let selectedPaymentMethod = null; // { type: 'qr' | 'cash', bankName, ... }
+let selectedPaymentMethod = null;
 let uploadedSlipDataUrl = '';
 let appliedCoupon = null;
 let currentFulfillmentType = 'pickup';
 let isSubmittingOrder = false;
 
-const FREE_DELIVERY_THRESHOLD = 100000; // 100,000 LAK ສົ່ງຟຣີ 500 ແມັດ
+const FREE_DELIVERY_THRESHOLD = 100000;
 
 function updateCartBadge() {
   const totalCount = (cart || []).reduce((sum, item) => sum + item.quantity, 0);
@@ -102,7 +102,6 @@ function removeCartItem(cartItemId) {
 function calculateCartSummary() {
   const subtotal = (cart || []).reduce((sum, item) => sum + Number(item.totalPrice || 0), 0);
 
-  // 1. ຄິດໄລ່ສ່ວນຫຼຸດ Coupon
   let discountAmount = 0;
   if (appliedCoupon && subtotal > 0) {
     if (appliedCoupon.minOrder && subtotal < appliedCoupon.minOrder) {
@@ -121,13 +120,10 @@ function calculateCartSummary() {
   }
 
   const afterDiscount = Math.max(0, subtotal - discountAmount);
-
-  // 2. ຄິດໄລ່ Tax (ຕາມທີ່ Admin ຕັ້ງຄ່າ)
   const taxRate = Number(storeSettings?.taxRatePercent || 0);
   const taxAmount = taxRate > 0 ? Math.round((afterDiscount * taxRate) / 100) : 0;
   const total = afterDiscount + taxAmount;
 
-  // ອັບເດດ UI
   const subEl = document.getElementById('summarySubtotal');
   const totEl = document.getElementById('summaryTotal');
   const couponRow = document.getElementById('couponDiscountRow');
@@ -148,10 +144,8 @@ function calculateCartSummary() {
     taxVal.textContent = formatLAK(taxAmount);
   }
 
-  // 3. ອັບເດດກ່ອງສົ່ງຟຣີ 500 ແມັດ
   updateDeliveryProgressUI(subtotal);
 
-  // 4. ອັບເດດຍອດເງິນໃນກ່ອງ QR ທັນທີ
   const qrAmountEl = document.getElementById('activeQrTotalAmount');
   if (qrAmountEl) qrAmountEl.textContent = formatLAK(total);
 
@@ -192,7 +186,7 @@ window.setFulfillmentType = function(type) {
 };
 
 // =======================================================
-// 1. MULTI-BANK QR & CASH PAYMENT SELECTOR
+// MULTI-BANK QR PAYMENT SELECTOR (QR ONLY)
 // =======================================================
 window.renderCustomerPaymentOptions = function() {
   const grid = document.getElementById('customerBankSelectorGrid');
@@ -200,10 +194,7 @@ window.renderCustomerPaymentOptions = function() {
   if (!grid || !display) return;
 
   const banks = (paymentMethods && paymentMethods.length > 0) ? paymentMethods : DEFAULT_PAYMENTS;
-  const options = [
-    ...banks.map(b => ({ ...b, type: 'qr' })),
-    { id: 'pay_cash', bankName: 'ເງິນສົດໜ້າຮ້ານ', accountNumber: '', borderColor: '#0D402B', type: 'cash' }
-  ];
+  const options = banks.map(b => ({ ...b, id: b.id || b.docId, type: 'qr' }));
 
   if (!selectedPaymentId || !options.some(o => o.id === selectedPaymentId)) {
     selectedPaymentId = options[0].id;
@@ -215,7 +206,7 @@ window.renderCustomerPaymentOptions = function() {
       <button type="button" onclick="selectPaymentMethod('${opt.id}')"
               style="${isActive ? `border-color: ${opt.borderColor || '#0D402B'}; background-color: #FAF9F6;` : ''}"
               class="p-2.5 rounded-xl border-2 text-left transition-all cursor-pointer flex items-center gap-2 ${isActive ? 'shadow-xs font-bold text-primary' : 'border-hairline bg-surface-pure text-taupe hover:border-forest-leaf'}">
-        <span style="color: ${opt.borderColor || '#0D402B'}">${svgIcon(opt.type === 'cash' ? 'cash' : 'qr', 'w-4 h-4')}</span>
+        <span style="color: ${opt.borderColor || '#0D402B'}">${svgIcon('qr', 'w-4 h-4')}</span>
         <span class="text-[11px] truncate">${opt.bankName}</span>
       </button>
     `;
@@ -227,10 +218,7 @@ window.renderCustomerPaymentOptions = function() {
 window.selectPaymentMethod = function(paymentId, reRenderButtons = true) {
   selectedPaymentId = paymentId;
   const banks = (paymentMethods && paymentMethods.length > 0) ? paymentMethods : DEFAULT_PAYMENTS;
-  const allOptions = [
-    ...banks.map(b => ({ ...b, type: 'qr' })),
-    { id: 'pay_cash', bankName: 'ເງິນສົດໜ້າຮ້ານ (Cash)', accountNumber: '', borderColor: '#0D402B', type: 'cash' }
-  ];
+  const allOptions = banks.map(b => ({ ...b, id: b.id || b.docId, type: 'qr' }));
 
   const chosen = allOptions.find(o => o.id === paymentId) || allOptions[0];
   selectedPaymentMethod = chosen;
@@ -246,51 +234,37 @@ window.selectPaymentMethod = function(paymentId, reRenderButtons = true) {
   const { total } = calculateCartSummary();
 
   if (!display) return;
+  if (slipSection) slipSection.classList.remove('hidden');
 
-  if (chosen.type === 'cash') {
-    display.style.borderColor = '#0D402B';
-    display.innerHTML = `
-      <div class="py-4 space-y-2">
-        <div class="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 text-forest-emerald mx-auto flex items-center justify-center">
-          ${svgIcon('cash', 'w-6 h-6')}
-        </div>
-        <p class="font-bold text-[13px] text-primary">ຊຳລະດ້ວຍເງິນສົດທີ່ເຄົາເຕີ້</p>
-        <p class="text-[11px] text-taupe">ຍອດທີ່ຕ້ອງຊຳລະ: <strong id="activeQrTotalAmount" class="text-forest-emerald text-[14px]">${formatLAK(total)}</strong></p>
+  display.style.borderColor = chosen.borderColor || '#E7E4DD';
+  display.innerHTML = `
+    <div class="space-y-2.5">
+      <div class="flex items-center justify-between text-[12px]">
+        <span class="font-bold text-primary">${chosen.bankName}</span>
+        <span class="text-[11px] text-taupe">ສະແກນເພື່ອຊຳລະ</span>
       </div>
-    `;
-    if (slipSection) slipSection.classList.add('hidden');
-  } else {
-    display.style.borderColor = chosen.borderColor || '#E7E4DD';
-    display.innerHTML = `
-      <div class="space-y-2.5">
-        <div class="flex items-center justify-between text-[12px]">
-          <span class="font-bold text-primary">${chosen.bankName}</span>
-          <span class="text-[11px] text-taupe">ສະແກນເພື່ອຊຳລະ</span>
-        </div>
 
-        <div class="mx-auto w-48 h-48 bg-white p-2 rounded-xl border border-hairline flex items-center justify-center">
-          <img src="${chosen.qrImage}" alt="QR ${chosen.bankName}" class="w-full h-full object-contain"/>
-        </div>
-
-        ${chosen.accountNumber ? `
-          <div class="flex items-center justify-center gap-2 bg-surface-pure py-1.5 px-3 rounded-lg border border-hairline">
-            <span class="font-mono text-[12px] font-semibold text-charcoal">${chosen.accountNumber}</span>
-            <button type="button" onclick="copyBankAccount('${chosen.accountNumber}')"
-                    class="inline-flex items-center gap-1 text-[11px] font-bold text-forest-emerald hover:text-forest-leaf cursor-pointer">
-              ${svgIcon('copy', 'w-3.5 h-3.5')}
-              <span>ຄັດລອກ</span>
-            </button>
-          </div>
-        ` : ''}
-
-        <div class="pt-2 border-t border-hairline flex items-center justify-between text-[12px]">
-          <span class="text-taupe">ຍອດທີ່ຕ້ອງໂອນ:</span>
-          <span id="activeQrTotalAmount" class="font-serif-title font-bold text-[16px] text-forest-emerald">${formatLAK(total)}</span>
-        </div>
+      <div class="mx-auto w-48 h-48 bg-white p-2 rounded-xl border border-hairline flex items-center justify-center">
+        <img src="${chosen.qrImage}" alt="QR ${chosen.bankName}" class="w-full h-full object-contain"/>
       </div>
-    `;
-    if (slipSection) slipSection.classList.remove('hidden');
-  }
+
+      ${chosen.accountNumber ? `
+        <div class="flex items-center justify-center gap-2 bg-surface-pure py-1.5 px-3 rounded-lg border border-hairline">
+          <span class="font-mono text-[12px] font-semibold text-charcoal">${chosen.accountNumber}</span>
+          <button type="button" onclick="copyBankAccount('${chosen.accountNumber}')"
+                  class="inline-flex items-center gap-1 text-[11px] font-bold text-forest-emerald hover:text-forest-leaf cursor-pointer">
+            ${svgIcon('copy', 'w-3.5 h-3.5')}
+            <span>ຄັດລອກ</span>
+          </button>
+        </div>
+      ` : ''}
+
+      <div class="pt-2 border-t border-hairline flex items-center justify-between text-[12px]">
+        <span class="text-taupe">ຍອດທີ່ຕ້ອງໂອນ:</span>
+        <span id="activeQrTotalAmount" class="font-serif-title font-bold text-[16px] text-forest-emerald">${formatLAK(total)}</span>
+      </div>
+    </div>
+  `;
 };
 
 window.copyBankAccount = async function(accountNumber) {
@@ -302,9 +276,6 @@ window.copyBankAccount = async function(accountNumber) {
   }
 };
 
-// =======================================================
-// 2. COUPON VALIDATION (FIRESTORE + BUILT-IN FALLBACK)
-// =======================================================
 window.applyCouponCode = async function() {
   const input = document.getElementById('couponCodeInput');
   const code = (input?.value || '').trim().toUpperCase();
@@ -327,7 +298,6 @@ window.applyCouponCode = async function() {
     if (!snap.empty) {
       foundCoupon = { id: snap.docs[0].id, ...snap.docs[0].data() };
     } else if (code === 'LADOLCE20') {
-      // Fallback ຖ້າຍັງບໍ່ໄດ້ສ້າງໃນ Firestore ຕາມຕົວຢ່າງໜ້າເວັບ
       foundCoupon = { code: 'LADOLCE20', type: 'percent', value: 20, maxDiscount: 30000, minOrder: 0 };
     }
 
@@ -335,12 +305,10 @@ window.applyCouponCode = async function() {
       showAtelierToast('ບໍ່ພົບລະຫັດຄູປອງນີ້ໃນລະບົບ', 'error');
       return;
     }
-
     if (foundCoupon.isActive === false) {
       showAtelierToast('ຄູປອງນີ້ຖືກປິດການໃຊ້ງານແລ້ວ', 'error');
       return;
     }
-
     if (foundCoupon.expiryDate) {
       const exp = new Date(foundCoupon.expiryDate);
       exp.setHours(23, 59, 59, 999);
@@ -349,12 +317,10 @@ window.applyCouponCode = async function() {
         return;
       }
     }
-
     if (foundCoupon.minOrder && subtotal < Number(foundCoupon.minOrder)) {
       showAtelierToast(`ຕ້ອງສັ່ງຂັ້ນຕ່ຳ ${formatLAK(foundCoupon.minOrder)} ຈຶ່ງໃຊ້ໄດ້`, 'warning');
       return;
     }
-
     if (foundCoupon.totalBudget && Number(foundCoupon.usedBudget || 0) >= Number(foundCoupon.totalBudget)) {
       showAtelierToast('ງົບປະມານຄູປອງນີ້ໝົດແລ້ວ', 'error');
       return;
@@ -369,9 +335,6 @@ window.applyCouponCode = async function() {
   }
 };
 
-// =======================================================
-// 3. SLIP UPLOAD + COMPRESSION
-// =======================================================
 window.handleSlipSelected = function(event) {
   const file = event.target.files?.[0];
   if (!file) return;
@@ -404,9 +367,6 @@ window.handleSlipSelected = function(event) {
   reader.readAsDataURL(file);
 };
 
-// =======================================================
-// 4. CHECKOUT & ORDER SUBMISSION
-// =======================================================
 window.handleStartCheckout = async function() {
   if (isSubmittingOrder) return;
 
@@ -420,19 +380,15 @@ window.handleStartCheckout = async function() {
     return;
   }
 
-  // ກວດສອບ Slip ຖ້າເລືອກໂອນ QR
-  if (!selectedPaymentMethod || selectedPaymentMethod.type !== 'cash') {
-    if (!uploadedSlipDataUrl) {
-      await showAtelierAlert({
-        title: 'ຍັງບໍ່ໄດ້ແນບໃບໂອນເງິນ',
-        message: 'ກະລຸນາສະແກນ QR ໂອນເງິນ ແລ້ວອັບໂຫຼດຮູບໃບໂອນເງິນ (Slip) ກ່ອນຢືນຢັນ',
-        type: 'warning'
-      });
-      return;
-    }
+  if (!uploadedSlipDataUrl) {
+    await showAtelierAlert({
+      title: 'ຍັງບໍ່ໄດ້ແນບໃບໂອນເງິນ',
+      message: 'ກະລຸນາສະແກນ QR ໂອນເງິນ ແລ້ວອັບໂຫຼດຮູບໃບໂອນເງິນ (Slip) ກ່ອນຢືນຢັນ',
+      type: 'warning'
+    });
+    return;
   }
 
-  // ກວດສອບທີ່ຢູ່ຖ້າເລືອກ Delivery
   if (currentFulfillmentType === 'delivery') {
     const addr = document.getElementById('deliveryAddressInput')?.value.trim();
     if (!addr) {
@@ -496,20 +452,21 @@ async function executeOrderPlacement(customerId, customerName, customerPhone) {
 
     const orderData = {
       orderCode: 'LD-' + Math.floor(1000 + Math.random() * 9000),
-      customerId: customerId,
-      customerName: customerName,
-      customerPhone: customerPhone,
+      customerId,
+      customerName,
+      customerPhone,
+      customerEmail: currentUser?.email || null,
       items: cart,
-      subtotal: subtotal,
-      discountAmount: discountAmount,
+      subtotal,
+      discountAmount,
       couponCode: appliedCoupon ? appliedCoupon.code : null,
-      taxAmount: taxAmount,
+      taxAmount,
       totalAmount: total,
-      paymentType: selectedPaymentMethod?.type || 'qr',
+      paymentType: 'qr',
       paymentMethod: selectedPaymentMethod?.bankName || 'BCEL One',
-      slipImage: selectedPaymentMethod?.type === 'cash' ? '' : uploadedSlipDataUrl,
+      slipImage: uploadedSlipDataUrl,
       fulfillmentType: currentFulfillmentType,
-      deliveryAddress: deliveryAddress,
+      deliveryAddress,
       status: 'pending',
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -517,20 +474,17 @@ async function executeOrderPlacement(customerId, customerName, customerPhone) {
 
     const docRef = await firestore.collection('orders').add(orderData);
 
-    // ອັບເດດງົບປະມານ Coupon ຖ້າມີ
     if (appliedCoupon && appliedCoupon.id && discountAmount > 0) {
       firestore.collection('coupons').doc(appliedCoupon.id).update({
         usedBudget: firebase.firestore.FieldValue.increment(discountAmount)
       }).catch(() => {});
     }
 
-    // ບັນທຶກ Ticket ຂອງລູກຄ້າໄວ້ Sync Real-time
     const customerOrders = JSON.parse(localStorage.getItem('customer_order_ids') || '[]');
     customerOrders.unshift(docRef.id);
     localStorage.setItem('customer_order_ids', JSON.stringify(customerOrders));
     localStorage.setItem('activeOrderId', docRef.id);
 
-    // ລ້າງຂໍ້ມູນກະຕ່າ & Slip
     cart = [];
     appliedCoupon = null;
     uploadedSlipDataUrl = '';
