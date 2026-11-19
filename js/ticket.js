@@ -16,7 +16,6 @@ window.renderCustomerTicket = function() {
     orderIds.unshift(legacyId);
   }
 
-  // ລ້າງ Listener ເກົ່າສະເໝີ
   window.customerOrderListeners.forEach(unsub => unsub());
   window.customerOrderListeners = [];
 
@@ -45,20 +44,18 @@ window.renderCustomerTicket = function() {
       if (!doc.exists) return;
       const order = { id: doc.id, ...doc.data() };
 
-      // ແຈ້ງເຕືອນເມື່ອ Staff ກົດວ່າເຄື່ອງດື່ມພ້ອມຮັບ
       if (order.status === 'ready' && !window.notifiedReadyList.includes(order.id)) {
         window.notifiedReadyList.push(order.id);
         localStorage.setItem('notified_ready_orders', JSON.stringify(window.notifiedReadyList));
         window.triggerCustomerDrinkReadyAlert(order.orderCode);
       }
 
-      // ແຈ້ງເຕືອນທັນທີເມື່ອ Staff ປະຕິເສດອໍເດີ້
       if ((order.status === 'rejected' || order.status === 'cancelled') && !window.notifiedRejectedList.includes(order.id)) {
         window.notifiedRejectedList.push(order.id);
         localStorage.setItem('notified_rejected_orders', JSON.stringify(window.notifiedRejectedList));
         if (typeof showAtelierAlert === 'function') {
           showAtelierAlert({
-            title: `ອໍເດີ້ #${order.orderCode} ຖືກປະຕິເສດ`,
+            title: `ອໍເດີ້ #${order.orderCode || ''} ຖືກປະຕິເສດ`,
             message: `ເຫດຜົນ: ${order.rejectionReason || 'ເຄື່ອງດື່ມບໍ່ພ້ອມໃຫ້ບໍລິການ'}. ທາງຮ້ານຈະທຳການຣີຟັນເງິນຄືນໃຫ້ທ່ານ.`,
             type: 'error',
             confirmText: 'ເຂົ້າໃຈແລ້ວ'
@@ -80,6 +77,7 @@ function renderSingleCustomerTicket(order, container) {
     container.appendChild(card);
   }
 
+  const cafeName = (typeof brandSettings !== 'undefined' && brandSettings?.cafeName) ? brandSettings.cafeName : 'LA DOLCE';
   const isRejected = order.status === 'rejected' || order.status === 'cancelled';
   const isCompleted = order.status === 'completed';
 
@@ -88,7 +86,7 @@ function renderSingleCustomerTicket(order, container) {
       badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
       icon: 'clock',
       label: 'ລໍຖ້າຮ້ານກວດສອບ',
-      title: 'ກຳລັງລໍຖ້າພະນັກງານຮັບອໍເດີ້',
+      title: 'ກຳລັງລໍຖ້າພະນັກງານກວດສອບອໍເດີ້ & ສະລິບ',
       step: 1
     },
     preparing: {
@@ -109,7 +107,7 @@ function renderSingleCustomerTicket(order, container) {
       badgeClass: 'bg-stone-100 text-stone-700 border-stone-300',
       icon: 'checkCircle',
       label: 'ຮັບເຄື່ອງສຳເລັດ',
-      title: 'ຂອບໃຈທີ່ອຸດໜູນ LA DOLCE',
+      title: `ຂອບໃຈທີ່ອຸດໜູນ ${cafeName}`,
       step: 3
     },
     rejected: {
@@ -138,8 +136,8 @@ function renderSingleCustomerTicket(order, container) {
     <div class="p-5 rounded-2xl bg-surface-pure border ${order.status === 'ready' ? 'border-2 border-emerald-500 shadow-lg' : (isRejected ? 'border-2 border-red-300' : 'border-hairline shadow-xs')} space-y-4 font-lao">
       <div class="flex items-center justify-between pb-3 border-b border-hairline gap-2">
         <div>
-          <span class="text-[10px] uppercase tracking-wider text-taupe font-bold">ປີ້ຮັບເຄື່ອງດື່ມ</span>
-          <h3 class="font-serif-title text-[20px] text-primary font-bold">#${order.orderCode || 'Order'}</h3>
+          <span class="text-[10px] uppercase tracking-wider text-taupe font-bold">${cafeName} • ປີ້ຮັບເຄື່ອງດື່ມ</span>
+          <h3 class="font-serif-title text-[20px] text-primary font-bold">#${order.orderCode || order.id.slice(0, 6).toUpperCase()}</h3>
         </div>
         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${statusMeta.badgeClass}">
           ${svgIcon(statusMeta.icon, 'w-3.5 h-3.5')}
@@ -147,7 +145,6 @@ function renderSingleCustomerTicket(order, container) {
         </span>
       </div>
 
-      <!-- ແຖບສະແດງຂັ້ນຕອນ Sync ກັບ Staff -->
       ${!isRejected ? `
         <div class="space-y-2">
           <p class="text-[12px] font-bold ${order.status === 'ready' ? 'text-emerald-800' : 'text-primary'}">${statusMeta.title}</p>
@@ -157,7 +154,7 @@ function renderSingleCustomerTicket(order, container) {
             <div class="h-1.5 rounded-full ${statusMeta.step >= 3 ? 'bg-emerald-500' : 'bg-hairline'}"></div>
           </div>
           <div class="flex justify-between text-[10px] text-taupe">
-            <span class="${statusMeta.step >= 1 ? 'text-forest-emerald font-bold' : ''}">1. ລໍຖ້າຮັບ</span>
+            <span class="${statusMeta.step >= 1 ? 'text-forest-emerald font-bold' : ''}">1. ລໍຖ້າກວດສອບ</span>
             <span class="${statusMeta.step >= 2 ? 'text-forest-emerald font-bold' : ''}">2. ກຳລັງດຳເນີນການ</span>
             <span class="${statusMeta.step >= 3 ? 'text-emerald-700 font-bold' : ''}">3. ພ້ອມຮັບເຄື່ອງ</span>
           </div>
@@ -183,13 +180,12 @@ function renderSingleCustomerTicket(order, container) {
         </div>
       `}
 
-      <!-- ລາຍການເຄື່ອງດື່ມ -->
       <div class="space-y-2.5 divide-y divide-hairline">
         ${(order.items || []).map(item => `
           <div class="pt-2 first:pt-0">
             <div class="flex justify-between items-baseline font-bold text-[13px]">
               <span>${item.quantity}x ${item.name} <span class="text-forest-leaf font-medium">[${formatVariantLabel(item.variant)}]</span></span>
-              <span class="font-mono text-forest-emerald">${formatLAK(item.totalPrice || item.price)}</span>
+              <span class="font-mono text-forest-emerald">${formatLAK(item.totalPrice ?? item.price)}</span>
             </div>
             <div class="text-[11px] text-taupe mt-0.5">
               ${item.sweetness ? `<span>ຫວານ ${item.sweetness}</span>` : ''}
@@ -208,7 +204,7 @@ function renderSingleCustomerTicket(order, container) {
 
       <div class="pt-2 border-t border-hairline flex justify-between items-baseline">
         <span class="font-bold text-[13px]">ຍອດລວມ (${order.paymentMethod || 'QR'}):</span>
-        <span class="font-serif-title font-bold text-[18px] text-forest-emerald">${formatLAK(order.totalAmount)}</span>
+        <span class="font-serif-title font-bold text-[18px] text-forest-emerald">${formatLAK(order.totalAmount ?? order.total)}</span>
       </div>
 
       ${isCompleted ? `
