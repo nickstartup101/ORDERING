@@ -59,9 +59,7 @@ window.switchAdminPanelTab = function(tabName) {
   if (tabName === 'users') window.loadAdminUsers();
 };
 
-// =======================================================
 // 1. MENU MANAGEMENT
-// =======================================================
 window.loadAdminMenus = async function() {
   const container = document.getElementById('adminMenuListGrid');
   if (!container) return;
@@ -256,9 +254,7 @@ window.deleteMenuItem = async function(id) {
   window.loadAdminMenus();
 };
 
-// =======================================================
-// 2. QR PAYMENTS CRUD (ເພີ່ມ / ແກ້ໄຂ / ລົບ)
-// =======================================================
+// 2. QR PAYMENTS CRUD
 window.openAddPaymentModal = function() {
   window.editingPaymentDocId = null;
   document.getElementById('paymentForm')?.reset();
@@ -314,7 +310,6 @@ window.handleBankQRUpload = async function(event) {
 
 window.savePaymentMethod = async function(event) {
   if (event) event.preventDefault();
-
   try {
     const bankName = document.getElementById('inputBankName')?.value.trim();
     const accountNumber = document.getElementById('inputAccountNumber')?.value.trim();
@@ -365,7 +360,6 @@ window.loadAdminPayments = async function() {
     if (!snap.empty) {
       list = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
     } else if (typeof DEFAULT_PAYMENTS !== 'undefined') {
-      // Seed default payments ເຂົ້າ Firestore ເພື່ອໃຫ້ແກ້ໄຂ/ລຶບໄດ້ທັນທີ
       for (const p of DEFAULT_PAYMENTS) {
         await firestore.collection('payments').doc(p.id).set(p, { merge: true });
       }
@@ -401,12 +395,7 @@ window.loadAdminPayments = async function() {
 };
 
 window.deletePaymentMethod = async function(docId) {
-  const ok = await showAtelierConfirm({
-    title: 'ລຶບຊ່ອງທາງ QR',
-    message: 'ທ່ານຕ້ອງການລຶບ QR ທະນາຄານນີ້ແທ້ບໍ່?',
-    confirmText: 'ລຶບ',
-    cancelText: 'ຍົກເລີກ'
-  });
+  const ok = await showAtelierConfirm({ title: 'ລຶບຊ່ອງທາງ QR', message: 'ທ່ານຕ້ອງການລຶບ QR ທະນາຄານນີ້ແທ້ບໍ່?', confirmText: 'ລຶບ', cancelText: 'ຍົກເລີກ' });
   if (!ok) return;
   const firestore = db || firebase.firestore();
   await firestore.collection('payments').doc(docId).delete();
@@ -414,9 +403,7 @@ window.deletePaymentMethod = async function(docId) {
   window.loadAdminPayments();
 };
 
-// =======================================================
-// 3. MODIFIERS CRUD (ເພີ່ມ / ແກ້ໄຂ / ລົບ)
-// =======================================================
+// 3. MODIFIERS CRUD
 window.openModifierModal = function() {
   window.editingModifierId = null;
   document.getElementById('modifierForm')?.reset();
@@ -516,15 +503,12 @@ window.deleteModifier = async function(modId) {
   window.loadAdminModifiers();
 };
 
-// =======================================================
-// 4. USERS & PERMISSIONS (ຈັດການຜູ້ໃຊ້ + ມອບສິດໃຫ້ STAFF)
-// =======================================================
+// 4. USERS & STAFF PERMISSIONS
 window.loadAdminUsers = async function() {
   const panel = document.getElementById('adm-panel-users');
   const tableBody = document.getElementById('adminUsersTableBody');
   if (!tableBody) return;
 
-  // ເພີ່ມປຸ່ມ "ເພີ່ມຜູ້ໃຊ້ໃໝ່" ໃນຫົວຂໍ້ຖ້າຍັງບໍ່ມີ
   const headerBar = panel?.querySelector('.flex.items-center.justify-between');
   if (headerBar && !document.getElementById('btnAdminAddUser')) {
     const addBtn = document.createElement('button');
@@ -693,9 +677,7 @@ window.saveAdminNewUser = async function(event) {
   window.loadAdminUsers();
 };
 
-// =======================================================
-// 5. ANALYTICS, STORE STATUS & BRANDING SYNC
-// =======================================================
+// 5. ANALYTICS & TAX
 window.setSalesFilter = function(range) {
   window.salesDateFilter = range;
   window.loadAdminAnalytics();
@@ -779,57 +761,21 @@ window.loadAdminAnalytics = async function() {
 
 window.renderAnalytics = window.loadAdminAnalytics;
 
-window.updateStoreStatusUI = function() {
-  const isOpen = storeSettings?.isStoreOpen !== false;
-  const adminBtn = document.getElementById('btnToggleStore');
-  if (adminBtn) {
-    adminBtn.textContent = isOpen ? 'ສະຖານະ: ເປີດຮ້ານ (ກົດເພື່ອປິດ)' : 'ສະຖານະ: ປິດຊົ່ວຄາວ (ກົດເພື່ອເປີດ)';
-    adminBtn.className = `px-3 py-1.5 rounded-lg text-white text-[11px] font-medium cursor-pointer ${isOpen ? 'bg-emerald-800' : 'bg-red-700'}`;
-  }
-
-  const taxEl = document.getElementById('taxSettingsDisplay');
-  if (taxEl) taxEl.textContent = `Tax: ${Number(storeSettings?.taxRatePercent || 0)}% (ປັບປ່ຽນ)`;
-
-  const badge = document.getElementById('customerStoreOpenBadge');
-  if (badge) {
-    badge.innerHTML = isOpen
-      ? `<span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span></span><span class="text-[11px] font-bold text-emerald-900 tracking-wide font-lao">ເປີດບໍລິການ (07:00 – 20:00)</span>`
-      : `<span class="h-2 w-2 rounded-full bg-red-600"></span><span class="text-[11px] font-bold text-red-800 tracking-wide font-lao">ປິດບໍລິການຊົ່ວຄາວ</span>`;
-  }
-};
-
-window.toggleStoreStatus = async function() {
-  const nextOpen = !(storeSettings?.isStoreOpen !== false);
-  storeSettings.isStoreOpen = nextOpen;
-  localStorage.setItem('ladolce_store_settings', JSON.stringify(storeSettings));
-  window.updateStoreStatusUI();
-  if (typeof renderStaffStoreControl === 'function') renderStaffStoreControl();
-
-  try {
-    const firestore = db || firebase.firestore();
-    await firestore.collection('settings').doc('store').set({
-      isStoreOpen: nextOpen,
-      taxRatePercent: Number(storeSettings?.taxRatePercent || 0),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-  } catch (_) {}
-
-  showAtelierToast(nextOpen ? 'ເປີດຮັບອໍເດີ້ແລ້ວ' : 'ປິດຮັບອໍເດີ້ຊົ່ວຄາວ', nextOpen ? 'success' : 'warning');
-};
-
 window.updateTaxSettings = async function() {
   const val = prompt('ກຳນົດອັດຕາອາກອນ Tax (%) ເຊັ່ນ 0, 7, 10:', String(storeSettings?.taxRatePercent || 0));
   if (val === null) return;
   const num = Math.max(0, Math.min(50, Number(val) || 0));
   storeSettings.taxRatePercent = num;
   localStorage.setItem('ladolce_store_settings', JSON.stringify(storeSettings));
-  window.updateStoreStatusUI();
+  if (typeof window.updateStoreStatusUI === 'function') window.updateStoreStatusUI();
   if (typeof calculateCartSummary === 'function') calculateCartSummary();
   try {
     const firestore = db || firebase.firestore();
     await firestore.collection('settings').doc('store').set({ taxRatePercent: num }, { merge: true });
-  } catch (_) {}
-  showAtelierToast(`ຕັ້ງຄ່າອາກອນເປັນ ${num}% ແລ້ວ`);
+    showAtelierToast(`ຕັ້ງຄ່າອາກອນເປັນ ${num}% ແລ້ວ`);
+  } catch (e) {
+    showAtelierAlert({ title: 'ບັນທຶກ Tax ບໍ່ສຳເລັດ', message: e.message, type: 'error' });
+  }
 };
 
 // COUPONS
@@ -919,7 +865,6 @@ window.openBrandModal = function() {
   if (nameInput) nameInput.value = brandSettings?.cafeName || 'LA DOLCE';
   if (branchInput) branchInput.value = brandSettings?.cafeBranch || 'Downtown Flagship Roastery';
 
-  // ເພີ່ມຊ່ອງໂຕຫຍໍ້ໂລໂກ້ (Logo Initials) ອັດຕະໂນມັດ
   if (modal && !document.getElementById('inputCafeInitials')) {
     const div = document.createElement('div');
     div.innerHTML = `
@@ -981,12 +926,8 @@ window.saveBrandSettings = async function(event) {
   }
 };
 
-  window.closeBrandModal();
-  showAtelierToast(`ອັບເດດຊື່ຮ້ານ "${cafeName}" (${brandInitials}) ທົ່ວທັງລະບົບແລ້ວ!`);
-};
-
 window.loadAllOwnerData = function() {
-  window.updateStoreStatusUI();
+  if (typeof window.updateStoreStatusUI === 'function') window.updateStoreStatusUI();
   window.loadAdminAnalytics();
   window.loadAdminMenus();
   window.loadAdminCoupons();
