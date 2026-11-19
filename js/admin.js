@@ -1,27 +1,14 @@
 // =======================================================
-// LA DOLCE — SUPERADMIN CONTROL CENTER (PURE SVG + FAST IMG)
+// LA DOLCE — SUPERADMIN CONTROL CENTER (FULL CRUD + SYNC)
 // =======================================================
-
-// ເພີ່ມ SVG Icons ສຳລັບ Admin & Auth ໂດຍບໍ່ຕ້ອງແກ້ config.js ໃໝ່
-if (typeof ICONS !== 'undefined') {
-  Object.assign(ICONS, {
-    edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
-    store: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 3 0"/><path d="M5 11.5V20h14v-8.5"/></svg>`,
-    barChart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>`,
-    menuList: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
-    tune: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>`,
-    users: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-    shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
-    gift: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>`,
-    badge: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h2"/><path d="M15 12h2"/><path d="M7 16h10"/></svg>`
-  });
-}
 
 window.adminCurrentTab = 'analytics';
 window.editingMenuItemId = null;
+window.editingPaymentDocId = null;
+window.editingModifierId = null;
 window.salesDateFilter = 'day';
+window.cachedAdminUsers = [];
 
-// Helper ບີບອັດຮູບພາບໃຫ້ນ້ອຍ ແລະ ໂຫຼດໄວ (< 55KB)
 function compressImageFile(file, maxWidth = 540, quality = 0.75) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -44,7 +31,6 @@ function compressImageFile(file, maxWidth = 540, quality = 0.75) {
   });
 }
 
-// 1. ປ່ຽນແຖບ Superadmin
 window.switchAdminPanelTab = function(tabName) {
   window.adminCurrentTab = tabName;
   const tabs = ['analytics', 'menu', 'coupons', 'modifiers', 'payments', 'users'];
@@ -74,7 +60,7 @@ window.switchAdminPanelTab = function(tabName) {
 };
 
 // =======================================================
-// 2. ຈັດການເມນູ (ເພີ່ມໃໝ່, ແກ້ໄຂ & ບີບອັດຮູບ)
+// 1. MENU MANAGEMENT
 // =======================================================
 window.loadAdminMenus = async function() {
   const container = document.getElementById('adminMenuListGrid');
@@ -89,11 +75,9 @@ window.loadAdminMenus = async function() {
     }
 
     const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
     container.innerHTML = items.map(item => {
       const isAvail = item.isAvailable !== false;
       const price = Number(item.price || 35000);
-
       return `
         <div class="p-3.5 rounded-xl bg-surface border border-hairline flex items-center justify-between shadow-2xs font-lao gap-2">
           <div class="flex items-center gap-3 min-w-0">
@@ -108,7 +92,6 @@ window.loadAdminMenus = async function() {
               <span class="text-[11px] text-taupe capitalize">${item.category || 'coffee'} • ${formatLAK(price)}</span>
             </div>
           </div>
-
           <div class="flex items-center gap-1.5 shrink-0">
             <button type="button" onclick="window.toggleMenuItemAvailability('${item.id}', ${!isAvail})" class="px-2.5 py-1 rounded-lg border text-[11px] font-bold ${isAvail ? 'border-amber-300 text-amber-900 bg-amber-50' : 'border-emerald-300 text-emerald-900 bg-emerald-50'} cursor-pointer">
               ${isAvail ? 'ປິດ (ໝົດ)' : 'ເປີດຂາຍ'}
@@ -133,9 +116,7 @@ window.autoCheckStandardPriceVisibility = function() {
   const iced = document.getElementById('toggleAllowIced')?.checked;
   const frappe = document.getElementById('toggleAllowFrappe')?.checked;
   const box = document.getElementById('standardPriceBox');
-  if (box) {
-    box.style.opacity = (hot || iced || frappe) ? '0.65' : '1';
-  }
+  if (box) box.style.opacity = (hot || iced || frappe) ? '0.65' : '1';
 };
 
 window.openAddMenuModal = function() {
@@ -165,7 +146,6 @@ window.openEditMenuModal = function(itemId) {
   document.getElementById('priceIced').value = v.iced || '';
   document.getElementById('priceFrappe').value = v.frappe || '';
 
-  // Sync strictly ຕາມຄ່າທີ່ຕັ້ງໄວ້ໃນ menu_items
   document.getElementById('toggleAllowHot').checked = item.allowHot === true;
   document.getElementById('toggleAllowIced').checked = item.allowIced === true;
   document.getElementById('toggleAllowFrappe').checked = item.allowFrappe === true;
@@ -178,7 +158,6 @@ window.openEditMenuModal = function(itemId) {
     preview.src = item.image;
     preview.classList.remove('hidden');
   }
-
   window.autoCheckStandardPriceVisibility();
   document.getElementById('addMenuModal')?.classList.remove('hidden');
 };
@@ -205,7 +184,6 @@ window.handleMenuImageUpload = async function(event) {
 
 window.saveMenuItem = async function(event) {
   if (event) event.preventDefault();
-
   try {
     const name = document.getElementById('inputItemName')?.value.trim();
     const category = document.getElementById('inputItemCategory')?.value || 'coffee';
@@ -215,7 +193,6 @@ window.saveMenuItem = async function(event) {
     const allowHot = document.getElementById('toggleAllowHot')?.checked === true;
     const allowIced = document.getElementById('toggleAllowIced')?.checked === true;
     const allowFrappe = document.getElementById('toggleAllowFrappe')?.checked === true;
-
     const priceHot = Number(document.getElementById('priceHot')?.value) || 0;
     const priceIced = Number(document.getElementById('priceIced')?.value) || 0;
     const priceFrappe = Number(document.getElementById('priceFrappe')?.value) || 0;
@@ -231,16 +208,9 @@ window.saveMenuItem = async function(event) {
     }
 
     const menuItemData = {
-      name,
-      category,
-      desc,
-      price: priceStandard,
-      allowHot,
-      allowIced,
-      allowFrappe,
-      allowMilk,
-      allowSweetness,
-      allowTopping,
+      name, category, desc, price: priceStandard,
+      allowHot, allowIced, allowFrappe,
+      allowMilk, allowSweetness, allowTopping,
       isAvailable: true,
       variants: {
         standard: priceStandard,
@@ -251,12 +221,11 @@ window.saveMenuItem = async function(event) {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    if (imageSrc && !imageSrc.includes('data:,') && imageSrc.startsWith('data:') || imageSrc.startsWith('http')) {
+    if (imageSrc && !imageSrc.includes('data:,') && (imageSrc.startsWith('data:') || imageSrc.startsWith('http'))) {
       menuItemData.image = imageSrc;
     }
 
     const firestore = db || firebase.firestore();
-
     if (window.editingMenuItemId) {
       await firestore.collection('menu_items').doc(window.editingMenuItemId).update(menuItemData);
       showAtelierToast(`ແກ້ໄຂເມນູ "${name}" ສຳເລັດ!`);
@@ -264,7 +233,6 @@ window.saveMenuItem = async function(event) {
       await firestore.collection('menu_items').add(menuItemData);
       showAtelierToast(`ເພີ່ມເມນູ "${name}" ສຳເລັດ!`);
     }
-
     window.closeAddMenuModal();
     window.loadAdminMenus();
   } catch (e) {
@@ -280,12 +248,7 @@ window.toggleMenuItemAvailability = async function(id, status) {
 };
 
 window.deleteMenuItem = async function(id) {
-  const ok = await showAtelierConfirm({
-    title: 'ຢືນຢັນການລຶບເມນູ',
-    message: 'ທ່ານຕ້ອງການລຶບເມນູນີ້ອອກຈາກຮ້ານແທ້ບໍ່?',
-    confirmText: 'ລຶບເມນູ',
-    cancelText: 'ຍົກເລີກ'
-  });
+  const ok = await showAtelierConfirm({ title: 'ຢືນຢັນການລຶບເມນູ', message: 'ທ່ານຕ້ອງການລຶບເມນູນີ້ອອກຈາກຮ້ານແທ້ບໍ່?', confirmText: 'ລຶບເມນູ', cancelText: 'ຍົກເລີກ' });
   if (!ok) return;
   const firestore = db || firebase.firestore();
   await firestore.collection('menu_items').doc(id).delete();
@@ -294,10 +257,13 @@ window.deleteMenuItem = async function(id) {
 };
 
 // =======================================================
-// 3. ຈັດການ QR ທະນາຄານ
+// 2. QR PAYMENTS CRUD (ເພີ່ມ / ແກ້ໄຂ / ລົບ)
 // =======================================================
 window.openAddPaymentModal = function() {
+  window.editingPaymentDocId = null;
   document.getElementById('paymentForm')?.reset();
+  const title = document.querySelector('#addPaymentModal h3');
+  if (title) title.textContent = 'ເພີ່ມຊ່ອງທາງຮັບເງິນ QR';
   const preview = document.getElementById('bankQrPreview');
   if (preview) {
     preview.src = '';
@@ -306,7 +272,28 @@ window.openAddPaymentModal = function() {
   document.getElementById('addPaymentModal')?.classList.remove('hidden');
 };
 
+window.openEditPaymentModal = function(docId) {
+  const target = (paymentMethods || []).find(p => (p.docId || p.id) === docId);
+  if (!target) return;
+
+  window.editingPaymentDocId = target.docId || target.id;
+  const title = document.querySelector('#addPaymentModal h3');
+  if (title) title.textContent = `ແກ້ໄຂບັນຊີ QR: ${target.bankName}`;
+
+  document.getElementById('inputBankName').value = target.bankName || '';
+  document.getElementById('inputAccountNumber').value = target.accountNumber || '';
+  document.getElementById('inputBorderColor').value = target.borderColor || '#DC2626';
+
+  const preview = document.getElementById('bankQrPreview');
+  if (preview && target.qrImage) {
+    preview.src = target.qrImage;
+    preview.classList.remove('hidden');
+  }
+  document.getElementById('addPaymentModal')?.classList.remove('hidden');
+};
+
 window.closeAddPaymentModal = function() {
+  window.editingPaymentDocId = null;
   document.getElementById('addPaymentModal')?.classList.add('hidden');
 };
 
@@ -339,20 +326,26 @@ window.savePaymentMethod = async function(event) {
       return;
     }
 
-    const newPayment = {
-      id: 'pay_' + Date.now(),
+    const payload = {
+      id: window.editingPaymentDocId || ('pay_' + Date.now()),
       bankName,
       accountNumber,
       borderColor,
       qrImage: (qrPreview && (qrPreview.startsWith('data:image') || qrPreview.startsWith('http')))
         ? qrPreview
-        : `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(accountNumber)}`
+        : `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(accountNumber)}`,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
     const firestore = db || firebase.firestore();
-    await firestore.collection('payments').add(newPayment);
+    if (window.editingPaymentDocId) {
+      await firestore.collection('payments').doc(window.editingPaymentDocId).set(payload, { merge: true });
+      showAtelierToast(`ແກ້ໄຂບັນຊີ "${bankName}" ສຳເລັດ!`);
+    } else {
+      await firestore.collection('payments').doc(payload.id).set(payload);
+      showAtelierToast(`ເພີ່ມບັນຊີ "${bankName}" ສຳເລັດ!`);
+    }
 
-    showAtelierToast(`ເພີ່ມບັນຊີ "${bankName}" ສຳເລັດ!`);
     window.closeAddPaymentModal();
     window.loadAdminPayments();
   } catch (e) {
@@ -371,27 +364,40 @@ window.loadAdminPayments = async function() {
     const snap = await firestore.collection('payments').get();
     if (!snap.empty) {
       list = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
-    } else {
-      list = paymentMethods || DEFAULT_PAYMENTS || [];
+    } else if (typeof DEFAULT_PAYMENTS !== 'undefined') {
+      // Seed default payments ເຂົ້າ Firestore ເພື່ອໃຫ້ແກ້ໄຂ/ລຶບໄດ້ທັນທີ
+      for (const p of DEFAULT_PAYMENTS) {
+        await firestore.collection('payments').doc(p.id).set(p, { merge: true });
+      }
+      list = DEFAULT_PAYMENTS.map(p => ({ docId: p.id, ...p }));
     }
   } catch (e) {
     list = paymentMethods || DEFAULT_PAYMENTS || [];
   }
 
-  container.innerHTML = list.map(p => `
-    <div class="p-4 rounded-xl bg-surface border-2 border-dashed flex flex-col items-center justify-between space-y-2 font-lao" style="border-color: ${p.borderColor || '#16593D'};">
-      <img src="${p.qrImage}" class="w-28 h-28 object-contain rounded-lg border border-hairline bg-white p-1"/>
-      <div class="text-center">
-        <h5 class="font-bold text-[14px] text-primary">${p.bankName}</h5>
-        <span class="font-mono text-[12px] text-taupe">${p.accountNumber}</span>
+  paymentMethods = list;
+  localStorage.setItem('ladolce_payment_methods', JSON.stringify(list));
+
+  container.innerHTML = list.map(p => {
+    const docId = p.docId || p.id;
+    return `
+      <div class="p-4 rounded-xl bg-surface border-2 border-dashed flex flex-col items-center justify-between space-y-2.5 font-lao" style="border-color: ${p.borderColor || '#16593D'};">
+        <img src="${p.qrImage}" class="w-28 h-28 object-contain rounded-lg border border-hairline bg-white p-1"/>
+        <div class="text-center">
+          <h5 class="font-bold text-[14px] text-primary">${p.bankName}</h5>
+          <span class="font-mono text-[12px] text-taupe">${p.accountNumber}</span>
+        </div>
+        <div class="flex items-center gap-2 pt-1 w-full justify-center">
+          <button type="button" onclick="window.openEditPaymentModal('${docId}')" class="px-2.5 py-1 rounded-lg border border-hairline bg-surface-pure hover:border-forest-emerald text-charcoal text-[11px] font-bold cursor-pointer inline-flex items-center gap-1">
+            ${svgIcon('edit', 'w-3.5 h-3.5')} <span>ແກ້ໄຂ</span>
+          </button>
+          <button type="button" onclick="window.deletePaymentMethod('${docId}')" class="px-2.5 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-[11px] font-bold cursor-pointer inline-flex items-center gap-1">
+            ${svgIcon('trash', 'w-3.5 h-3.5')} <span>ລຶບ</span>
+          </button>
+        </div>
       </div>
-      ${p.docId ? `
-        <button type="button" onclick="window.deletePaymentMethod('${p.docId}')" class="text-red-500 hover:text-red-700 text-[11px] font-bold mt-1 cursor-pointer inline-flex items-center gap-1">
-          ${svgIcon('trash', 'w-3.5 h-3.5')} <span>ລຶບ QR ນີ້</span>
-        </button>
-      ` : ''}
-    </div>
-  `).join('');
+    `;
+  }).join('');
 };
 
 window.deletePaymentMethod = async function(docId) {
@@ -409,7 +415,286 @@ window.deletePaymentMethod = async function(docId) {
 };
 
 // =======================================================
-// 4. ANALYTICS, STORE STATUS & TAX SETTINGS
+// 3. MODIFIERS CRUD (ເພີ່ມ / ແກ້ໄຂ / ລົບ)
+// =======================================================
+window.openModifierModal = function() {
+  window.editingModifierId = null;
+  document.getElementById('modifierForm')?.reset();
+  const title = document.getElementById('modifierModalTitle');
+  if (title) title.textContent = 'ເພີ່ມຕົວເລືອກເສີມໃໝ່';
+  document.getElementById('modifierModal')?.classList.remove('hidden');
+};
+
+window.openEditModifierModal = function(modId) {
+  const target = (modifiers || []).find(m => m.id === modId);
+  if (!target) return;
+
+  window.editingModifierId = modId;
+  const title = document.getElementById('modifierModalTitle');
+  if (title) title.textContent = 'ແກ້ໄຂຕົວເລືອກເສີມ';
+
+  document.getElementById('inputModName').value = target.name || '';
+  document.getElementById('inputModGroup').value = target.group || 'milk';
+  document.getElementById('inputModPrice').value = Number(target.price || 0);
+  document.getElementById('modifierModal')?.classList.remove('hidden');
+};
+
+window.closeModifierModal = function() {
+  window.editingModifierId = null;
+  document.getElementById('modifierModal')?.classList.add('hidden');
+};
+
+window.saveModifierFromModal = async function(event) {
+  if (event) event.preventDefault();
+  const name = document.getElementById('inputModName')?.value.trim();
+  const group = document.getElementById('inputModGroup')?.value || 'milk';
+  const price = Number(document.getElementById('inputModPrice')?.value) || 0;
+
+  if (!name) {
+    showAtelierToast('ກະລຸນາປ້ອນຊື່ຕົວເລືອກ!', 'warning');
+    return;
+  }
+
+  const firestore = db || firebase.firestore();
+  const id = window.editingModifierId || ('mod_' + Date.now());
+  await firestore.collection('modifiers').doc(id).set({
+    id, name, group, price, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  showAtelierToast(window.editingModifierId ? 'ແກ້ໄຂຕົວເລືອກສຳເລັດ' : 'ເພີ່ມຕົວເລືອກເສີມສຳເລັດ');
+  window.closeModifierModal();
+  window.loadAdminModifiers();
+};
+
+window.loadAdminModifiers = async function() {
+  const container = document.getElementById('modifierAdminList');
+  if (!container) return;
+  const firestore = db || firebase.firestore();
+  let list = [];
+
+  try {
+    const snap = await firestore.collection('modifiers').get();
+    if (!snap.empty) {
+      list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } else if (typeof DEFAULT_MODIFIERS !== 'undefined') {
+      for (const m of DEFAULT_MODIFIERS) {
+        await firestore.collection('modifiers').doc(m.id).set(m, { merge: true });
+      }
+      list = DEFAULT_MODIFIERS;
+    }
+  } catch (_) {
+    list = DEFAULT_MODIFIERS || [];
+  }
+
+  modifiers = list;
+  localStorage.setItem('ladolce_modifiers', JSON.stringify(list));
+
+  container.innerHTML = list.map(m => `
+    <div class="p-3 rounded-xl bg-surface border border-hairline flex justify-between items-center text-[12px] font-lao gap-2">
+      <div class="min-w-0">
+        <span class="font-bold text-primary block truncate">${m.name}</span>
+        <span class="text-[10px] text-taupe uppercase">[${m.group}] • <strong class="font-mono text-forest-emerald">+${formatLAK(m.price)}</strong></span>
+      </div>
+      <div class="flex items-center gap-1 shrink-0">
+        <button type="button" onclick="window.openEditModifierModal('${m.id}')" class="p-1.5 rounded-lg border border-hairline bg-surface-pure hover:text-forest-emerald cursor-pointer" title="ແກ້ໄຂ">
+          ${svgIcon('edit', 'w-3.5 h-3.5')}
+        </button>
+        <button type="button" onclick="window.deleteModifier('${m.id}')" class="p-1.5 rounded-lg border border-hairline bg-surface-pure hover:text-red-600 cursor-pointer" title="ລຶບ">
+          ${svgIcon('trash', 'w-3.5 h-3.5')}
+        </button>
+      </div>
+    </div>
+  `).join('');
+};
+
+window.deleteModifier = async function(modId) {
+  const ok = await showAtelierConfirm({ title: 'ລຶບຕົວເລືອກເສີມ', message: 'ຕ້ອງການລຶບຕົວເລືອກນີ້ແທ້ບໍ່?', confirmText: 'ລຶບ', cancelText: 'ຍົກເລີກ' });
+  if (!ok) return;
+  const firestore = db || firebase.firestore();
+  await firestore.collection('modifiers').doc(modId).delete();
+  showAtelierToast('ລຶບຕົວເລືອກເສີມແລ້ວ');
+  window.loadAdminModifiers();
+};
+
+// =======================================================
+// 4. USERS & PERMISSIONS (ຈັດການຜູ້ໃຊ້ + ມອບສິດໃຫ້ STAFF)
+// =======================================================
+window.loadAdminUsers = async function() {
+  const panel = document.getElementById('adm-panel-users');
+  const tableBody = document.getElementById('adminUsersTableBody');
+  if (!tableBody) return;
+
+  // ເພີ່ມປຸ່ມ "ເພີ່ມຜູ້ໃຊ້ໃໝ່" ໃນຫົວຂໍ້ຖ້າຍັງບໍ່ມີ
+  const headerBar = panel?.querySelector('.flex.items-center.justify-between');
+  if (headerBar && !document.getElementById('btnAdminAddUser')) {
+    const addBtn = document.createElement('button');
+    addBtn.id = 'btnAdminAddUser';
+    addBtn.type = 'button';
+    addBtn.onclick = () => window.openAdminAddUserModal();
+    addBtn.className = 'px-3 py-1.5 rounded-lg bg-forest-emerald text-white text-[11px] font-bold cursor-pointer';
+    addBtn.textContent = '+ ເພີ່ມຜູ້ໃຊ້ / Staff';
+    headerBar.appendChild(addBtn);
+  }
+
+  const firestore = db || firebase.firestore();
+  const userMap = new Map();
+
+  if (typeof REGISTERED_ACCOUNTS !== 'undefined') {
+    REGISTERED_ACCOUNTS.forEach(u => userMap.set(u.email.toLowerCase(), { ...u }));
+  }
+
+  try {
+    const snap = await firestore.collection('users').get();
+    snap.docs.forEach(doc => {
+      const u = doc.data();
+      const email = (u.email || doc.id).toLowerCase();
+      userMap.set(email, { ...userMap.get(email), ...u, email });
+    });
+  } catch (_) {}
+
+  window.cachedAdminUsers = Array.from(userMap.values());
+
+  tableBody.innerHTML = window.cachedAdminUsers.map(u => {
+    const perms = u.permissions || {};
+    const isStaff = u.role === 'staff';
+    const isProtectedOwner = u.email === 'owner@ladolce.com';
+
+    return `
+      <tr class="hover:bg-surface/50 font-lao border-b border-hairline">
+        <td class="p-2.5">
+          <div class="font-bold text-primary">${u.name || 'User'}</div>
+          <div class="text-[10px] text-taupe font-mono">${u.phone || '-'}</div>
+        </td>
+        <td class="p-2.5 font-mono text-taupe text-[11px]">${u.email}</td>
+        <td class="p-2.5 space-y-1.5">
+          <select onchange="window.updateUserRole('${u.email}', this.value)" ${isProtectedOwner ? 'disabled' : ''}
+                  class="rounded-lg border border-hairline bg-surface-pure text-[11px] font-bold py-1 px-2 cursor-pointer">
+            <option value="customer" ${u.role === 'customer' ? 'selected' : ''}>customer (ລູກຄ້າ)</option>
+            <option value="staff" ${u.role === 'staff' ? 'selected' : ''}>staff (ພະນັກງານ)</option>
+            <option value="superadmin" ${u.role === 'superadmin' ? 'selected' : ''}>superadmin (ເຈົ້າຂອງ)</option>
+          </select>
+
+          ${isStaff ? `
+            <div class="flex flex-wrap gap-2 pt-1">
+              <label class="inline-flex items-center gap-1 text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-900 px-2 py-0.5 rounded cursor-pointer">
+                <input type="checkbox" ${perms.canToggleStore ? 'checked' : ''}
+                       onchange="window.toggleStaffPermission('${u.email}', 'canToggleStore', this.checked)"
+                       class="rounded text-forest-emerald focus:ring-0"/>
+                <span>ສິດເປີດ/ປິດຮ້ານ</span>
+              </label>
+              <label class="inline-flex items-center gap-1 text-[10px] bg-amber-50 border border-amber-200 text-amber-900 px-2 py-0.5 rounded cursor-pointer">
+                <input type="checkbox" ${perms.canToggleMenu ? 'checked' : ''}
+                       onchange="window.toggleStaffPermission('${u.email}', 'canToggleMenu', this.checked)"
+                       class="rounded text-forest-emerald focus:ring-0"/>
+                <span>ສິດປິດເມນູ Run Out</span>
+              </label>
+            </div>
+          ` : ''}
+        </td>
+        <td class="p-2.5 text-right">
+          ${!isProtectedOwner ? `
+            <button type="button" onclick="window.deleteAdminUser('${u.email}')" class="p-1.5 rounded-lg border border-hairline hover:bg-red-50 text-red-600 cursor-pointer" title="ລຶບຜູ້ໃຊ້">
+              ${svgIcon('trash', 'w-3.5 h-3.5')}
+            </button>
+          ` : `<span class="text-[10px] text-taupe font-bold">Owner ຫຼັກ</span>`}
+        </td>
+      </tr>
+    `;
+  }).join('');
+};
+
+window.updateUserRole = async function(email, newRole) {
+  const u = window.cachedAdminUsers.find(x => x.email === email) || { email };
+  const firestore = db || firebase.firestore();
+  await firestore.collection('users').doc(email).set({
+    ...u,
+    role: newRole,
+    permissions: u.permissions || { canToggleStore: false, canToggleMenu: false },
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+  showAtelierToast(`ປ່ຽນສິດ ${email} ເປັນ ${newRole} ແລ້ວ`);
+  window.loadAdminUsers();
+};
+
+window.toggleStaffPermission = async function(email, permKey, value) {
+  const u = window.cachedAdminUsers.find(x => x.email === email) || { email, role: 'staff' };
+  const nextPerms = { ...(u.permissions || {}), [permKey]: value };
+  const firestore = db || firebase.firestore();
+  await firestore.collection('users').doc(email).set({
+    ...u,
+    permissions: nextPerms,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+  showAtelierToast(value ? 'ມອບສິດໃຫ້ Staff ສຳເລັດ' : 'ຖອນສິດ Staff ແລ້ວ');
+  window.loadAdminUsers();
+};
+
+window.deleteAdminUser = async function(email) {
+  const ok = await showAtelierConfirm({ title: 'ລຶບຜູ້ໃຊ້', message: `ລຶບບັນຊີ ${email} ອອກຈາກລະບົບແທ້ບໍ່?`, confirmText: 'ລຶບ', cancelText: 'ຍົກເລີກ' });
+  if (!ok) return;
+  const firestore = db || firebase.firestore();
+  await firestore.collection('users').doc(email).delete();
+  showAtelierToast('ລຶບບັນຊີຜູ້ໃຊ້ແລ້ວ');
+  window.loadAdminUsers();
+};
+
+window.openAdminAddUserModal = function() {
+  let modal = document.getElementById('adminAddUserModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'adminAddUserModal';
+    modal.className = 'fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4';
+    modal.innerHTML = `
+      <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-5 shadow-2xl space-y-4">
+        <div class="flex justify-between items-center border-b border-hairline pb-2">
+          <h3 class="font-serif-title text-[17px] text-primary font-bold">ເພີ່ມຜູ້ໃຊ້ / ພະນັກງານໃໝ່</h3>
+          <button type="button" onclick="document.getElementById('adminAddUserModal').classList.add('hidden')" class="w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-taupe cursor-pointer">${svgIcon('close', 'w-4 h-4')}</button>
+        </div>
+        <form onsubmit="saveAdminNewUser(event)" class="space-y-3 text-[12px] font-lao">
+          <div><label class="block text-taupe mb-1">ຊື່:</label><input required id="newUserName" type="text" class="w-full rounded-lg border border-hairline p-2"/></div>
+          <div><label class="block text-taupe mb-1">ອີເມວ:</label><input required id="newUserEmail" type="email" class="w-full rounded-lg border border-hairline p-2"/></div>
+          <div><label class="block text-taupe mb-1">ລະຫັດຜ່ານ:</label><input required id="newUserPass" type="text" value="123" class="w-full rounded-lg border border-hairline p-2"/></div>
+          <div><label class="block text-taupe mb-1">ເບີໂທ:</label><input id="newUserPhone" type="tel" placeholder="+856 20 ..." class="w-full rounded-lg border border-hairline p-2"/></div>
+          <div>
+            <label class="block text-taupe mb-1">ຕຳແໜ່ງ (Role):</label>
+            <select id="newUserRole" class="w-full rounded-lg border border-hairline p-2">
+              <option value="staff">staff (ພະນັກງານ)</option>
+              <option value="customer">customer (ລູກຄ້າ)</option>
+              <option value="superadmin">superadmin (ເຈົ້າຂອງ)</option>
+            </select>
+          </div>
+          <button type="submit" class="w-full py-2.5 rounded-lg bg-forest-emerald text-white font-bold cursor-pointer">ບັນທຶກຜູ້ໃຊ້</button>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  modal.classList.remove('hidden');
+};
+
+window.saveAdminNewUser = async function(event) {
+  if (event) event.preventDefault();
+  const name = document.getElementById('newUserName')?.value.trim();
+  const email = document.getElementById('newUserEmail')?.value.trim().toLowerCase();
+  const password = document.getElementById('newUserPass')?.value.trim();
+  const phone = document.getElementById('newUserPhone')?.value.trim() || '';
+  const role = document.getElementById('newUserRole')?.value || 'staff';
+
+  if (!name || !email || !password) return;
+  const firestore = db || firebase.firestore();
+  await firestore.collection('users').doc(email).set({
+    name, email, password, phone, role,
+    permissions: { canToggleStore: false, canToggleMenu: false },
+    createdAt: new Date().toISOString()
+  }, { merge: true });
+
+  document.getElementById('adminAddUserModal')?.classList.add('hidden');
+  showAtelierToast(`ເພີ່ມບັນຊີ ${email} ສຳເລັດ!`);
+  window.loadAdminUsers();
+};
+
+// =======================================================
+// 5. ANALYTICS, STORE STATUS & BRANDING SYNC
 // =======================================================
 window.setSalesFilter = function(range) {
   window.salesDateFilter = range;
@@ -444,8 +729,8 @@ window.loadAdminAnalytics = async function() {
 
     const rowsHtml = filteredDocs.map(o => {
       const isExcluded = o.status === 'cancelled' || o.status === 'rejected';
-      const amount = Number(o.totalAmount || 0);
-      const isQr = o.paymentType === 'qr' || Boolean(o.slipImage) || Boolean(o.slipUrl);
+      const amount = Number(o.totalAmount ?? o.total ?? 0);
+      const isQr = o.paymentType === 'qr' || Boolean(o.slipImage) || Boolean(o.slipUrl) || o.paymentType !== 'cash';
 
       if (!isExcluded) {
         totalSales += amount;
@@ -466,8 +751,8 @@ window.loadAdminAnalytics = async function() {
           <td class="p-2.5 font-medium text-[12px]">${o.customerName || 'Guest'}</td>
           <td class="p-2.5 text-[11px] text-taupe truncate max-w-[200px]">${itemsSummary || 'ບໍ່ມີລາຍການ'}</td>
           <td class="p-2.5 text-[11px]">
-            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isExcluded ? 'bg-red-50 text-red-700' : (isQr ? 'bg-blue-50 text-blue-800' : 'bg-gray-100 text-gray-800')}">
-              ${isExcluded ? 'ປະຕິເສດ/ຍົກເລີກ' : (isQr ? (o.paymentMethod || 'QR ໂອນ') : 'ເງິນສົດ')}
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isExcluded ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-800'}">
+              ${isExcluded ? 'ປະຕິເສດ/ຍົກເລີກ' : (o.paymentMethod || 'QR ໂອນ')}
             </span>
           </td>
           <td class="p-2.5 font-mono text-forest-emerald text-right font-bold text-[12px]">${formatLAK(amount)}</td>
@@ -513,14 +798,26 @@ window.updateStoreStatusUI = function() {
   }
 };
 
-window.toggleStoreStatus = function() {
-  storeSettings.isStoreOpen = !(storeSettings?.isStoreOpen !== false);
+window.toggleStoreStatus = async function() {
+  const nextOpen = !(storeSettings?.isStoreOpen !== false);
+  storeSettings.isStoreOpen = nextOpen;
   localStorage.setItem('ladolce_store_settings', JSON.stringify(storeSettings));
   window.updateStoreStatusUI();
-  showAtelierToast(storeSettings.isStoreOpen ? 'ເປີດຮັບອໍເດີ້ແລ້ວ' : 'ປິດຮັບອໍເດີ້ຊົ່ວຄາວ', storeSettings.isStoreOpen ? 'success' : 'warning');
+  if (typeof renderStaffStoreControl === 'function') renderStaffStoreControl();
+
+  try {
+    const firestore = db || firebase.firestore();
+    await firestore.collection('settings').doc('store').set({
+      isStoreOpen: nextOpen,
+      taxRatePercent: Number(storeSettings?.taxRatePercent || 0),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  } catch (_) {}
+
+  showAtelierToast(nextOpen ? 'ເປີດຮັບອໍເດີ້ແລ້ວ' : 'ປິດຮັບອໍເດີ້ຊົ່ວຄາວ', nextOpen ? 'success' : 'warning');
 };
 
-window.updateTaxSettings = function() {
+window.updateTaxSettings = async function() {
   const val = prompt('ກຳນົດອັດຕາອາກອນ Tax (%) ເຊັ່ນ 0, 7, 10:', String(storeSettings?.taxRatePercent || 0));
   if (val === null) return;
   const num = Math.max(0, Math.min(50, Number(val) || 0));
@@ -528,12 +825,14 @@ window.updateTaxSettings = function() {
   localStorage.setItem('ladolce_store_settings', JSON.stringify(storeSettings));
   window.updateStoreStatusUI();
   if (typeof calculateCartSummary === 'function') calculateCartSummary();
+  try {
+    const firestore = db || firebase.firestore();
+    await firestore.collection('settings').doc('store').set({ taxRatePercent: num }, { merge: true });
+  } catch (_) {}
   showAtelierToast(`ຕັ້ງຄ່າອາກອນເປັນ ${num}% ແລ້ວ`);
 };
 
-// =======================================================
-// 5. COUPONS, MODIFIERS, USERS & BRANDING
-// =======================================================
+// COUPONS
 window.openAddCouponModal = function() {
   document.getElementById('couponForm')?.reset();
   document.getElementById('addCouponModal')?.classList.remove('hidden');
@@ -541,7 +840,6 @@ window.openAddCouponModal = function() {
 window.closeAddCouponModal = function() {
   document.getElementById('addCouponModal')?.classList.add('hidden');
 };
-
 window.saveCouponFromModal = async function(event) {
   if (event) event.preventDefault();
   const code = document.getElementById('inputCpnCode')?.value.trim().toUpperCase();
@@ -560,17 +858,13 @@ window.saveCouponFromModal = async function(event) {
 
   const firestore = db || firebase.firestore();
   await firestore.collection('coupons').doc(code).set({
-    code,
-    type,
-    value,
+    code, type, value,
     maxDiscount: maxDiscount || null,
     minOrder: minOrder || 0,
     totalBudget: totalBudget || null,
     usedBudget: 0,
     expiryDate: expiryDate || null,
-    desc,
-    isActive: true,
-    createdAt: new Date().toISOString()
+    desc, isActive: true, createdAt: new Date().toISOString()
   }, { merge: true });
 
   showAtelierToast(`ສ້າງຄູປອງ ${code} ສຳເລັດ!`);
@@ -616,77 +910,70 @@ window.deleteCoupon = async function(code) {
   window.loadAdminCoupons();
 };
 
-window.openModifierModal = function() {
-  document.getElementById('modifierForm')?.reset();
-  document.getElementById('modifierModal')?.classList.remove('hidden');
-};
-window.closeModifierModal = function() {
-  document.getElementById('modifierModal')?.classList.add('hidden');
-};
-window.saveModifierFromModal = async function(event) {
-  if (event) event.preventDefault();
-  const name = document.getElementById('inputModName')?.value.trim();
-  const group = document.getElementById('inputModGroup')?.value || 'milk';
-  const price = Number(document.getElementById('inputModPrice')?.value) || 0;
-  const firestore = db || firebase.firestore();
-  await firestore.collection('modifiers').add({ name, group, price, createdAt: new Date() });
-  showAtelierToast('ເພີ່ມຕົວເລືອກເສີມສຳເລັດ');
-  window.closeModifierModal();
-  window.loadAdminModifiers();
-};
-
-window.loadAdminModifiers = async function() {
-  const container = document.getElementById('modifierAdminList');
-  if (!container) return;
-  const firestore = db || firebase.firestore();
-  const snap = await firestore.collection('modifiers').get();
-  const list = snap.empty ? (DEFAULT_MODIFIERS || []) : snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  container.innerHTML = list.map(m => `
-    <div class="p-3 rounded-lg bg-surface border border-hairline flex justify-between items-center text-[12px] font-lao">
-      <div><span class="font-bold text-primary block">${m.name}</span><span class="text-[10px] text-taupe uppercase">[${m.group}]</span></div>
-      <span class="font-mono font-bold text-forest-emerald">+${formatLAK(m.price)}</span>
-    </div>
-  `).join('');
-};
-
-window.loadAdminUsers = async function() {
-  const tableBody = document.getElementById('adminUsersTableBody');
-  if (!tableBody) return;
-  const firestore = db || firebase.firestore();
-  let users = [...(typeof REGISTERED_ACCOUNTS !== 'undefined' ? REGISTERED_ACCOUNTS : [])];
-
-  try {
-    const snap = await firestore.collection('users').get();
-    snap.docs.forEach(doc => {
-      const u = doc.data();
-      if (!users.some(x => x.email === u.email)) users.push(u);
-    });
-  } catch (_) {}
-
-  tableBody.innerHTML = users.map(u => `
-    <tr class="hover:bg-surface/50 font-lao border-b border-hairline">
-      <td class="p-2.5 font-bold">${u.name}</td>
-      <td class="p-2.5 font-mono text-taupe text-[11px]">${u.email}</td>
-      <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-100 text-purple-900">${u.role}</span></td>
-      <td class="p-2.5 text-right font-mono text-[11px] text-taupe">${u.phone || '-'}</td>
-    </tr>
-  `).join('');
-};
-
+// BRANDING & LOGO INITIALS SYNC
 window.openBrandModal = function() {
-  document.getElementById('brandSettingsModal')?.classList.remove('hidden');
+  const modal = document.getElementById('brandSettingsModal');
+  const nameInput = document.getElementById('inputCafeName');
+  const branchInput = document.getElementById('inputCafeBranch');
+
+  if (nameInput) nameInput.value = brandSettings?.cafeName || 'LA DOLCE';
+  if (branchInput) branchInput.value = brandSettings?.cafeBranch || 'Downtown Flagship Roastery';
+
+  // ເພີ່ມຊ່ອງໂຕຫຍໍ້ໂລໂກ້ (Logo Initials) ອັດຕະໂນມັດ
+  if (modal && !document.getElementById('inputCafeInitials')) {
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <label class="block text-taupe mb-1 font-bold">ໂຕຫຍໍ້ໂລໂກ້ (Logo Initials — ເຊັ່ນ LD, ALS):</label>
+      <input id="inputCafeInitials" type="text" maxlength="4" placeholder="LD" class="w-full rounded-lg border border-hairline p-2 font-serif-title font-bold uppercase text-[14px]"/>
+    `;
+    branchInput?.parentElement?.after(div);
+    nameInput?.addEventListener('input', () => {
+      const initEl = document.getElementById('inputCafeInitials');
+      if (initEl && !initEl.dataset.manual) {
+        initEl.value = generateBrandInitials(nameInput.value);
+      }
+    });
+    document.getElementById('inputCafeInitials')?.addEventListener('input', (e) => {
+      e.target.dataset.manual = e.target.value.trim() ? '1' : '';
+    });
+  }
+
+  const initInput = document.getElementById('inputCafeInitials');
+  if (initInput) {
+    initInput.dataset.manual = '';
+    initInput.value = brandSettings?.brandInitials || generateBrandInitials(nameInput?.value || 'LA DOLCE');
+  }
+
+  modal?.classList.remove('hidden');
 };
+
 window.closeBrandModal = function() {
   document.getElementById('brandSettingsModal')?.classList.add('hidden');
 };
-window.saveBrandSettings = function(event) {
+
+window.saveBrandSettings = async function(event) {
   if (event) event.preventDefault();
-  const name = document.getElementById('inputCafeName')?.value.trim();
-  const branch = document.getElementById('inputCafeBranch')?.value.trim();
-  if (name) document.querySelectorAll('.brand-name-display').forEach(el => el.textContent = name);
-  if (branch) document.querySelectorAll('.brand-branch-display').forEach(el => el.textContent = branch);
+  const cafeName = document.getElementById('inputCafeName')?.value.trim() || 'LA DOLCE';
+  const cafeBranch = document.getElementById('inputCafeBranch')?.value.trim() || 'Downtown Flagship Roastery';
+  const customInit = document.getElementById('inputCafeInitials')?.value.trim().toUpperCase();
+  const brandInitials = customInit || generateBrandInitials(cafeName);
+
+  brandSettings = { cafeName, cafeBranch, brandInitials };
+  localStorage.setItem('ladolce_brand_settings', JSON.stringify(brandSettings));
+  applyBrandSettingsUI();
+
+  try {
+    const firestore = db || firebase.firestore();
+    await firestore.collection('settings').doc('brand').set({
+      ...brandSettings,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  } catch (e) {
+    console.warn('Brand save warning:', e);
+  }
+
   window.closeBrandModal();
-  showAtelierToast('ອັບເດດຊື່ຮ້ານຮຽບຮ້ອຍແລ້ວ!');
+  showAtelierToast(`ອັບເດດຊື່ຮ້ານ "${cafeName}" (${brandInitials}) ທົ່ວທັງລະບົບແລ້ວ!`);
 };
 
 window.loadAllOwnerData = function() {
