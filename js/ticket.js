@@ -1,10 +1,10 @@
 // =======================================================
-// LA DOLCE — CUSTOMER MULTI-TICKET ENGINE (PURE SVG)
+// LA DOLCE — CUSTOMER MULTI-TICKET ENGINE (INSTANT SYNC)
 // =======================================================
 
-window.customerOrderListeners = [];
 window.notifiedReadyList = JSON.parse(localStorage.getItem('notified_ready_orders') || '[]');
 window.notifiedRejectedList = JSON.parse(localStorage.getItem('notified_rejected_orders') || '[]');
+window.ticketFallbackUnsubscribers = [];
 
 window.renderCustomerTicket = function() {
   const container = document.getElementById('activeTicketContainer');
@@ -12,14 +12,50 @@ window.renderCustomerTicket = function() {
 
   const orderIds = JSON.parse(localStorage.getItem('customer_order_ids') || '[]');
   const legacyId = localStorage.getItem('activeOrderId');
-  if (legacyId && !orderIds.includes(legacyId)) {
-    orderIds.unshift(legacyId);
+  if (legacyId && !orderIds.includes(legacyId)) orderIds.unshift(legacyId);
+
+  const dismissedIds = JSON.parse(localStorage.getItem('dismissed_customer_orders') || '[]');
+  const myEmail = currentUser?.email ? currentUser.email.toLowerCase() : null;
+  const myPhone = currentUser?.phone ? currentUser.phone.replace(/\s+/g, '') : null;
+
+  // ດຶງອໍເດີ້ຂອງລູກຄ້າຈາກ Live Stream (`orders` ໃນ app.js)
+  const liveOrders = Array.isArray(orders) ? orders : [];
+  const matchedOrders = liveOrders.filter(o => {
+    if (!o || dismissedIds.includes(o.id)) return false;
+    if (orderIds.includes(o.id)) return true;
+
+    const matchEmail = myEmail && o.customerEmail && o.customerEmail.toLowerCase() === myEmail;
+    const matchPhone = myPhone && o.customerPhone && o.customerPhone.replace(/\s+/g, '') === myPhone;
+    const isActiveStatus = ['pending', 'preparing', 'ready', 'rejected'].includes(o.status);
+    return (matchEmail || matchPhone) && isActiveStatus;
+  });
+
+  // ຖ້າຍັງມີ orderId ໃນ localStorage ແຕ່ liveOrders ຍັງໂຫຼດບໍ່ທັນມາ -> ດຶງກົງຈາກ Firestore ໃຫ້ກ່ອນ
+  if (matchedOrders.length === 0 && orderIds.length > 0 && liveOrders.length === 0) {
+    const firestore = db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+    if (firestore) {
+      window.ticketFallbackUnsubscribers.forEach(u => u());
+      window.ticketFallbackUnsubscribers = [];
+      container.innerHTML = `<div class="space-y-4" id="customerTicketsList"><div class="p-6 text-center text-taupe text-[12px]">ກຳລັງໂຫຼດປີ້ອໍເດີ້...</div></div>`;
+      const fallbackMap = {};
+      orderIds.forEach(id => {
+        if (dismissedIds.includes(id)) return;
+        const u = firestore.collection('orders').doc(id).onSnapshot(doc => {
+          if (!doc.exists) return;
+          fallbackMap[id] = { id: doc.id, ...doc.data() };
+          renderTicketCardsList(Object.values(fallbackMap), container);
+        });
+        window.ticketFallbackUnsubscribers.push(u);
+      });
+      return;
+    }
   }
 
-  window.customerOrderListeners.forEach(unsub => unsub());
-  window.customerOrderListeners = [];
+  renderTicketCardsList(matchedOrders, container);
+};
 
-  if (orderIds.length === 0) {
+function renderTicketCardsList(tickets, container) {
+  if (!tickets || tickets.length === 0) {
     document.getElementById('bottomNavLiveOrderPulse')?.classList.add('hidden');
     container.innerHTML = `
       <div class="p-8 text-center bg-surface-pure rounded-2xl border border-hairline space-y-3 font-lao">
@@ -35,51 +71,37 @@ window.renderCustomerTicket = function() {
   }
 
   document.getElementById('bottomNavLiveOrderPulse')?.classList.remove('hidden');
-  container.innerHTML = `<div class="space-y-4" id="customerTicketsList"></div>`;
-  const listWrapper = document.getElementById('customerTicketsList');
-  const firestore = db || firebase.firestore();
 
-  orderIds.forEach(orderId => {
-    const unsub = firestore.collection('orders').doc(orderId).onSnapshot(doc => {
-      if (!doc.exists) return;
-      const order = { id: doc.id, ...doc.data() };
+  tickets.forEach(order => {
+    if (order.status === 'ready' && !window.notifiedReadyList.includes(order.id)) {
+      window.notifiedReadyList.push(order.id);
+      localStorage.setItem('notified_ready_orders', JSON.stringify(window.notifiedReadyList));
+      if (typeof playChime === 'function') playChime(true);
+      window.triggerCustomerDrinkReadyAlert(order.orderCode || order.id.slice(0, 6).toUpperCase());
+    }
 
-      if (order.status === 'ready' && !window.notifiedReadyList.includes(order.id)) {
-        window.notifiedReadyList.push(order.id);
-        localStorage.setItem('notified_ready_orders', JSON.stringify(window.notifiedReadyList));
-        window.triggerCustomerDrinkReadyAlert(order.orderCode);
+    if ((order.status === 'rejected' || order.status === 'cancelled') && !window.notifiedRejectedList.includes(order.id)) {
+      window.notifiedRejectedList.push(order.id);
+      localStorage.setItem('notified_rejected_orders', JSON.stringify(window.notifiedRejectedList));
+      if (typeof showAtelierAlert === 'function') {
+        showAtelierAlert({
+          title: `ອໍເດີ້ #${order.orderCode || ''} ຖືກປະຕິເສດ`,
+          message: `ເຫດຜົນ: ${order.rejectionReason || 'ເຄື່ອງດື່ມບໍ່ພ້ອມໃຫ້ບໍລິການ'}. ທາງຮ້ານຈະທຳການຣີຟັນເງິນຄືນໃຫ້ທ່ານ.`,
+          type: 'error',
+          confirmText: 'ເຂົ້າໃຈແລ້ວ'
+        });
       }
-
-      if ((order.status === 'rejected' || order.status === 'cancelled') && !window.notifiedRejectedList.includes(order.id)) {
-        window.notifiedRejectedList.push(order.id);
-        localStorage.setItem('notified_rejected_orders', JSON.stringify(window.notifiedRejectedList));
-        if (typeof showAtelierAlert === 'function') {
-          showAtelierAlert({
-            title: `ອໍເດີ້ #${order.orderCode || ''} ຖືກປະຕິເສດ`,
-            message: `ເຫດຜົນ: ${order.rejectionReason || 'ເຄື່ອງດື່ມບໍ່ພ້ອມໃຫ້ບໍລິການ'}. ທາງຮ້ານຈະທຳການຣີຟັນເງິນຄືນໃຫ້ທ່ານ.`,
-            type: 'error',
-            confirmText: 'ເຂົ້າໃຈແລ້ວ'
-          });
-        }
-      }
-
-      renderSingleCustomerTicket(order, listWrapper);
-    });
-    window.customerOrderListeners.push(unsub);
+    }
   });
-};
 
-function renderSingleCustomerTicket(order, container) {
-  let card = document.getElementById(`ticket-${order.id}`);
-  if (!card) {
-    card = document.createElement('div');
-    card.id = `ticket-${order.id}`;
-    container.appendChild(card);
-  }
+  container.innerHTML = `<div class="space-y-4">${tickets.map(buildSingleCustomerTicketHtml).join('')}</div>`;
+}
 
+function buildSingleCustomerTicketHtml(order) {
   const cafeName = (typeof brandSettings !== 'undefined' && brandSettings?.cafeName) ? brandSettings.cafeName : 'LA DOLCE';
   const isRejected = order.status === 'rejected' || order.status === 'cancelled';
   const isCompleted = order.status === 'completed';
+  const displayCode = order.orderCode || (order.id ? order.id.slice(0, 6).toUpperCase() : 'ORDER');
 
   const statusMeta = {
     pending: {
@@ -127,17 +149,17 @@ function renderSingleCustomerTicket(order, container) {
   }[order.status] || {
     badgeClass: 'bg-gray-100 text-gray-700 border-gray-300',
     icon: 'info',
-    label: order.status,
+    label: order.status || 'pending',
     title: '',
     step: 1
   };
 
-  card.innerHTML = `
-    <div class="p-5 rounded-2xl bg-surface-pure border ${order.status === 'ready' ? 'border-2 border-emerald-500 shadow-lg' : (isRejected ? 'border-2 border-red-300' : 'border-hairline shadow-xs')} space-y-4 font-lao">
+  return `
+    <div id="ticket-${order.id}" class="p-5 rounded-2xl bg-surface-pure border ${order.status === 'ready' ? 'border-2 border-emerald-500 shadow-lg' : (isRejected ? 'border-2 border-red-300' : 'border-hairline shadow-xs')} space-y-4 font-lao">
       <div class="flex items-center justify-between pb-3 border-b border-hairline gap-2">
         <div>
           <span class="text-[10px] uppercase tracking-wider text-taupe font-bold">${cafeName} • ປີ້ຮັບເຄື່ອງດື່ມ</span>
-          <h3 class="font-serif-title text-[20px] text-primary font-bold">#${order.orderCode || order.id.slice(0, 6).toUpperCase()}</h3>
+          <h3 class="font-serif-title text-[20px] text-primary font-bold">#${displayCode}</h3>
         </div>
         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${statusMeta.badgeClass}">
           ${svgIcon(statusMeta.icon, 'w-3.5 h-3.5')}
@@ -233,6 +255,11 @@ window.dismissCustomerTicket = function(orderId) {
   let list = JSON.parse(localStorage.getItem('customer_order_ids') || '[]');
   list = list.filter(id => id !== orderId);
   localStorage.setItem('customer_order_ids', JSON.stringify(list));
+
+  const dismissed = JSON.parse(localStorage.getItem('dismissed_customer_orders') || '[]');
+  if (!dismissed.includes(orderId)) dismissed.push(orderId);
+  localStorage.setItem('dismissed_customer_orders', JSON.stringify(dismissed));
+
   if (localStorage.getItem('activeOrderId') === orderId) {
     localStorage.removeItem('activeOrderId');
   }
