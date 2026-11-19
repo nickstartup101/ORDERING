@@ -1,5 +1,5 @@
 // =======================================================
-// LA DOLCE — CORE CONFIGURATION, SVG ICONS & FIRESTORE
+// LA DOLCE — CORE CONFIGURATION, BRAND SYNC & SVG ICONS
 // =======================================================
 
 const firebaseConfig = {
@@ -20,8 +20,7 @@ try {
   if (typeof firebase !== "undefined") {
     firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
-    // ປ້ອງກັນ HTTP2 Error ເທິງ Cloudflare Workers
-    db.settings({ experimentalForceLongPolling: true });
+    db.settings({ experimentalForceLongPolling: true, merge: true });
     auth = firebase.auth();
     isFirebaseReady = true;
     console.log("Cloud Firestore Initialized Successfully (LongPolling Enabled)");
@@ -31,7 +30,7 @@ try {
 }
 
 // =======================================================
-// PURE SVG VECTOR ICON SYSTEM (NO EMOJI / NO ICON FONT)
+// PURE SVG VECTOR ICON SYSTEM
 // =======================================================
 const ICONS = {
   storefront: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 3 0"/><path d="M5 11.5V20h14v-8.5"/><path d="M9 20v-5h6v5"/></svg>`,
@@ -59,7 +58,16 @@ const ICONS = {
   coupon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>`,
   chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
   logout: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
-  spinner: `<svg class="animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M22 12a10 10 0 0 0-10-10" stroke-linecap="round"/></svg>`
+  spinner: `<svg class="animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M22 12a10 10 0 0 0-10-10" stroke-linecap="round"/></svg>`,
+  edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+  store: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 3 0"/><path d="M5 11.5V20h14v-8.5"/></svg>`,
+  barChart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>`,
+  menuList: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
+  tune: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>`,
+  users: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+  gift: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>`,
+  badge: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h2"/><path d="M15 12h2"/><path d="M7 16h10"/></svg>`
 };
 
 function svgIcon(name, className = "w-4 h-4") {
@@ -68,9 +76,9 @@ function svgIcon(name, className = "w-4 h-4") {
 }
 
 const REGISTERED_ACCOUNTS = [
-  { email: "customer@ladolce.com", password: "123", name: "Nick Test", role: "customer", phone: "+856 20 5512 8899" },
-  { email: "staff@ladolce.com", password: "123", name: "Cashiers (Barista Lead)", role: "staff", phone: "+856 20 7788 9900" },
-  { email: "owner@ladolce.com", password: "123", name: "Namfon (Superadmin)", role: "superadmin", phone: "+856 20 9900 1122" }
+  { email: "customer@ladolce.com", password: "123", name: "Nick Test", role: "customer", phone: "+856 20 5512 8899", permissions: {} },
+  { email: "staff@ladolce.com", password: "123", name: "Cashiers (Barista Lead)", role: "staff", phone: "+856 20 7788 9900", permissions: { canToggleStore: false, canToggleMenu: false } },
+  { email: "owner@ladolce.com", password: "123", name: "Namfon (Superadmin)", role: "superadmin", phone: "+856 20 9900 1122", permissions: { canToggleStore: true, canToggleMenu: true } }
 ];
 
 const DEFAULT_PAYMENTS = [
@@ -93,19 +101,90 @@ let cart = JSON.parse(localStorage.getItem('ladolce_cart')) || [];
 let currentUser = JSON.parse(localStorage.getItem('ladolce_user')) || null;
 let userAccounts = JSON.parse(localStorage.getItem('ladolce_accounts')) || REGISTERED_ACCOUNTS;
 let storeSettings = JSON.parse(localStorage.getItem('ladolce_store_settings')) || { isStoreOpen: true, taxRatePercent: 0 };
+let brandSettings = JSON.parse(localStorage.getItem('ladolce_brand_settings')) || {
+  cafeName: 'LA DOLCE',
+  cafeBranch: 'Downtown Flagship Roastery',
+  brandInitials: 'LD'
+};
 let cloudUsers = [];
 
-// Sync ຊ່ອງທາງການຊຳລະເງິນຈາກ Firestore `payments` ແບບ Real-time
+// ສ້າງໂຕຫຍໍ້ໂລໂກ້ອັດຕະໂນມັດ (La Dolce = LD, Alisa cafe = ALS)
+function generateBrandInitials(name) {
+  const clean = String(name || '').trim();
+  if (!clean) return 'LD';
+  const ignoreWords = new Set(['cafe', 'coffee', 'roastery', 'atelier', 'shop', 'house', 'bar', 'tea']);
+  const allWords = clean.split(/\s+/).filter(Boolean);
+  const meaningful = allWords.filter(w => !ignoreWords.has(w.toLowerCase()));
+  const words = meaningful.length > 0 ? meaningful : allWords;
+
+  if (words.length >= 2) {
+    return words.slice(0, 3).map(w => w.charAt(0).toUpperCase()).join('');
+  }
+  const word = words[0].replace(/[^a-zA-Z0-9\u0E80-\u0EFF]/g, '');
+  if (word.length <= 3) return word.toUpperCase();
+  const first = word.charAt(0);
+  const restConsonants = word.slice(1).replace(/[aeiouAEIOU]/g, '');
+  const initials = (first + restConsonants).slice(0, 3);
+  return (initials.length >= 2 ? initials : word.slice(0, 3)).toUpperCase();
+}
+
+function applyBrandSettingsUI() {
+  const cafeName = brandSettings?.cafeName || 'LA DOLCE';
+  const cafeBranch = brandSettings?.cafeBranch || 'Downtown Flagship Roastery';
+  const initials = brandSettings?.brandInitials || generateBrandInitials(cafeName);
+
+  document.title = `${cafeName} — ${cafeBranch}`;
+  document.querySelectorAll('.brand-name-display').forEach(el => el.textContent = cafeName);
+  document.querySelectorAll('.brand-branch-display').forEach(el => el.textContent = cafeBranch);
+  document.querySelectorAll('.brand-initial-display').forEach(el => {
+    el.textContent = initials;
+    el.style.fontSize = initials.length >= 3 ? '11px' : '15px';
+  });
+
+  if (typeof renderStaffHeaderBrand === 'function') renderStaffHeaderBrand();
+  if (typeof renderCustomerProfile === 'function') renderCustomerProfile();
+  if (typeof renderCustomerTicket === 'function') renderCustomerTicket();
+}
+
+// Sync Real-time ຈາກ Firestore: payments, settings/brand, settings/store
 if (db) {
   db.collection('payments').onSnapshot(snap => {
     if (!snap.empty) {
-      paymentMethods = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      paymentMethods = snap.docs.map(d => ({ docId: d.id, id: d.data().id || d.id, ...d.data() }));
       localStorage.setItem('ladolce_payment_methods', JSON.stringify(paymentMethods));
-      if (typeof renderCustomerPaymentOptions === 'function') {
-        renderCustomerPaymentOptions();
-      }
+      if (typeof renderCustomerPaymentOptions === 'function') renderCustomerPaymentOptions();
+      if (typeof loadAdminPayments === 'function' && window.adminCurrentTab === 'payments') loadAdminPayments();
     }
   }, err => console.warn("Payments sync error:", err));
+
+  db.collection('settings').doc('brand').onSnapshot(doc => {
+    if (doc.exists) {
+      const d = doc.data();
+      brandSettings = {
+        cafeName: d.cafeName || 'LA DOLCE',
+        cafeBranch: d.cafeBranch || 'Downtown Flagship Roastery',
+        brandInitials: d.brandInitials || generateBrandInitials(d.cafeName || 'LA DOLCE')
+      };
+      localStorage.setItem('ladolce_brand_settings', JSON.stringify(brandSettings));
+      applyBrandSettingsUI();
+    }
+  }, err => console.warn("Brand sync error:", err));
+
+  db.collection('settings').doc('store').onSnapshot(doc => {
+    if (doc.exists) {
+      storeSettings = { ...storeSettings, ...doc.data() };
+      localStorage.setItem('ladolce_store_settings', JSON.stringify(storeSettings));
+      if (typeof updateStoreStatusUI === 'function') updateStoreStatusUI();
+      if (typeof renderStaffStoreControl === 'function') renderStaffStoreControl();
+      if (typeof calculateCartSummary === 'function') calculateCartSummary();
+    }
+  }, err => console.warn("Store settings sync error:", err));
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', applyBrandSettingsUI);
+} else {
+  applyBrandSettingsUI();
 }
 
 function formatLAK(amount) {
