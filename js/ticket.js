@@ -1,9 +1,10 @@
 // =======================================================
-// LA DOLCE — CUSTOMER MULTI-TICKET ENGINE (INSTANT SYNC)
+// LA DOLCE — CUSTOMER MULTI-TICKET (AUTO-CLOSE ON STAFF COMPLETE)
 // =======================================================
 
 window.notifiedReadyList = JSON.parse(localStorage.getItem('notified_ready_orders') || '[]');
 window.notifiedRejectedList = JSON.parse(localStorage.getItem('notified_rejected_orders') || '[]');
+window.notifiedCompletedList = JSON.parse(localStorage.getItem('notified_completed_orders') || '[]');
 window.ticketFallbackUnsubscribers = [];
 
 window.renderCustomerTicket = function() {
@@ -18,31 +19,60 @@ window.renderCustomerTicket = function() {
   const myEmail = currentUser?.email ? currentUser.email.toLowerCase() : null;
   const myPhone = currentUser?.phone ? currentUser.phone.replace(/\s+/g, '') : null;
 
-  // ດຶງອໍເດີ້ຂອງລູກຄ້າຈາກ Live Stream (`orders` ໃນ app.js)
   const liveOrders = Array.isArray(orders) ? orders : [];
-  const matchedOrders = liveOrders.filter(o => {
-    if (!o || dismissedIds.includes(o.id)) return false;
-    if (orderIds.includes(o.id)) return true;
 
-    const matchEmail = myEmail && o.customerEmail && o.customerEmail.toLowerCase() === myEmail;
-    const matchPhone = myPhone && o.customerPhone && o.customerPhone.replace(/\s+/g, '') === myPhone;
-    const isActiveStatus = ['pending', 'preparing', 'ready', 'rejected'].includes(o.status);
-    return (matchEmail || matchPhone) && isActiveStatus;
+  // ຖ້າ Staff ກົດ completed ແລ້ວ -> ປິດປີ້ອັດຕະໂນມັດ ແລະ ເກັບໄວ້ໃນປະຫວັດການສັ່ງ
+  liveOrders.forEach(o => {
+    if (!o || o.status !== 'completed') return;
+    const isMine = orderIds.includes(o.id)
+      || (myEmail && o.customerEmail && o.customerEmail.toLowerCase() === myEmail)
+      || (myEmail && o.customerId && String(o.customerId).toLowerCase() === myEmail)
+      || (myPhone && o.customerPhone && o.customerPhone.replace(/\s+/g, '') === myPhone);
+
+    if (isMine && !dismissedIds.includes(o.id)) {
+      archiveOrderToHistoryLocal(o.id);
+      if (!window.notifiedCompletedList.includes(o.id)) {
+        window.notifiedCompletedList.push(o.id);
+        localStorage.setItem('notified_completed_orders', JSON.stringify(window.notifiedCompletedList));
+        if (typeof showAtelierToast === 'function') {
+          showAtelierToast(`ຮັບເຄື່ອງດື່ມ #${o.orderCode || ''} ສຳເລັດ! ບັນທຶກລົງປະຫວັດການສັ່ງແລ້ວ`);
+        }
+      }
+    }
   });
 
-  // ຖ້າຍັງມີ orderId ໃນ localStorage ແຕ່ liveOrders ຍັງໂຫຼດບໍ່ທັນມາ -> ດຶງກົງຈາກ Firestore ໃຫ້ກ່ອນ
-  if (matchedOrders.length === 0 && orderIds.length > 0 && liveOrders.length === 0) {
+  const updatedOrderIds = JSON.parse(localStorage.getItem('customer_order_ids') || '[]');
+  const updatedDismissed = JSON.parse(localStorage.getItem('dismissed_customer_orders') || '[]');
+
+  const activeTickets = liveOrders.filter(o => {
+    if (!o || updatedDismissed.includes(o.id) || o.status === 'completed') return false;
+    if (updatedOrderIds.includes(o.id)) return true;
+
+    const matchEmail = myEmail && o.customerEmail && o.customerEmail.toLowerCase() === myEmail;
+    const matchId = myEmail && o.customerId && String(o.customerId).toLowerCase() === myEmail;
+    const matchPhone = myPhone && o.customerPhone && o.customerPhone.replace(/\s+/g, '') === myPhone;
+    const isActiveStatus = ['pending', 'preparing', 'ready', 'rejected'].includes(o.status);
+    return (matchEmail || matchId || matchPhone) && isActiveStatus;
+  });
+
+  if (activeTickets.length === 0 && updatedOrderIds.length > 0 && liveOrders.length === 0) {
     const firestore = db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
     if (firestore) {
       window.ticketFallbackUnsubscribers.forEach(u => u());
       window.ticketFallbackUnsubscribers = [];
       container.innerHTML = `<div class="space-y-4" id="customerTicketsList"><div class="p-6 text-center text-taupe text-[12px]">ກຳລັງໂຫຼດປີ້ອໍເດີ້...</div></div>`;
       const fallbackMap = {};
-      orderIds.forEach(id => {
-        if (dismissedIds.includes(id)) return;
+      updatedOrderIds.forEach(id => {
+        if (updatedDismissed.includes(id)) return;
         const u = firestore.collection('orders').doc(id).onSnapshot(doc => {
           if (!doc.exists) return;
-          fallbackMap[id] = { id: doc.id, ...doc.data() };
+          const data = { id: doc.id, ...doc.data() };
+          if (data.status === 'completed') {
+            archiveOrderToHistoryLocal(id);
+            delete fallbackMap[id];
+          } else {
+            fallbackMap[id] = data;
+          }
           renderTicketCardsList(Object.values(fallbackMap), container);
         });
         window.ticketFallbackUnsubscribers.push(u);
@@ -51,7 +81,26 @@ window.renderCustomerTicket = function() {
     }
   }
 
-  renderTicketCardsList(matchedOrders, container);
+  renderTicketCardsList(activeTickets, container);
+};
+
+function archiveOrderToHistoryLocal(orderId) {
+  let list = JSON.parse(localStorage.getItem('customer_order_ids') || '[]');
+  list = list.filter(id => id !== orderId);
+  localStorage.setItem('customer_order_ids', JSON.stringify(list));
+
+  const dismissed = JSON.parse(localStorage.getItem('dismissed_customer_orders') || '[]');
+  if (!dismissed.includes(orderId)) dismissed.push(orderId);
+  localStorage.setItem('dismissed_customer_orders', JSON.stringify(dismissed));
+
+  if (localStorage.getItem('activeOrderId') === orderId) {
+    localStorage.removeItem('activeOrderId');
+  }
+}
+
+window.openCustomerOrderHistory = function() {
+  if (typeof switchProfileSubTab === 'function') switchProfileSubTab('history');
+  switchCustomerTab('profile');
 };
 
 function renderTicketCardsList(tickets, container) {
@@ -63,8 +112,15 @@ function renderTicketCardsList(tickets, container) {
           ${svgIcon('ticket', 'w-6 h-6')}
         </div>
         <h4 class="font-serif-title text-[17px] text-primary font-bold">ບໍ່ມີອໍເດີ້ທີ່ກຳລັງດຳເນີນການ</h4>
-        <p class="text-[12px] text-taupe">ທ່ານຍັງບໍ່ໄດ້ສັ່ງຊື້ເທື່ອ ຫຼື ອໍເດີ້ກ່ອນໜ້ານີ້ສຳເລັດແລ້ວ</p>
-        <button type="button" onclick="switchCustomerTab('menu')" class="px-4 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-bold cursor-pointer">ສັ່ງເຄື່ອງດື່ມເລີຍ</button>
+        <p class="text-[12px] text-taupe">ເມື່ອຮັບເຄື່ອງດື່ມແລ້ວ ປີ້ຈະປິດອັດຕະໂນມັດ ແລະ ເກັບໄວ້ໃນປະຫວັດການສັ່ງຊື້</p>
+        <div class="flex items-center justify-center gap-2 pt-1 flex-wrap">
+          <button type="button" onclick="switchCustomerTab('menu')" class="px-4 py-2 rounded-lg bg-forest-emerald text-white text-[12px] font-bold cursor-pointer">
+            ສັ່ງເຄື່ອງດື່ມເລີຍ
+          </button>
+          <button type="button" onclick="openCustomerOrderHistory()" class="px-4 py-2 rounded-lg bg-surface border border-hairline text-primary text-[12px] font-bold hover:border-forest-emerald cursor-pointer">
+            ເບິ່ງປະຫວັດການສັ່ງຊື້
+          </button>
+        </div>
       </div>
     `;
     return;
@@ -100,7 +156,7 @@ function renderTicketCardsList(tickets, container) {
 function buildSingleCustomerTicketHtml(order) {
   const cafeName = (typeof brandSettings !== 'undefined' && brandSettings?.cafeName) ? brandSettings.cafeName : 'LA DOLCE';
   const isRejected = order.status === 'rejected' || order.status === 'cancelled';
-  const isCompleted = order.status === 'completed';
+  const isReady = order.status === 'ready';
   const displayCode = order.orderCode || (order.id ? order.id.slice(0, 6).toUpperCase() : 'ORDER');
 
   const statusMeta = {
@@ -122,14 +178,7 @@ function buildSingleCustomerTicketHtml(order) {
       badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-400',
       icon: 'checkCircle',
       label: 'ສຳເລັດແລ້ວ',
-      title: 'ເຄື່ອງດື່ມພ້ອມແລ້ວ! ສາມາດເຂົ້າມາຮັບເອົາໄດ້ເລີຍ',
-      step: 3
-    },
-    completed: {
-      badgeClass: 'bg-stone-100 text-stone-700 border-stone-300',
-      icon: 'checkCircle',
-      label: 'ຮັບເຄື່ອງສຳເລັດ',
-      title: `ຂອບໃຈທີ່ອຸດໜູນ ${cafeName}`,
+      title: `ເຄື່ອງດື່ມພ້ອມແລ້ວ! ກະລຸນາສະແດງລະຫັດ #${displayCode} ເພື່ອຮັບເຄື່ອງ`,
       step: 3
     },
     rejected: {
@@ -155,7 +204,7 @@ function buildSingleCustomerTicketHtml(order) {
   };
 
   return `
-    <div id="ticket-${order.id}" class="p-5 rounded-2xl bg-surface-pure border ${order.status === 'ready' ? 'border-2 border-emerald-500 shadow-lg' : (isRejected ? 'border-2 border-red-300' : 'border-hairline shadow-xs')} space-y-4 font-lao">
+    <div id="ticket-${order.id}" class="p-5 rounded-2xl bg-surface-pure border ${isReady ? 'border-2 border-emerald-500 shadow-lg' : (isRejected ? 'border-2 border-red-300' : 'border-hairline shadow-xs')} space-y-4 font-lao">
       <div class="flex items-center justify-between pb-3 border-b border-hairline gap-2">
         <div>
           <span class="text-[10px] uppercase tracking-wider text-taupe font-bold">${cafeName} • ປີ້ຮັບເຄື່ອງດື່ມ</span>
@@ -169,7 +218,7 @@ function buildSingleCustomerTicketHtml(order) {
 
       ${!isRejected ? `
         <div class="space-y-2">
-          <p class="text-[12px] font-bold ${order.status === 'ready' ? 'text-emerald-800' : 'text-primary'}">${statusMeta.title}</p>
+          <p class="text-[12px] font-bold ${isReady ? 'text-emerald-800' : 'text-primary'}">${statusMeta.title}</p>
           <div class="grid grid-cols-3 gap-1.5">
             <div class="h-1.5 rounded-full ${statusMeta.step >= 1 ? 'bg-forest-emerald' : 'bg-hairline'}"></div>
             <div class="h-1.5 rounded-full ${statusMeta.step >= 2 ? 'bg-forest-emerald' : 'bg-hairline'}"></div>
@@ -194,11 +243,17 @@ function buildSingleCustomerTicketHtml(order) {
             ${svgIcon('refresh', 'w-4 h-4 mt-0.5')}
             <span>${order.refundNote || 'ທາງຮ້ານຈະທຳການຣີຟັນເງິນຄືນໃຫ້ທ່ານ ແລ້ວທ່ານສາມາດເລືອກສັ່ງລາຍການອື່ນເຂົ້າມາໃໝ່ແທນໄດ້ເລີຍ.'}</span>
           </div>
-          <button type="button" onclick="reorderAfterReject('${order.id}')"
-                  class="w-full py-2.5 rounded-lg bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all">
-            ${svgIcon('coffee', 'w-4 h-4')}
-            <span>ສັ່ງລາຍການອື່ນເຂົ້າມາໃໝ່</span>
-          </button>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button type="button" onclick="dismissCustomerTicket('${order.id}')"
+                    class="py-2.5 rounded-lg border border-red-200 bg-white text-red-700 text-[12px] font-bold hover:bg-red-50 cursor-pointer">
+              ປິດປີ້ນີ້
+            </button>
+            <button type="button" onclick="reorderAfterReject('${order.id}')"
+                    class="py-2.5 rounded-lg bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all">
+              ${svgIcon('coffee', 'w-4 h-4')}
+              <span>ສັ່ງເມນູອື່ນໃໝ່</span>
+            </button>
+          </div>
         </div>
       `}
 
@@ -228,12 +283,6 @@ function buildSingleCustomerTicketHtml(order) {
         <span class="font-bold text-[13px]">ຍອດລວມ (${order.paymentMethod || 'QR'}):</span>
         <span class="font-serif-title font-bold text-[18px] text-forest-emerald">${formatLAK(order.totalAmount ?? order.total)}</span>
       </div>
-
-      ${isCompleted ? `
-        <button type="button" onclick="dismissCustomerTicket('${order.id}')" class="w-full py-2 rounded-lg bg-surface border border-hairline text-taupe text-[11px] font-bold hover:bg-gray-100 cursor-pointer">
-          ປິດໃບສັ່ງຊື້ທີ່ສຳເລັດແລ້ວນີ້
-        </button>
-      ` : ''}
     </div>
   `;
 }
@@ -252,17 +301,7 @@ window.closeCustomerReadyModal = function() {
 };
 
 window.dismissCustomerTicket = function(orderId) {
-  let list = JSON.parse(localStorage.getItem('customer_order_ids') || '[]');
-  list = list.filter(id => id !== orderId);
-  localStorage.setItem('customer_order_ids', JSON.stringify(list));
-
-  const dismissed = JSON.parse(localStorage.getItem('dismissed_customer_orders') || '[]');
-  if (!dismissed.includes(orderId)) dismissed.push(orderId);
-  localStorage.setItem('dismissed_customer_orders', JSON.stringify(dismissed));
-
-  if (localStorage.getItem('activeOrderId') === orderId) {
-    localStorage.removeItem('activeOrderId');
-  }
+  archiveOrderToHistoryLocal(orderId);
   window.renderCustomerTicket();
 };
 
