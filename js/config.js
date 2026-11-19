@@ -20,7 +20,11 @@ try {
   if (typeof firebase !== "undefined") {
     firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
-    db.settings({ experimentalForceLongPolling: true, merge: true });
+    try {
+      db.settings({ experimentalForceLongPolling: true });
+    } catch (settingErr) {
+      console.warn("Firestore settings note:", settingErr);
+    }
     auth = firebase.auth();
     isFirebaseReady = true;
     console.log("Cloud Firestore Initialized Successfully (LongPolling Enabled)");
@@ -108,7 +112,6 @@ let brandSettings = JSON.parse(localStorage.getItem('ladolce_brand_settings')) |
 };
 let cloudUsers = [];
 
-// ສ້າງໂຕຫຍໍ້ໂລໂກ້ອັດຕະໂນມັດ (La Dolce = LD, Alisa cafe = ALS)
 function generateBrandInitials(name) {
   const clean = String(name || '').trim();
   if (!clean) return 'LD';
@@ -146,7 +149,6 @@ function applyBrandSettingsUI() {
   if (typeof renderCustomerTicket === 'function') renderCustomerTicket();
 }
 
-// Sync Real-time ຈາກ Firestore: payments, settings/brand, settings/store
 if (db) {
   db.collection('payments').onSnapshot(snap => {
     if (!snap.empty) {
