@@ -7,16 +7,6 @@ function showToast(msg, type = 'success') {
     showAtelierToast(msg, type);
     return;
   }
-  const toast = document.getElementById('atelierToast');
-  const text = document.getElementById('toastMsg');
-  if (!toast || !text) return;
-  text.textContent = msg;
-  toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
-  toast.classList.add('opacity-100', 'translate-y-0');
-  setTimeout(() => {
-    toast.classList.remove('opacity-100', 'translate-y-0');
-    toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-4');
-  }, 2200);
 }
 
 function showCustomerReadyModal() {
@@ -45,22 +35,18 @@ function startRealtimeCloudEngine() {
 
   console.log("[Firestore Live Stream] Connected");
 
-  // 1. Sync Orders Real-time (ທັງ Staff, Customer ແລະ Admin Analytics)
   db.collection("orders").onSnapshot(snapshot => {
     const liveOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    // Sort ຕາມ Timestamp ຫຼ້າສຸດຢ່າງຖືກຕ້ອງ
     liveOrders.sort((a, b) => getOrderTimestampMs(b.createdAt) - getOrderTimestampMs(a.createdAt));
     orders = liveOrders;
 
-    // ຝັ່ງ STAFF: ອັບເດດຄິວ + Pop-up + ສຽງແຈ້ງເຕືອນ
-    if (currentUser && currentUser.role === 'staff') {
+    // ອັບເດດໜ້າ Staff ທັງຕອນເປັນ staff ແລະ ຕອນ superadmin ກົດມາເບິ່ງໜ້າ Staff
+    if (currentUser && (currentUser.role === 'staff' || currentUser.role === 'superadmin')) {
       if (typeof renderStaffOrders === 'function') {
         renderStaffOrders(orders);
       }
     }
 
-    // ຝັ່ງ ລູກຄ້າ: ຫຼິ້ນສຽງກະດິ່ງເມື່ອສະຖານະປ່ຽນເປັນ ready ຫຼື rejected
     const ticketIds = JSON.parse(localStorage.getItem('customer_order_ids') || '[]');
     let myPhone = currentUser ? currentUser.phone : null;
     let myEmail = currentUser ? currentUser.email : null;
@@ -84,14 +70,12 @@ function startRealtimeCloudEngine() {
       knownOrderStatuses[order.id] = order.status;
     });
 
-    // ອັບເດດໜ້າ Ticket, Profile ແລະ Admin Analytics
     if (typeof renderCustomerTicket === 'function') renderCustomerTicket();
     if (typeof renderCustomerProfile === 'function') renderCustomerProfile();
     if (typeof renderAnalytics === 'function') renderAnalytics();
   }, err => console.error("Orders Stream Error:", err));
 }
 
-// Fast App Bootstrap
 window.addEventListener('DOMContentLoaded', () => {
   if (typeof renderMenu === 'function') renderMenu();
   if (typeof updateCartBadge === 'function') updateCartBadge();
