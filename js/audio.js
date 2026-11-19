@@ -5,14 +5,14 @@
 let audioCtx = null;
 let staffWorker = null;
 let isStaffRinging = false;
+let isBellAudioUnlocked = false;
 let originalDocTitle = document.title;
 let titleFlashTimer = null;
 let lastNotifiedOrderId = null;
 
-// ສ້າງໄຟລ໌ສຽງ WAV ແບບບໍ່ຕ້ອງໂຫຼດຈາກ Server (ເພື່ອໃຫ້ <audio> ຫຼິ້ນໃນ Background ໄດ້ດີຂຶ້ນ)
 function generateChimeWavDataUri() {
   const sampleRate = 22050;
-  const duration = 0.7;
+  const duration = 0.75;
   const numSamples = Math.floor(sampleRate * duration);
   const buffer = new ArrayBuffer(44 + numSamples * 2);
   const view = new DataView(buffer);
@@ -37,8 +37,8 @@ function generateChimeWavDataUri() {
   for (let i = 0; i < numSamples; i++) {
     const t = i / sampleRate;
     const freq = t < 0.16 ? 587.33 : t < 0.34 ? 783.99 : 987.77;
-    const env = Math.exp(-4.5 * (t % 0.18));
-    const sample = Math.sin(2 * Math.PI * freq * t) * env * 0.45;
+    const env = Math.exp(-4.0 * (t % 0.18));
+    const sample = Math.sin(2 * Math.PI * freq * t) * env * 0.65;
     view.setInt16(44 + i * 2, Math.max(-1, Math.min(1, sample)) * 32767, true);
   }
 
@@ -62,47 +62,57 @@ function getAudioContext() {
   return audioCtx;
 }
 
-// ປົດລັອກສຽງອັດຕະໂນມັດເມື່ອມີການແຕະໜ້າຈໍ
-['click', 'touchstart', 'mousedown', 'keydown'].forEach(evt => {
-  document.addEventListener(evt, () => {
-    getAudioContext();
-  }, { once: true, passive: true });
-});
-
-// ປຸ່ມໃຫ້ Staff ກົດເປີດສິດ Notification + Unlock ສຽງແຈ້ງເຕືອນ 100%
-window.enableStaffNotifications = async function() {
+function unlockAllAudio() {
   try {
     const ctx = getAudioContext();
-    if (ctx && ctx.state === 'suspended') await ctx.resume();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    if (!isBellAudioUnlocked) {
+      staffBellAudio.volume = 0.01;
+      staffBellAudio.play().then(() => {
+        staffBellAudio.pause();
+        staffBellAudio.currentTime = 0;
+        staffBellAudio.volume = 1.0;
+        isBellAudioUnlocked = true;
+        // ຖ້າມີອໍເດີ້ຄ້າງສົ່ງສຽງຢູ່ ໃຫ້ດັງທັນທີຫຼັງປົດລັອກ
+        if (isStaffRinging) playStaffPulseTone();
+      }).catch(() => {
+        staffBellAudio.volume = 1.0;
+      });
+    }
+  } catch (_) {}
+}
 
-    // ທົດລອງຫຼິ້ນແບບງຽບເພື່ອປົດລັອກ <audio> element
-    staffBellAudio.volume = 0.01;
-    await staffBellAudio.play().then(() => {
-      staffBellAudio.pause();
-      staffBellAudio.currentTime = 0;
-      staffBellAudio.volume = 1.0;
-    }).catch(() => {});
+// ປົດລັອກສຽງທຸກຄັ້ງທີ່ Staff ແຕະ/ຄລິກບ່ອນໃດກໍໄດ້ຈົນກວ່າຈະປົດລັອກສຳເລັດ
+['click', 'touchstart', 'mousedown', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    if (!isBellAudioUnlocked) unlockAllAudio();
+  }, { passive: true });
+});
 
+window.enableStaffNotifications = async function() {
+  try {
+    unlockAllAudio();
     if ('Notification' in window) {
       const perm = await Notification.requestPermission();
       if (perm === 'granted') {
         if (typeof showAtelierToast === 'function') {
           showAtelierToast('ເປີດລະບົບສຽງ ແລະ ການແຈ້ງເຕືອນນອກໜ້າແອັບສຳເລັດ!');
         }
-        playStaffPulseTone();
       } else {
         if (typeof showAtelierToast === 'function') {
           showAtelierToast('ເປີດສຽງແຈ້ງເຕືອນໃນແອັບແລ້ວ (Notification ຖືກບລັອກໃນ Browser)', 'warning');
         }
       }
     }
+    playStaffPulseTone();
     if (typeof updateStaffNotifyBadge === 'function') updateStaffNotifyBadge();
   } catch (e) {
     console.warn('Enable notify error:', e);
   }
 };
 
-// Web Worker ສຳລັບຕັ້ງເວລາໃນ Background Tab ໂດຍບໍ່ຖືກ Browser ຢຸດ
 function ensureStaffWorker() {
   if (staffWorker) return staffWorker;
   try {
@@ -128,7 +138,6 @@ function ensureStaffWorker() {
   return staffWorker;
 }
 
-// ສຽງ "Kyoto Soft Crystal Marimba" ສຳລັບລູກຄ້າ
 function playChime(isReady = false) {
   try {
     const ctx = getAudioContext();
@@ -153,7 +162,7 @@ function playChimeSound(ctx, isReady) {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(freq, now + (idx * 0.08));
     gain.gain.setValueAtTime(0.001, now + (idx * 0.08));
-    gain.gain.linearRampToValueAtTime(0.25, now + (idx * 0.08) + 0.02);
+    gain.gain.linearRampToValueAtTime(0.28, now + (idx * 0.08) + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + (idx * 0.08) + 1.2);
     osc.connect(gain);
     gain.connect(ctx.destination);
@@ -162,33 +171,31 @@ function playChimeSound(ctx, isReady) {
   });
 }
 
-// ສຽງແຈ້ງເຕືອນ Staff (ຫຼິ້ນທັງ <audio> Element ແລະ AudioContext)
 function playStaffPulseTone() {
   try {
     staffBellAudio.volume = 1.0;
     staffBellAudio.currentTime = 0;
     staffBellAudio.play().catch(() => {
-      // Fallback ໄປ AudioContext ຖ້າ <audio> ຖືກຈຳກັດ
+      // Fallback Web Audio API
       const ctx = getAudioContext();
       if (!ctx) return;
       const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(523.25, now);
-      osc.frequency.setValueAtTime(659.25, now + 0.12);
-      osc.frequency.setValueAtTime(880, now + 0.24);
-      gain.gain.setValueAtTime(0.25, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.65);
+      [523.25, 659.25, 880].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+        gain.gain.setValueAtTime(0.3, now + idx * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.45);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.12);
+        osc.stop(now + idx * 0.12 + 0.45);
+      });
     });
   } catch (e) {}
 }
 
-// ແຈ້ງເຕືອນ System Notification ເມື່ອ Staff ຢູ່ໜ້າຕ່າງອື່ນ ຫຼື ພັບແອັບໄວ້
 function sendBackgroundOrderNotification(order) {
   if (!order || lastNotifiedOrderId === order.id) return;
   lastNotifiedOrderId = order.id;
@@ -197,7 +204,7 @@ function sendBackgroundOrderNotification(order) {
     try {
       const itemsText = (order.items || []).map(i => `${i.quantity}x ${i.name}`).join(', ');
       const noti = new Notification(`ອໍເດີ້ໃໝ່ #${order.orderCode || ''}`, {
-        body: `${order.customerName || 'Guest'} | ${formatLAK(order.totalAmount)}\n${itemsText}`,
+        body: `${order.customerName || 'Guest'} | ${formatLAK(order.totalAmount ?? order.total ?? 0)}\n${itemsText}`,
         tag: 'ladolce-order-' + order.id,
         renotify: true,
         requireInteraction: true
@@ -206,9 +213,7 @@ function sendBackgroundOrderNotification(order) {
         window.focus();
         noti.close();
       };
-    } catch (e) {
-      console.warn('Notification display error:', e);
-    }
+    } catch (e) {}
   }
 }
 
@@ -217,7 +222,8 @@ function startTitleFlash() {
   let toggle = false;
   titleFlashTimer = setInterval(() => {
     toggle = !toggle;
-    document.title = toggle ? '[ມີອໍເດີ້ໃໝ່!] LA DOLCE' : originalDocTitle;
+    const cafeName = (typeof brandSettings !== 'undefined' && brandSettings?.cafeName) ? brandSettings.cafeName : 'LA DOLCE';
+    document.title = toggle ? `[ມີອໍເດີ້ໃໝ່!] ${cafeName}` : originalDocTitle;
   }, 1000);
 }
 
@@ -244,9 +250,7 @@ function startStaffAlarm(order = null) {
 
   playStaffPulseTone();
   const worker = ensureStaffWorker();
-  if (worker) {
-    worker.postMessage('start');
-  }
+  if (worker) worker.postMessage('start');
 }
 
 function stopStaffAlarm() {
