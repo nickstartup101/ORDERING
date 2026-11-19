@@ -1,11 +1,12 @@
 // =======================================================
-// LA DOLCE — AUTHENTICATION & MEMBER PROFILE (PURE SVG)
+// LA DOLCE — AUTHENTICATION, PROFILE & ROLE PERMISSIONS
 // =======================================================
 
 let isRegisterMode = false;
 let sessionTimer = null;
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 let profileSubTab = 'info';
+let userDocUnsubscribe = null;
 
 function openAuthModal() {
   document.getElementById('authModal')?.classList.remove('hidden');
@@ -37,11 +38,34 @@ function resetSessionTimer() {
 
 function autoLogoutSession() {
   if (!currentUser) return;
-  currentUser = null;
-  localStorage.removeItem('ladolce_user');
-  updateUserSessionUI();
-  dispatchRoleView('customer');
+  logoutUser();
   showAtelierAlert({ title: 'ໝົດເວລາເຊດຊັນ', message: 'ບໍ່ມີການເຄື່ອນໄຫວ 30 ນາທີ ລະບົບໄດ້ອອກຈາກລະບົບອັດຕະໂນມັດ', type: 'warning' });
+}
+
+// Sync ສິດ ແລະ Role ຂອງຜູ້ໃຊ້ປັດຈຸບັນຈາກ Firestore ແບບ Real-time
+function startCurrentUserSync() {
+  if (userDocUnsubscribe) {
+    userDocUnsubscribe();
+    userDocUnsubscribe = null;
+  }
+  if (!currentUser || !currentUser.email || !db) return;
+
+  userDocUnsubscribe = db.collection("users").doc(currentUser.email.toLowerCase()).onSnapshot(doc => {
+    if (!doc.exists) return;
+    const cloudData = doc.data();
+    const prevRole = currentUser.role;
+    const prevPerm = JSON.stringify(currentUser.permissions || {});
+
+    currentUser = { ...currentUser, ...cloudData };
+    localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
+
+    const newPerm = JSON.stringify(currentUser.permissions || {});
+    if (prevRole !== currentUser.role) {
+      dispatchRoleView(currentUser.role);
+    } else if (prevPerm !== newPerm && currentUser.role === 'staff') {
+      if (typeof renderStaffControls === 'function') renderStaffControls();
+    }
+  }, err => console.warn("User sync error:", err));
 }
 
 async function handleAuthSubmit() {
@@ -66,7 +90,7 @@ async function handleAuthSubmit() {
       isPhoneVerified: false,
       dob: "",
       preferredRoast: "Light Roast (Ethiopia Guji), Oat Milk",
-      beans: 50,
+      permissions: { canToggleStore: false, canToggleMenu: false },
       createdAt: new Date().toISOString()
     };
 
@@ -78,24 +102,32 @@ async function handleAuthSubmit() {
 
     currentUser = newUser;
     localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
+    startCurrentUserSync();
     closeAuthModal();
     dispatchRoleView(currentUser.role);
     showAtelierToast("ລົງທະບຽນສຳເລັດ!");
   } else {
     let authenticatedUser = null;
 
-    if (typeof REGISTERED_ACCOUNTS !== 'undefined') {
-      const matched = REGISTERED_ACCOUNTS.find(u => u.email.toLowerCase() === emailInput && u.password === passInput);
-      if (matched) authenticatedUser = matched;
-    }
-
-    if (!authenticatedUser && isFirebaseReady && db) {
+    // ກວດສອບຈາກ Firestore ກ່ອນ ເພື່ອໃຫ້ໄດ້ Role & Permissions ລ່າສຸດທີ່ Admin ຕັ້ງໃຫ້
+    if (isFirebaseReady && db) {
       try {
         const doc = await db.collection("users").doc(emailInput).get();
-        if (doc.exists && doc.data().password === passInput) {
-          authenticatedUser = doc.data();
+        if (doc.exists) {
+          const userData = doc.data();
+          if (userData.password === passInput) {
+            authenticatedUser = userData;
+          } else if (userData.password && userData.password !== passInput) {
+            showAtelierToast("Email ຫຼື Password ບໍ່ຖືກຕ້ອງ!", "error");
+            return;
+          }
         }
       } catch (_) {}
+    }
+
+    if (!authenticatedUser && typeof REGISTERED_ACCOUNTS !== 'undefined') {
+      const matched = REGISTERED_ACCOUNTS.find(u => u.email.toLowerCase() === emailInput && u.password === passInput);
+      if (matched) authenticatedUser = { ...matched };
     }
 
     if (!authenticatedUser) {
@@ -105,6 +137,7 @@ async function handleAuthSubmit() {
 
     currentUser = authenticatedUser;
     localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
+    startCurrentUserSync();
     resetSessionTimer();
     closeAuthModal();
     dispatchRoleView(currentUser.role);
@@ -113,6 +146,10 @@ async function handleAuthSubmit() {
 }
 
 function logoutUser() {
+  if (userDocUnsubscribe) {
+    userDocUnsubscribe();
+    userDocUnsubscribe = null;
+  }
   currentUser = null;
   localStorage.removeItem('ladolce_user');
   if (sessionTimer) clearTimeout(sessionTimer);
@@ -135,6 +172,8 @@ function dispatchRoleView(role) {
   updateUserSessionUI();
 
   if (role === 'staff') {
+    if (typeof renderStaffHeaderBrand === 'function') renderStaffHeaderBrand();
+    if (typeof renderStaffControls === 'function') renderStaffControls();
     if (typeof renderStaffOrders === 'function') renderStaffOrders(orders);
     if (typeof updateStaffNotifyBadge === 'function') updateStaffNotifyBadge();
   }
@@ -157,7 +196,7 @@ function updateUserSessionUI() {
     const uEmail = document.getElementById('dropdownUserEmail');
     const uRole = document.getElementById('dropdownUserRole');
 
-    if (avatar) avatar.textContent = currentUser.name.charAt(0).toUpperCase();
+    if (avatar) avatar.textContent = (currentUser.name || 'U').charAt(0).toUpperCase();
     if (uName) uName.textContent = currentUser.name;
     if (uEmail) uEmail.textContent = currentUser.email;
     if (uRole) uRole.textContent = currentUser.role || 'customer';
@@ -217,6 +256,9 @@ function renderCustomerProfile() {
   const container = document.getElementById('profileTabContent');
   if (!container) return;
 
+  const cafeName = (typeof brandSettings !== 'undefined' && brandSettings?.cafeName) ? brandSettings.cafeName : 'LA DOLCE';
+  const brandInitials = (typeof brandSettings !== 'undefined' && brandSettings?.brandInitials) ? brandSettings.brandInitials : 'LD';
+
   if (!currentUser) {
     container.innerHTML = `
       <div class="p-8 bg-surface-pure border border-hairline rounded-2xl text-center space-y-3 shadow-xs">
@@ -224,7 +266,7 @@ function renderCustomerProfile() {
           ${svgIcon('user', 'w-6 h-6')}
         </div>
         <h3 class="font-serif-title text-[18px] text-primary font-medium">ເຂົ້າສູ່ລະບົບສະມາຊິກ</h3>
-        <p class="text-[12px] text-taupe font-lao">ເຂົ້າສູ່ລະບົບເພື່ອສະສົມຄະແນນ Beans, ຮັບຂອງຂວັນວັນເກີດ ແລະ ເບິ່ງປະຫວັດໃບບິນ</p>
+        <p class="text-[12px] text-taupe font-lao">ເຂົ້າສູ່ລະບົບເພື່ອບັນທຶກຂໍ້ມູນການສັ່ງຊື້, ຮັບສິດທິພິເສດວັນເກີດ ແລະ ເບິ່ງປະຫວັດໃບບິນ</p>
         <button type="button" onclick="openAuthModal()" class="px-5 py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] font-semibold hover:bg-forest-leaf transition-all shadow-xs cursor-pointer">
           ເຂົ້າສູ່ລະບົບ / ລົງທະບຽນ
         </button>
@@ -238,7 +280,7 @@ function renderCustomerProfile() {
     o.status === 'completed'
   );
 
-  const totalSpent = myHistory.reduce((sum, o) => sum + (Number(o.totalAmount || o.total) || 0), 0);
+  const totalSpent = myHistory.reduce((sum, o) => sum + (Number(o.totalAmount ?? o.total) || 0), 0);
   const totalCups = myHistory.reduce((sum, o) => sum + (o.items ? o.items.reduce((s, i) => s + (i.quantity || 1), 0) : 0), 0);
 
   const today = new Date();
@@ -250,24 +292,14 @@ function renderCustomerProfile() {
 
   container.innerHTML = `
     <div class="max-w-lg mx-auto space-y-4">
-      <div class="p-5 bg-forest-gradient text-white rounded-2xl shadow-md space-y-3.5 relative overflow-hidden">
-        <div class="flex justify-between items-start">
+      <div class="p-5 bg-forest-gradient text-white rounded-2xl shadow-md space-y-2 relative overflow-hidden">
+        <div class="flex justify-between items-center">
           <div>
-            <span class="text-[10px] uppercase tracking-widest text-emerald-300 font-bold">Atelier Connoisseur</span>
+            <span class="text-[10px] uppercase tracking-widest text-emerald-300 font-bold">${cafeName} Member</span>
             <h3 class="font-serif-title text-[20px] font-bold mt-0.5">${currentUser.name}</h3>
             <p class="text-[11px] opacity-80 font-mono">${currentUser.email}</p>
           </div>
-          <span class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center font-serif text-[16px] font-bold">LD</span>
-        </div>
-
-        <div class="p-3 rounded-xl bg-white/10 border border-white/10 flex justify-between items-center text-[12px]">
-          <div>
-            <span class="block text-[10px] opacity-75">ຄະແນນສະສົມ (Beans Loyalty):</span>
-            <span class="font-serif-title text-[18px] font-bold text-emerald-300">${currentUser.beans || 50} <span class="text-[11px] font-sans font-normal opacity-80">/ 400 Beans</span></span>
-          </div>
-          <button type="button" onclick="redeemBeanReward()" class="px-3 py-1 rounded-full bg-emerald-400 text-forest-emerald font-bold text-[10px] hover:bg-emerald-300 transition-colors cursor-pointer">
-            ແລກກາເຟຟຣີ
-          </button>
+          <span class="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center font-serif font-bold ${brandInitials.length >= 3 ? 'text-[12px]' : 'text-[16px]'}">${brandInitials}</span>
         </div>
       </div>
 
@@ -278,7 +310,7 @@ function renderCustomerProfile() {
             <span>Happy Birthday Month, ${currentUser.name}!</span>
           </div>
           <p class="text-[11px] text-amber-900/80 leading-relaxed font-lao">
-            ສຸກສັນເດືອນເກີດຂອງທ່ານ! LA DOLCE ມອບສິດທິພິເສດ <strong>ດື່ມກາເຟ ຫຼື ເຄື່ອງດື່ມຟຣີ 1 ຈອກ</strong> ໃນເດືອນນີ້.
+            ສຸກສັນເດືອນເກີດຂອງທ່ານ! ${cafeName} ມອບສິດທິພິເສດ <strong>ດື່ມກາເຟ ຫຼື ເຄື່ອງດື່ມຟຣີ 1 ຈອກ</strong> ໃນເດືອນນີ້.
           </p>
           <button type="button" onclick="claimBirthdayDrink()" class="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer">
             ${svgIcon('gift', 'w-4 h-4')}
@@ -362,7 +394,7 @@ function renderCustomerProfile() {
                     <span class="text-[10px] text-taupe block mt-0.5">${dateStr} • ${o.paymentMethod || 'LAK'}</span>
                   </div>
                   <div class="text-right shrink-0">
-                    <span class="font-bold text-forest-emerald font-mono block text-[13px]">${formatLAK(o.totalAmount || o.total)}</span>
+                    <span class="font-bold text-forest-emerald font-mono block text-[13px]">${formatLAK(o.totalAmount ?? o.total)}</span>
                     <div class="flex items-center gap-1.5 mt-1.5 justify-end">
                       <button type="button" onclick="openOrderReceiptModal('${o.id}')" class="text-[10px] px-2.5 py-1 rounded-lg bg-surface hover:bg-forest-emerald hover:text-white border border-hairline text-charcoal font-bold inline-flex items-center gap-1 transition-colors cursor-pointer">
                         ${svgIcon('ticket', 'w-3 h-3')} <span>ໃບບິນ</span>
@@ -380,37 +412,6 @@ function renderCustomerProfile() {
       `}
     </div>
   `;
-}
-
-function redeemBeanReward() {
-  const beans = Number(currentUser?.beans || 0);
-  if (beans < 400) {
-    showAtelierAlert({
-      title: 'ຄະແນນຍັງບໍ່ຄົບ',
-      message: `ທ່ານມີ ${beans} / 400 Beans. ສະສົມເພີ່ມອີກ ${400 - beans} Beans ເພື່ອແລກກາເຟຟຣີ 1 ຈອກ!`,
-      type: 'info'
-    });
-    return;
-  }
-  currentUser.beans = beans - 400;
-  localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
-  cart.push({
-    cartItemId: 'item_beans_' + Date.now(),
-    id: 'beans_reward',
-    name: 'Beans Reward Coffee (Free)',
-    image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400',
-    variant: 'iced',
-    sweetness: '100%',
-    milk: 'Whole Milk',
-    quantity: 1,
-    unitPrice: 0,
-    totalPrice: 0
-  });
-  localStorage.setItem('ladolce_cart', JSON.stringify(cart));
-  if (typeof updateCartBadge === 'function') updateCartBadge();
-  renderCustomerProfile();
-  showAtelierToast('ແລກກາເຟຟຣີໃສ່ກະຕ່າແລ້ວ!');
-  switchCustomerTab('cart');
 }
 
 function saveCustomerInfoDetails() {
@@ -431,12 +432,12 @@ function saveCustomerInfoDetails() {
   localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
 
   if (isFirebaseReady && db) {
-    db.collection("users").doc(currentUser.email).update({
+    db.collection("users").doc(currentUser.email).set({
       name: currentUser.name,
       phone: currentUser.phone,
       dob: currentUser.dob,
       preferredRoast: currentUser.preferredRoast
-    }).catch(() => {});
+    }, { merge: true }).catch(() => {});
   }
 
   updateUserSessionUI();
@@ -452,7 +453,7 @@ function verifyCustomerPhone() {
   if (otp === "8899") {
     currentUser.isPhoneVerified = true;
     localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
-    if (isFirebaseReady && db) db.collection("users").doc(currentUser.email).update({ isPhoneVerified: true }).catch(() => {});
+    if (isFirebaseReady && db) db.collection("users").doc(currentUser.email).set({ isPhoneVerified: true }, { merge: true }).catch(() => {});
     renderCustomerProfile();
     showAtelierToast("ເບີໂທລະສັບຢືນຢັນສຳເລັດ!");
   } else if (otp) {
@@ -487,7 +488,7 @@ function reorderPreviousItems(orderId) {
     cart.push({
       ...it,
       cartItemId: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-      totalPrice: Number(it.totalPrice || (Number(it.unitPrice || 0) * Number(it.quantity || 1)))
+      totalPrice: Number(it.totalPrice ?? (Number(it.unitPrice || 0) * Number(it.quantity || 1)))
     });
   });
 
@@ -500,11 +501,12 @@ function reorderPreviousItems(orderId) {
 function openOrderReceiptModal(orderId) {
   const o = (orders || []).find(x => x.id === orderId);
   if (!o) return;
+  const cafeName = (typeof brandSettings !== 'undefined' && brandSettings?.cafeName) ? brandSettings.cafeName : 'LA DOLCE';
   const dateStr = o.createdAt?.seconds ? new Date(o.createdAt.seconds * 1000).toLocaleString() : new Date(o.createdAt || Date.now()).toLocaleString();
-  const itemsHtml = (o.items || []).map(i => `${i.quantity}x ${i.name} [${formatVariantLabel(i.variant)}]: ${formatLAK(i.totalPrice || i.price)}`).join('<br/>');
+  const itemsHtml = (o.items || []).map(i => `${i.quantity}x ${i.name} [${formatVariantLabel(i.variant)}]: ${formatLAK(i.totalPrice ?? i.price)}`).join('<br/>');
   showAtelierAlert({
-    title: `LA DOLCE e-RECEIPT #${o.orderCode || o.id}`,
-    message: `ວັນທີ: ${dateStr}<br/>ລູກຄ້າ: ${o.customerName}<br/><br/>${itemsHtml}<br/><br/><strong>ຍອດລວມ: ${formatLAK(o.totalAmount || o.total)}</strong> (${o.paymentMethod || 'LAK'})`,
+    title: `${cafeName} e-RECEIPT #${o.orderCode || o.id}`,
+    message: `ວັນທີ: ${dateStr}<br/>ລູກຄ້າ: ${o.customerName}<br/><br/>${itemsHtml}<br/><br/><strong>ຍອດລວມ: ${formatLAK(o.totalAmount ?? o.total)}</strong> (${o.paymentMethod || 'QR'})`,
     type: 'success',
     confirmText: 'ປິດໃບບິນ'
   });
@@ -526,3 +528,5 @@ document.addEventListener('click', (e) => {
     closeProfileDropdown();
   }
 });
+
+if (currentUser) startCurrentUserSync();
