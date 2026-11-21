@@ -36,6 +36,7 @@ async function handleStaffLogin() {
   document.getElementById('staffLoginScreen')?.classList.add('hidden');
   document.getElementById('staffAppShell')?.classList.remove('hidden');
   startCurrentUserSync();
+  initializeStaffPush();
   showAtelierToast('ເຂົ້າສູ່ Kitchen Display ສຳເລັດ');
 }
 
@@ -46,7 +47,6 @@ function startCurrentUserSync() {
   staffUserUnsubscribe = db.collection('users').doc(currentUser.email.toLowerCase()).onSnapshot(doc => {
     if (!doc.exists) return;
     const cloudData = doc.data();
-    const previous = JSON.stringify(currentUser.permissions || {});
     currentUser = { ...currentUser, ...cloudData };
     staffUser = currentUser;
     localStorage.setItem('ladolce_user', JSON.stringify(currentUser));
@@ -54,7 +54,13 @@ function startCurrentUserSync() {
   }, err => console.warn('Staff permissions sync error:', err));
 }
 
-function logoutStaff() {
+async function logoutStaff() {
+  try {
+    await deactivateStaffPushToken();
+  } catch (err) {
+    console.error('Unable to deactivate staff push token:', err);
+    showAtelierToast('ປິດການແຈ້ງເຕືອນ Push ບໍ່ສຳເລັດ', 'warning');
+  }
   if (staffUserUnsubscribe) staffUserUnsubscribe();
   staffUser = null;
   currentUser = null;
@@ -68,6 +74,7 @@ function startStaffRealtimeSync() {
   db.collection('orders').onSnapshot(snapshot => {
     orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     if (typeof renderStaffOrders === 'function') renderStaffOrders(orders);
+    if (typeof flushPendingStaffPushOrderReview === 'function') flushPendingStaffPushOrderReview();
   }, err => console.error('Staff orders stream error:', err));
 
   db.collection('menu_items').onSnapshot(snapshot => {
@@ -84,6 +91,7 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('staffLoginScreen')?.classList.add('hidden');
     document.getElementById('staffAppShell')?.classList.remove('hidden');
     startCurrentUserSync();
+    initializeStaffPush();
   }
   startStaffRealtimeSync();
   if (typeof renderStaffHeaderBrand === 'function') renderStaffHeaderBrand();

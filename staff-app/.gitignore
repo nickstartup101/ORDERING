@@ -2,3 +2,4 @@ node_modules/
 android/.gradle/
 android/app/build/
 android/local.properties
+firebase-adminsdk-*.json

@@ -473,6 +473,11 @@ async function executeOrderPlacement(customerId, customerName, customerPhone) {
     };
 
     const docRef = await firestore.collection('orders').add(orderData);
+    fetch('/api/notify-staff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId: docRef.id })
+    }).catch(error => console.warn('Staff push notification request failed:', error));
 
     if (appliedCoupon && appliedCoupon.id && discountAmount > 0) {
       firestore.collection('coupons').doc(appliedCoupon.id).update({
