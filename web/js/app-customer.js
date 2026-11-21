@@ -40,13 +40,6 @@ function startRealtimeCloudEngine() {
     liveOrders.sort((a, b) => getOrderTimestampMs(b.createdAt) - getOrderTimestampMs(a.createdAt));
     orders = liveOrders;
 
-    // ອັບເດດໜ້າ Staff ທັງຕອນເປັນ staff ແລະ ຕອນ superadmin ກົດມາເບິ່ງໜ້າ Staff
-    if (currentUser && (currentUser.role === 'staff' || currentUser.role === 'superadmin')) {
-      if (typeof renderStaffOrders === 'function') {
-        renderStaffOrders(orders);
-      }
-    }
-
     const ticketIds = JSON.parse(localStorage.getItem('customer_order_ids') || '[]');
     let myPhone = currentUser ? currentUser.phone : null;
     let myEmail = currentUser ? currentUser.email : null;
@@ -72,7 +65,7 @@ function startRealtimeCloudEngine() {
 
     if (typeof renderCustomerTicket === 'function') renderCustomerTicket();
     if (typeof renderCustomerProfile === 'function') renderCustomerProfile();
-    if (typeof renderAnalytics === 'function') renderAnalytics();
+
   }, err => console.error("Orders Stream Error:", err));
 }
 

@@ -145,27 +145,17 @@ function logoutUser() {
 }
 
 function dispatchRoleView(role) {
-  document.getElementById('customerAppView')?.classList.toggle('hidden', role !== 'customer');
-  document.getElementById('adminStaffAppView')?.classList.toggle('hidden', role !== 'staff');
-  document.getElementById('superAdminAppView')?.classList.toggle('hidden', role !== 'superadmin');
-  document.getElementById('customerBottomNav')?.classList.toggle('hidden', role !== 'customer');
-
-  const roleBadge = document.getElementById('currentRoleBadge');
-  if (roleBadge) {
-    roleBadge.textContent = role === 'staff' ? "Barista Display" : role === 'superadmin' ? "Superadmin" : "Customer View";
-  }
-
-  updateUserSessionUI();
-
-  if (role === 'staff') {
-    if (typeof renderStaffHeaderBrand === 'function') renderStaffHeaderBrand();
-    if (typeof renderStaffControls === 'function') renderStaffControls();
-    if (typeof renderStaffOrders === 'function') renderStaffOrders(orders);
-    if (typeof updateStaffNotifyBadge === 'function') updateStaffNotifyBadge();
-  }
   if (role === 'superadmin') {
-    if (typeof loadAllOwnerData === 'function') loadAllOwnerData();
+    window.location.href = 'admin.html';
+    return;
   }
+  const customerView = document.getElementById('customerAppView');
+  if (customerView) customerView.classList.remove('hidden');
+  const bottomNav = document.getElementById('customerBottomNav');
+  if (bottomNav) bottomNav.classList.remove('hidden');
+  const roleBadge = document.getElementById('currentRoleBadge');
+  if (roleBadge) roleBadge.textContent = 'Customer View';
+  updateUserSessionUI();
 }
 
 function updateUserSessionUI() {
@@ -192,28 +182,13 @@ function updateUserSessionUI() {
     if (roleLinksContainer) {
       if (currentUser.role === 'superadmin') {
         roleLinksContainer.innerHTML = `
-          <button type="button" onclick="dispatchRoleView('superadmin'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-bold text-forest-emerald hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
+          <button type="button" onclick="window.location.href='admin.html'; closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-bold text-forest-emerald hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
             ${svgIcon('shield', 'w-4 h-4')}
             <span>ສູນຄວບຄຸມ (Control Center)</span>
           </button>
-          <button type="button" onclick="dispatchRoleView('staff'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
-            ${svgIcon('coffee', 'w-4 h-4')}
-            <span>ໜ້າຈໍຄົວ (Kitchen Display)</span>
-          </button>
-          <button type="button" onclick="dispatchRoleView('customer'); switchCustomerTab('ticket'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
+          <button type="button" onclick="switchCustomerTab('ticket'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
             ${svgIcon('ticket', 'w-4 h-4')}
             <span>ບິນສັ່ງຊື້ (Orders Audit)</span>
-          </button>
-        `;
-      } else if (currentUser.role === 'staff') {
-        roleLinksContainer.innerHTML = `
-          <button type="button" onclick="dispatchRoleView('staff'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-bold text-forest-emerald hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
-            ${svgIcon('coffee', 'w-4 h-4')}
-            <span>ໜ້າຈໍຄົວ (Kitchen Display)</span>
-          </button>
-          <button type="button" onclick="dispatchRoleView('customer'); switchCustomerTab('ticket'); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-charcoal hover:bg-surface flex items-center gap-2 transition-colors cursor-pointer">
-            ${svgIcon('ticket', 'w-4 h-4')}
-            <span>ບິນຮັບເຄື່ອງ (Ticket)</span>
           </button>
         `;
       } else {

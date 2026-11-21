@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+  <link rel="icon" href="data:,">
+  <title>LA DOLCE — Atelier & Coffee Management</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="preconnect" href="https://firestore.googleapis.com"/>
+  <link rel="dns-prefetch" href="https://firestore.googleapis.com"/>
+
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Noto+Sans+Lao:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface": "#FAF9F6",
+            "surface-pure": "#FFFFFF",
+            "surface-dim": "#F3F1EC",
+            "hairline": "#E7E4DD",
+            "primary": "#11241C",
+            "primary-dark": "#0A1813",
+            "forest-emerald": "#0D402B",
+            "forest-leaf": "#16593D",
+            "taupe": "#857769",
+            "charcoal": "#141A17"
+          },
+          fontFamily: {
+            sans: ["Noto Sans Lao", "DM Sans", "sans-serif"],
+            lao: ["Noto Sans Lao", "sans-serif"]
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="css/style.css"/>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    function switchCustomerTab(tabName) {
+      const tabs = ['menu', 'cart', 'ticket', 'profile'];
+      tabs.forEach(t => {
+        const el = document.getElementById(`tab-customer-${t}`);
+        const btn = document.getElementById(`nav-btn-${t}`);
+        if (el) el.classList.add('hidden');
+        if (btn) {
+          btn.classList.remove('text-forest-emerald', 'font-semibold');
+          btn.classList.add('text-taupe');
+        }
+      });
+
+      const activeTab = document.getElementById(`tab-customer-${tabName}`);
+      const activeBtn = document.getElementById(`nav-btn-${tabName}`);
+      if (activeTab) activeTab.classList.remove('hidden');
+      if (activeBtn) {
+        activeBtn.classList.add('text-forest-emerald', 'font-semibold');
+        activeBtn.classList.remove('text-taupe');
+      }
+
+      if (tabName === 'menu' && typeof renderMenu === 'function') renderMenu();
+      if (tabName === 'cart') {
+        if (typeof renderCartList === 'function') renderCartList();
+        if (typeof renderCustomerPaymentOptions === 'function') renderCustomerPaymentOptions();
+      }
+      if (tabName === 'ticket' && typeof renderCustomerTicket === 'function') renderCustomerTicket();
+      if (tabName === 'profile' && typeof renderCustomerProfile === 'function') renderCustomerProfile();
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  </script>
+</head>
+
+<body class="bg-surface text-charcoal min-h-screen flex flex-col antialiased selection:bg-forest-leaf selection:text-white font-lao">
+
+  <!-- ================= TOP APP BAR ================= -->
+  <header class="fixed top-0 w-full z-40 bg-surface/92 backdrop-blur-md border-b border-hairline pt-safe">
+    <div class="h-16 px-3 sm:px-4 md:px-8 max-w-6xl mx-auto flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="w-8 h-8 rounded-full bg-forest-emerald text-white flex items-center justify-center font-serif text-[15px] font-bold shadow-xs shrink-0 brand-initial-display">LD</span>
+        <div class="flex flex-col min-w-0">
+          <span class="font-serif-title tracking-[0.14em] text-[16px] sm:text-[18px] font-semibold text-primary leading-tight truncate brand-name-display">LA DOLCE</span>
+          <span class="text-[9px] tracking-[0.18em] text-forest-leaf uppercase font-medium truncate" id="currentRoleBadge">Customer View</span>
+        </div>
+      </div>
+
+      <!-- Staff Repeating Alarm Indicator -->
+
+
+      <!-- Right Auth Area: Sign In & ສະໝັກສະມາຊິກ -->
+      <div class="flex items-center gap-2 relative shrink-0">
+        <div id="authHeaderButtons" class="flex items-center gap-1.5">
+          <button type="button" onclick="openAuthModal('login')" id="btnLoginHeader" class="text-[11px] uppercase tracking-wider font-semibold border-2 border-forest-emerald text-forest-emerald px-2.5 sm:px-3 py-1.5 rounded-lg hover:bg-forest-emerald hover:text-white transition-all shadow-2xs cursor-pointer whitespace-nowrap">
+            Sign In
+          </button>
+          <button type="button" onclick="openAuthModal('register')" id="btnRegisterHeader" class="text-[11px] font-semibold bg-forest-emerald text-white border-2 border-forest-emerald px-2.5 sm:px-3 py-1.5 rounded-lg hover:bg-forest-leaf transition-all shadow-2xs cursor-pointer whitespace-nowrap">
+            ສະໝັກສະມາຊິກ
+          </button>
+        </div>
+
+        <div id="userProfileChip" class="hidden relative">
+          <button type="button" onclick="toggleProfileDropdown(event)" class="flex items-center gap-1.5 p-1 rounded-full border border-hairline hover:border-forest-emerald transition-all bg-surface-pure shadow-xs cursor-pointer">
+            <div class="w-8 h-8 rounded-full bg-forest-emerald text-white flex items-center justify-center font-serif text-[13px] font-bold" id="avatarText">E</div>
+            <svg class="w-4 h-4 text-taupe mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+
+          <div id="profileDropdownMenu" class="hidden absolute right-0 top-12 w-60 bg-surface-pure rounded-2xl border border-hairline shadow-2xl p-2 z-50 animate-slide-down">
+            <div class="p-3 border-b border-hairline">
+              <span class="font-serif-title font-bold text-[14px] text-primary block truncate" id="dropdownUserName">Elena</span>
+              <span class="text-[10px] text-taupe font-mono block truncate" id="dropdownUserEmail">customer@ladolce.com</span>
+              <span class="inline-block mt-1 px-2 py-0.5 rounded bg-emerald-50 text-forest-emerald text-[9px] font-bold uppercase tracking-wider" id="dropdownUserRole">Customer</span>
+            </div>
+
+            <div class="py-1 space-y-0.5" id="dropdownRoleLinks"></div>
+
+            <div class="pt-1 border-t border-hairline">
+              <button type="button" onclick="logoutUser(); closeProfileDropdown();" class="w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-red-700 hover:bg-red-50 flex items-center gap-2 transition-colors cursor-pointer">
+                <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                <span>ອອກຈາກລະບົບ (Sign Out)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN ROUTER WRAPPER ================= -->
+  <main class="flex-1 w-full max-w-6xl mx-auto pt-20 pb-28 px-4 md:px-8">
+
+    <!-- 1. CUSTOMER VIEW -->
+    <div id="customerAppView" class="space-y-6">
+      <!-- TAB: MENU -->
+      <section id="tab-customer-menu" class="space-y-5">
+        <div class="p-4 rounded-2xl bg-surface-pure border border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div class="flex items-center gap-3">
+            <span class="w-10 h-10 rounded-xl bg-forest-emerald/10 text-forest-emerald flex items-center justify-center shrink-0">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 3 0"/><path d="M5 11.5V20h14v-8.5"/><path d="M9 20v-5h6v5"/></svg>
+            </span>
+            <div>
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <h2 class="font-serif-title text-[16px] text-primary font-bold brand-branch-display">LA DOLCE • Downtown Flagship Roastery</h2>
+                <div id="customerStoreOpenBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
+                  <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+                  </span>
+                  <span class="text-[11px] font-bold text-emerald-900 tracking-wide font-lao">ເປີດບໍລິການ (07:00 – 20:00)</span>
+                </div>
+              </div>
+              <p class="text-[12px] text-taupe mt-0.5 flex items-center gap-1.5 flex-wrap">
+                <span>ສັ່ງລ່ວງໜ້າ • ຮັບທີ່ເຄົາເຕີ້ພາຍໃນ 8–15 ນາທີ</span>
+                <span class="text-hairline">•</span>
+                <span class="inline-flex items-center gap-1 font-bold text-forest-emerald">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h3"/></svg>
+                  <span>ສົ່ງຟຣີ 500ມ</span>
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <button type="button" onclick="switchCustomerTab('cart')" class="self-stretch sm:self-auto flex items-center justify-center gap-2.5 px-5 py-2.5 rounded-xl bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] font-bold shadow-sm transition-all transform active:scale-95 cursor-pointer shrink-0">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            <span>ກະຕ່າສັ່ງຊື້</span>
+            <span id="cartBadgeCount" class="w-6 h-6 rounded-full bg-white text-forest-emerald text-[11px] font-bold flex items-center justify-center shadow-xs transition-transform duration-300">0</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2 overflow-x-auto pb-1" id="categoryFilterContainer">
+          <button type="button" onclick="filterCategory('all')" class="cat-pill active-cat px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-forest-emerald text-white cursor-pointer">ທັງໝົດ</button>
+          <button type="button" onclick="filterCategory('coffee')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal cursor-pointer">ກາເຟ</button>
+          <button type="button" onclick="filterCategory('tea')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal cursor-pointer">ຊາ & ມັດຊະ</button>
+          <button type="button" onclick="filterCategory('refresher')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal cursor-pointer">Refresher & ໂຊດາ</button>
+          <button type="button" onclick="filterCategory('bakery')" class="cat-pill px-4 py-2 rounded-lg text-[12px] font-medium shrink-0 bg-surface-pure border border-hairline text-taupe hover:text-charcoal cursor-pointer">ເບເກີຣີ່ & ອາຫານ</button>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4" id="menuGrid"></div>
+      </section>
+
+      <!-- TAB: CART & PAYMENT -->
+      <section id="tab-customer-cart" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-7 space-y-3" id="cartListContainer"></div>
+
+          <div class="lg:col-span-5 space-y-4">
+            <div class="p-5 rounded-xl bg-surface-pure border border-hairline space-y-4 shadow-xs">
+              <h3 class="font-serif-title text-[18px] text-primary border-b border-hairline pb-3">ສະຫຼຸບການສັ່ງຊື້ (Order Summary)</h3>
+
+              <div class="space-y-2 text-[13px]">
+                <div class="flex justify-between text-taupe">
+                  <span>ຍອດລວມ (Subtotal)</span>
+                  <span id="summarySubtotal" class="font-medium text-charcoal">0 LAK</span>
+                </div>
+
+                <div id="couponDiscountRow" class="flex justify-between text-emerald-800 text-[13px] font-bold hidden">
+                  <span class="flex items-center gap-1.5">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
+                    <span>ສ່ວນຫຼຸດຄູປອງ</span>
+                  </span>
+                  <span id="summaryCouponDiscount">-0 LAK</span>
+                </div>
+
+                <div id="taxRowContainer" class="flex justify-between text-taupe hidden">
+                  <span>ອາກອນ (Tax)</span>
+                  <span id="summaryTax" class="font-medium text-charcoal">0 LAK</span>
+                </div>
+
+                <div class="h-px bg-hairline my-2"></div>
+                <div class="flex justify-between items-baseline pt-1">
+                  <span class="font-serif-title text-[16px] text-primary font-medium">ຍອດລວມທັງໝົດ</span>
+                  <span id="summaryTotal" class="font-serif-title text-[22px] text-forest-emerald font-bold">0 LAK</span>
+                </div>
+              </div>
+
+              <div id="deliveryUnlockBox" class="p-3.5 rounded-xl bg-surface border border-hairline space-y-2">
+                <div id="deliveryProgressText"></div>
+                <div class="w-full bg-hairline h-1.5 rounded-full overflow-hidden">
+                  <div id="deliveryProgressBar" class="bg-forest-emerald h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
+                </div>
+
+                <div id="deliveryAddressPanel" class="hidden pt-2 border-t border-hairline space-y-2">
+                  <span class="block text-[11px] font-bold text-forest-emerald">ເລືອກຮູບແບບການຮັບ:</span>
+                  <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="setFulfillmentType('pickup')" id="optFulfillmentPickup" class="p-2 rounded-lg border-2 border-forest-emerald text-[11px] font-bold text-center bg-surface-pure flex items-center justify-center gap-1.5 cursor-pointer">
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M5 11.5V20h14v-8.5"/></svg>
+                      <span>ຮັບເອງໜ້າຮ້ານ</span>
+                    </button>
+                    <button type="button" onclick="setFulfillmentType('delivery')" id="optFulfillmentDelivery" class="p-2 rounded-lg border-2 border-hairline text-[11px] font-bold text-center bg-surface-pure hover:border-forest-leaf flex items-center justify-center gap-1.5 cursor-pointer">
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h3"/></svg>
+                      <span>ຈັດສົ່ງ Delivery</span>
+                    </button>
+                  </div>
+                  <div id="deliveryInputFields" class="hidden pt-1">
+                    <label class="block text-[11px] text-taupe mb-1 font-bold">ທີ່ຢູ່ຈັດສົ່ງ (ບ້ານ, ເມືອງ, ຈຸດສັງເກດ ພາຍໃນ 500 ແມັດ):</label>
+                    <textarea id="deliveryAddressInput" rows="2" placeholder="ເຊັ່ນ: ບ້ານໂພນສີນວນ ຮ່ອມ 5 ເຮືອນປະຕູສີຂາວ..." class="w-full text-[12px] rounded-lg border border-hairline p-2 bg-surface"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-t border-hairline pt-3">
+                <label class="block text-[11px] uppercase tracking-wider font-semibold text-primary mb-1">Coupon ສ່ວນຫຼຸດ:</label>
+                <div class="flex gap-2">
+                  <input type="text" id="couponCodeInput" placeholder="ເຊັ່ນ: LADOLCE20" class="flex-1 text-[12px] uppercase rounded-lg border border-hairline p-2 font-mono"/>
+                  <button type="button" onclick="applyCouponCode()" class="px-3.5 py-2 rounded-lg bg-surface border border-forest-emerald text-forest-emerald hover:bg-forest-emerald hover:text-white text-[11px] font-bold transition-colors cursor-pointer">
+                    ນຳໃຊ້
+                  </button>
+                </div>
+                <span class="text-[10px] text-taupe block mt-1">ລອງໃຊ້: <strong>LADOLCE20</strong> (ຫຼຸດ 20% ສູງສຸດ 30,000 LAK)</span>
+              </div>
+
+              <div class="border-t border-hairline pt-4 space-y-2.5">
+                <span class="block text-[11px] uppercase tracking-wider font-semibold text-primary">1. ເລືອກທະນາຄານທີ່ຕ້ອງການໂອນ:</span>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="customerBankSelectorGrid"></div>
+                <div id="activeBankQRDisplay" class="border-2 rounded-xl p-3 bg-surface text-center"></div>
+              </div>
+
+              <div class="border-t border-hairline pt-3 text-center space-y-2">
+                <span class="block text-[11px] uppercase tracking-wider font-semibold text-primary text-left">2. ແນບໃບໂອນເງິນ (Slip):</span>
+                <label class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-pure border border-hairline hover:border-forest-emerald text-[11px] font-medium text-charcoal transition-all">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span id="slipStatusText">ອັບໂຫຼດຮູບໃບໂອນເງິນ (Slip)</span>
+                  <input type="file" id="slipFileInput" accept="image/*" class="hidden" onchange="handleSlipSelected(event)"/>
+                </label>
+                <div id="slipPreviewContainer" class="hidden">
+                  <img id="slipImagePreview" class="h-32 mx-auto rounded-lg border border-hairline object-contain" src=""/>
+                </div>
+              </div>
+
+              <button type="button" onclick="handleStartCheckout()" class="w-full h-12 rounded-lg bg-forest-emerald hover:bg-forest-leaf text-white text-[12px] uppercase tracking-wider font-medium flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer">
+                ຢືນຢັນການສັ່ງຊື້ (Confirm Order)
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: MY TICKET -->
+      <section id="tab-customer-ticket" class="hidden space-y-6">
+        <div class="max-w-md mx-auto" id="activeTicketContainer"></div>
+      </section>
+
+      <!-- TAB: PROFILE -->
+      <section id="tab-customer-profile" class="hidden space-y-6">
+        <div id="profileTabContent"></div>
+      </section>
+    </div>
+
+    <!-- 2. BARISTA STAFF VIEW -->
+
+
+    <!-- 3. SUPERADMIN SUITE -->
+
+  </main>
+
+  <!-- ================= CUSTOMER BOTTOM NAVIGATION ================= -->
+  <nav id="customerBottomNav" class="fixed bottom-0 w-full z-40 bg-surface/92 backdrop-blur-md border-t border-hairline pb-safe">
+    <div class="h-16 px-6 max-w-lg mx-auto flex items-center justify-around">
+      <button type="button" onclick="switchCustomerTab('menu')" id="nav-btn-menu" class="nav-tab-btn flex flex-col items-center justify-center gap-0.5 text-forest-emerald py-1 font-semibold cursor-pointer">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>
+        <span class="text-[9px] uppercase tracking-wider">ເມນູ</span>
+      </button>
+
+      <button type="button" onclick="switchCustomerTab('cart')" id="nav-btn-cart" class="nav-tab-btn relative flex flex-col items-center justify-center gap-0.5 text-taupe py-1 cursor-pointer">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        <span class="text-[9px] uppercase tracking-wider">ກະຕ່າ</span>
+        <span id="bottomNavCartDot" class="hidden absolute top-1 right-2 w-2 h-2 rounded-full bg-forest-emerald"></span>
+      </button>
+
+      <button type="button" onclick="switchCustomerTab('ticket')" id="nav-btn-ticket" class="nav-tab-btn relative flex flex-col items-center justify-center gap-0.5 text-taupe py-1 cursor-pointer">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+        <span class="text-[9px] uppercase tracking-wider">ປີ້ຮັບເຄື່ອງ</span>
+        <span id="bottomNavLiveOrderPulse" class="hidden absolute top-1 right-2.5 w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+      </button>
+
+      <button type="button" onclick="switchCustomerTab('profile')" id="nav-btn-profile" class="nav-tab-btn flex flex-col items-center justify-center gap-0.5 text-taupe py-1 cursor-pointer">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span class="text-[9px] uppercase tracking-wider">ໂປຣໄຟລ໌</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- 1. CUSTOMIZE MODAL -->
+  <div id="customizeModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end sm:items-center justify-center hidden">
+    <div class="bg-surface-pure w-full max-w-lg rounded-t-2xl sm:rounded-2xl border border-hairline max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="p-4 px-5 border-b border-hairline flex items-center justify-between">
+        <span class="font-serif-title text-[18px] text-primary" id="modalItemTitle">Drink Title</span>
+        <button type="button" onclick="closeCustomizeModal()" class="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-taupe hover:text-charcoal cursor-pointer">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-6 flex-1 text-[13px]">
+        <div class="flex gap-4 items-center">
+          <img id="modalItemImage" src="" alt="Item" class="w-20 h-20 rounded-xl object-cover border border-hairline"/>
+          <div>
+            <p id="modalItemDesc" class="text-taupe text-[12px] leading-relaxed"></p>
+            <span id="modalItemBasePrice" class="font-serif-title text-[17px] text-forest-emerald font-semibold block mt-1">0 LAK</span>
+          </div>
+        </div>
+
+        <div id="variantSelectorGroup" class="space-y-2">
+          <label class="block text-[11px] uppercase tracking-wider font-semibold text-charcoal">01. ຮູບແບບສິນຄ້າ (Variant)</label>
+          <div class="grid grid-cols-3 gap-2" id="variantButtonsGrid"></div>
+        </div>
+
+        <div id="milkSelectorGroup" class="space-y-2">
+          <label class="block text-[11px] uppercase tracking-wider font-semibold text-charcoal">02. ປະເພດນົມ (Choice of Milk)</label>
+          <div class="rounded-xl border border-hairline divide-y divide-hairline bg-surface">
+            <label class="flex items-center justify-between p-3 cursor-pointer">
+              <span class="flex items-center gap-2">
+                <input type="radio" name="milkOption" value="Whole Milk" checked onchange="updateModalPrice()" class="text-forest-emerald focus:ring-0"/>
+                <span>ນົມສົດແທ້ (Whole Milk)</span>
+              </span>
+              <span class="text-taupe text-[11px]">Free</span>
+            </label>
+            <label class="flex items-center justify-between p-3 cursor-pointer">
+              <span class="flex items-center gap-2">
+                <input type="radio" name="milkOption" value="Oat Milk (Oatly)" onchange="updateModalPrice()" class="text-forest-emerald focus:ring-0"/>
+                <span>ນົມເຂົ້າໂອດ Oatly Barista</span>
+              </span>
+              <span class="font-medium text-charcoal text-[11px]">+15,000 LAK</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="sweetnessSelectorGroup" class="space-y-2">
+          <label class="block text-[11px] uppercase tracking-wider font-semibold text-charcoal">03. ລະດັບຄວາມຫວານ (Sweetness)</label>
+          <div class="grid grid-cols-4 gap-1.5 p-1 rounded-lg bg-surface border border-hairline">
+            <button type="button" onclick="selectSweetness(this, '0%')" class="sweet-btn py-1.5 rounded text-[11px] text-taupe font-medium cursor-pointer">0%</button>
+            <button type="button" onclick="selectSweetness(this, '50%')" class="sweet-btn py-1.5 rounded text-[11px] text-taupe font-medium cursor-pointer">50%</button>
+            <button type="button" onclick="selectSweetness(this, '100%')" class="sweet-btn py-1.5 rounded text-[11px] bg-forest-emerald text-white font-medium cursor-pointer">100%</button>
+            <button type="button" onclick="selectSweetness(this, '120%')" class="sweet-btn py-1.5 rounded text-[11px] text-taupe font-medium cursor-pointer">120%</button>
+          </div>
+        </div>
+
+        <div id="toppingSelectorGroup" class="space-y-2">
+          <label class="block text-[11px] uppercase tracking-wider font-semibold text-charcoal">04. ເພີ່ມເຕີມ / Topping</label>
+          <div class="rounded-xl border border-hairline divide-y divide-hairline bg-surface">
+            <label class="flex items-center justify-between p-3 cursor-pointer">
+              <span class="flex items-center gap-2">
+                <input type="checkbox" id="addonExtraShot" onchange="updateModalPrice()" class="rounded text-forest-emerald focus:ring-0"/>
+                <span>Extra Double Ristretto Shot</span>
+              </span>
+              <span class="font-medium text-charcoal text-[11px]">+12,000 LAK</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <label class="block text-[11px] uppercase tracking-wider font-semibold text-charcoal">05. ໝາຍເຫດພິເສດເຖິງບາຣິສຕ້າ (Optional):</label>
+          <input type="text" id="modalItemSpecialNote" placeholder="ເຊັ່ນ: ຂໍແຍກນ້ຳກ້ອນ, ຂໍນົມຫຼາຍໜ້ອຍໜຶ່ງ..." class="w-full text-[12px] rounded-lg border border-hairline p-2 bg-surface"/>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-hairline bg-surface flex items-center justify-between gap-4">
+        <div class="flex items-center border border-hairline rounded-lg bg-surface-pure">
+          <button type="button" onclick="adjustModalQty(-1)" class="w-9 h-9 flex items-center justify-center hover:bg-surface text-charcoal cursor-pointer">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <span id="modalQtyDisplay" class="px-3 font-medium text-[13px] text-charcoal">1</span>
+          <button type="button" onclick="adjustModalQty(1)" class="w-9 h-9 flex items-center justify-center hover:bg-surface text-charcoal cursor-pointer">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        <button type="button" onclick="confirmAddToCart()" class="flex-1 h-11 px-5 rounded-lg bg-forest-emerald text-white text-[12px] uppercase tracking-[0.14em] font-medium flex items-center justify-between hover:bg-forest-leaf transition-all shadow-xs cursor-pointer">
+          <span>ເພີ່ມໃສ່ກະຕ່າ</span>
+          <span id="modalDynamicTotal" class="font-serif-title text-[15px] font-normal">0 LAK</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. GUEST CONTACT MODAL -->
+  <div id="guestContactModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
+    <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-6 shadow-2xl space-y-4">
+      <h3 class="font-serif-title text-[19px] text-primary font-medium text-center">ຂໍ້ມູນຕິດຕໍ່ຜູ້ສັ່ງ</h3>
+      <div class="space-y-3 text-[13px]">
+        <div>
+          <label class="block text-[11px] text-taupe uppercase mb-1">ຊື່ຂອງທ່ານ:</label>
+          <input type="text" id="guestInputName" placeholder="ເຊັ່ນ: Elena" class="w-full rounded-lg border border-hairline p-2.5"/>
+        </div>
+        <div>
+          <label class="block text-[11px] text-taupe uppercase mb-1">ເບີໂທລະສັບ:</label>
+          <input type="tel" id="guestInputPhone" placeholder="+856 20 ..." class="w-full rounded-lg border border-hairline p-2.5 font-mono"/>
+        </div>
+        <button type="button" onclick="submitGuestOrder()" class="w-full py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] uppercase font-bold hover:bg-forest-leaf transition-all shadow-xs cursor-pointer">
+          ຢືນຢັນ ແລະ ສົ່ງອໍເດີ້
+        </button>
+      </div>
+      <button type="button" onclick="closeGuestModal()" class="w-full py-1 text-[11px] text-taupe text-center cursor-pointer">ຍົກເລີກ</button>
+    </div>
+  </div>
+
+  <!-- 3. STAFF INCOMING ORDER MODAL -->
+
+
+  <!-- 4. CUSTOMER DRINK READY MODAL -->
+  <div id="customerReadyModal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center hidden p-4">
+    <div class="bg-surface-pure w-full max-w-sm rounded-2xl border-2 border-emerald-500 p-6 shadow-2xl text-center space-y-4 animate-scale-up">
+      <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 mx-auto flex items-center justify-center">
+        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>
+      </div>
+      <div class="space-y-1">
+        <span class="text-[11px] uppercase tracking-widest text-emerald-800 font-bold">Pick-up Ready! <span id="customerReadyOrderCode" class="font-mono"></span></span>
+        <h3 class="font-serif-title text-[22px] font-bold text-primary">ສຳເລັດ! ເຄື່ອງດື່ມພ້ອມຮັບແລ້ວ</h3>
+        <p class="text-[12px] text-taupe">ເຄື່ອງດື່ມຂອງທ່ານປຸງແຕ່ງສຳເລັດແລ້ວ ສາມາດເຂົ້າມາຮັບເອົາທີ່ເຄົາເຕີ້ໄດ້ເລີຍ</p>
+      </div>
+      <button type="button" onclick="closeCustomerReadyModal()" class="w-full py-2.5 rounded-lg bg-emerald-800 text-white text-[12px] font-bold hover:bg-emerald-900 shadow-xs cursor-pointer">
+        ຕົກລົງ / ໄປຮັບເຄື່ອງ
+      </button>
+    </div>
+  </div>
+
+  <!-- 5. STAFF REJECT MODAL -->
+
+
+  <!-- 6. SLIP AUDIT MODAL -->
+
+
+  <!-- 7. UNIFIED LOGIN / REGISTER MODAL -->
+  <div id="authModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center hidden p-4">
+    <div class="bg-surface-pure w-full max-w-sm rounded-2xl border border-hairline p-6 shadow-2xl space-y-4">
+      <div class="text-center space-y-1">
+        <h3 class="font-serif-title text-[22px] text-primary" id="authModalTitle">Sign In</h3>
+        <p class="text-[11px] text-taupe">ເຂົ້າສູ່ລະບົບ ຫຼື ສະໝັກສະມາຊິກດ້ວຍ Email & Password</p>
+      </div>
+      <div class="space-y-3 text-[13px]">
+        <div id="authNameBox" class="hidden">
+          <label class="block text-[11px] text-taupe uppercase mb-1">ຊື່ ແລະ ນາມສະກຸນ</label>
+          <input type="text" id="authName" placeholder="ເຊັ່ນ: Nick" class="w-full rounded-lg border border-hairline p-2.5"/>
+        </div>
+        <div>
+          <label class="block text-[11px] text-taupe uppercase mb-1">ອີເມວ</label>
+          <input type="email" id="authEmail" class="w-full rounded-lg border border-hairline p-2.5" placeholder="customer@ladolce.com"/>
+        </div>
+        <div>
+          <label class="block text-[11px] text-taupe uppercase mb-1">ລະຫັດຜ່ານ</label>
+          <input type="password" id="authPassword" class="w-full rounded-lg border border-hairline p-2.5" placeholder="••••••••"/>
+        </div>
+        <button type="button" onclick="handleAuthSubmit()" id="btnAuthSubmit" class="w-full py-2.5 rounded-lg bg-forest-emerald text-white text-[12px] uppercase tracking-wider font-semibold hover:bg-forest-leaf transition-colors cursor-pointer">
+          Sign In
+        </button>
+        <div class="text-center pt-1">
+          <button type="button" onclick="toggleAuthMode()" id="authToggleText" class="text-[11px] text-taupe hover:text-forest-emerald underline cursor-pointer">
+            ຍັງບໍ່ມີບັນຊີ? ສະໝັກສະມາຊິກໃໝ່
+          </button>
+        </div>
+      </div>
+      <button type="button" onclick="closeAuthModal()" class="w-full py-1 text-[11px] text-taupe text-center cursor-pointer">ປິດ</button>
+    </div>
+  </div>
+
+  <!-- 8. SUPERADMIN ADD/EDIT MENU MODAL -->
+
+
+  <!-- 9. SUPERADMIN MODIFIER MODAL -->
+
+
+  <!-- 10. ADVANCED COUPON BUILDER MODAL -->
+
+
+  <!-- 11. CAFE BRANDING MODAL -->
+
+
+  <!-- 12. ADD/EDIT PAYMENT MODAL -->
+
+
+  <!-- 13. FAST BOUTIQUE TOAST -->
+  <div id="atelierToast" class="fixed top-6 left-1/2 -translate-x-1/2 z-[999] opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-4 px-5 py-3 rounded-full bg-forest-gradient text-white text-[12px] font-bold shadow-2xl flex items-center gap-2 border border-white/20">
+    <svg class="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <span id="toastMsg">Action completed</span>
+  </div>
+
+  <!-- ================= LOAD SCRIPTS (CACHE BUSTED v5) ================= -->
+  <script src="js/config.js?v=5"></script>
+  <script src="js/dialog.js?v=5"></script>
+  <script src="js/audio.js?v=5"></script>
+        <script src="js/auth-customer.js?v=5"></script>
+        <script src="js/menu.js?v=5"></script>
+  <script src="js/cart.js?v=5"></script>
+  <script src="js/ticket.js?v=5"></script>
+        <script src="js/app-customer.js?v=5"></script>
+      </body>
+</html>
