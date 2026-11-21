@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "901115903068",
+    "project_id": "ladolceordering",
+    "storage_bucket": "ladolceordering.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:901115903068:android:a461c594684568730b7a99",
+        "android_client_info": {
+          "package_name": "com.ladolce.staff"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCIrhXXJgpYKqtTshyLI3Jh49B2RBkb3wg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
