@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LA DOLCE Staff</string>
+    <string name="title_activity_main">LA DOLCE Staff</string>
+    <string name="package_name">com.ladolce.staff</string>
+    <string name="custom_url_scheme">com.ladolce.staff</string>
+</resources>

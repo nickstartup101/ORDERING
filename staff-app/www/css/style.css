@@ -11,7 +11,7 @@
     font-family: 'Noto Sans Lao', 'DM Sans', sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  
+
   /* ຫົວຂໍ້ພາສາອັງກິດໃຊ້ Serif ແຕ່ຖ້າມີຕົວອັກສອນລາວຈະ fallback ເປັນ Noto Sans Lao ຢ່າງສວຍງາມ */
   .font-serif-title {
     font-family: 'Playfair Display', 'Noto Sans Lao', serif;

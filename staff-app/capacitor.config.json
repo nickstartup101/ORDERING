@@ -1,0 +1,13 @@
+{
+  "appId": "com.ladolce.staff",
+  "appName": "LA DOLCE Staff",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}
