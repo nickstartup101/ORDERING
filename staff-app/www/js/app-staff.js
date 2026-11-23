@@ -4,6 +4,12 @@
 let staffUser = null;
 let staffUserUnsubscribe = null;
 
+function showStaffWorkspace() {
+  document.getElementById('staffLoginScreen')?.classList.add('hidden');
+  document.getElementById('staffAppShell')?.classList.remove('hidden');
+  document.getElementById('adminStaffAppView')?.classList.remove('hidden');
+}
+
 async function handleStaffLogin() {
   const email = document.getElementById('staffLoginEmail')?.value.trim().toLowerCase();
   const password = document.getElementById('staffLoginPassword')?.value.trim();
@@ -33,8 +39,7 @@ async function handleStaffLogin() {
   staffUser = user;
   currentUser = user;
   localStorage.setItem('ladolce_user', JSON.stringify(user));
-  document.getElementById('staffLoginScreen')?.classList.add('hidden');
-  document.getElementById('staffAppShell')?.classList.remove('hidden');
+  showStaffWorkspace();
   startCurrentUserSync();
   initializeStaffPush();
   showAtelierToast('ເຂົ້າສູ່ Kitchen Display ສຳເລັດ');
@@ -66,6 +71,7 @@ async function logoutStaff() {
   currentUser = null;
   localStorage.removeItem('ladolce_user');
   document.getElementById('staffAppShell')?.classList.add('hidden');
+  document.getElementById('adminStaffAppView')?.classList.add('hidden');
   document.getElementById('staffLoginScreen')?.classList.remove('hidden');
 }
 
@@ -88,8 +94,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (stored && ['staff','superadmin'].includes(stored.role)) {
     staffUser = stored;
     currentUser = stored;
-    document.getElementById('staffLoginScreen')?.classList.add('hidden');
-    document.getElementById('staffAppShell')?.classList.remove('hidden');
+    showStaffWorkspace();
     startCurrentUserSync();
     initializeStaffPush();
   }

@@ -62,7 +62,8 @@ async function installStaffPushListeners(plugin) {
     plugin.addListener('registration', result => {
       saveStaffPushToken(result.value).catch(error => {
         console.error('Unable to save staff push token:', error);
-        showAtelierToast('ບັນທຶກ Push token ບໍ່ສຳເລັດ', 'error');
+        const details = error?.code || error?.message || String(error);
+        showAtelierToast(`ບັນທຶກ Push token ບໍ່ສຳເລັດ: ${details}`, 'error');
       });
     }),
     plugin.addListener('registrationError', error => {
