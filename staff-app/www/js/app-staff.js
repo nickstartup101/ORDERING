@@ -41,7 +41,7 @@ async function handleStaffLogin() {
   localStorage.setItem('ladolce_user', JSON.stringify(user));
   showStaffWorkspace();
   startCurrentUserSync();
-  initializeStaffPush();
+  initStaffPushNotifications();
   showAtelierToast('ເຂົ້າສູ່ Kitchen Display ສຳເລັດ');
 }
 
@@ -96,7 +96,7 @@ window.addEventListener('DOMContentLoaded', () => {
     currentUser = stored;
     showStaffWorkspace();
     startCurrentUserSync();
-    initializeStaffPush();
+    initStaffPushNotifications();
   }
   startStaffRealtimeSync();
   if (typeof renderStaffHeaderBrand === 'function') renderStaffHeaderBrand();

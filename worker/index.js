@@ -24,8 +24,8 @@ function encodeJsonBase64Url(value) {
 }
 
 function pemToArrayBuffer(pem) {
-  const encoded = pem
-    .replace(/\\n/g, '\n')
+  const normalizedPem = String(pem).trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
+  const encoded = normalizedPem
     .replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, '');
   const binary = atob(encoded);
   const bytes = new Uint8Array(binary.length);
@@ -151,6 +151,14 @@ async function deactivateInvalidDevice(documentName, accessToken) {
 }
 
 async function sendStaffNotification(projectId, accessToken, device, orderId, orderCode, title, body) {
+  return sendNotification(projectId, accessToken, device, {
+    title,
+    body,
+    data: { orderId, orderCode }
+  });
+}
+
+async function sendNotification(projectId, accessToken, device, notification) {
   const response = await fetch(
     `https://fcm.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/messages:send`,
     {
@@ -162,25 +170,148 @@ async function sendStaffNotification(projectId, accessToken, device, orderId, or
       body: JSON.stringify({
         message: {
           token: device.token,
-          notification: { title, body },
+          notification: { title: notification.title, body: notification.body },
           android: {
             priority: 'high',
-            notification: { channel_id: FCM_CHANNEL_ID }
+            notification: {
+              channelId: FCM_CHANNEL_ID,
+              sound: 'order_alert',
+              notificationPriority: 'PRIORITY_MAX',
+              visibility: 'PUBLIC',
+              defaultVibrateTimings: true
+            }
           },
-          data: { orderId, orderCode }
+          data: notification.data
         }
       })
     }
   );
-  const result = await response.json();
-  if (response.ok) return { sent: true };
+  const result = await response.json().catch(() => ({}));
+  if (response.ok) return { sent: true, httpStatus: response.status, fcmResponse: result };
 
   if (isInvalidFcmToken(response, result)) {
     await deactivateInvalidDevice(device.documentName, accessToken);
-    return { sent: false, invalid: true };
+    return { sent: false, invalid: true, httpStatus: response.status, fcmResponse: result };
   }
   console.error('FCM send failed:', response.status, result.error?.status);
-  return { sent: false, invalid: false };
+  return { sent: false, invalid: false, httpStatus: response.status, fcmResponse: result };
+}
+
+async function listActiveStaffDevices(projectId, accessToken) {
+  const response = await fetch(firestoreRunQueryUrl(projectId), {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: 'staff_devices' }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: 'active' },
+            op: 'EQUAL',
+            value: { booleanValue: true }
+          }
+        }
+      }
+    })
+  });
+  const results = await response.json();
+  if (!response.ok) {
+    console.error('Firestore staff-device query failed:', response.status);
+    throw new Error('staff_device_lookup_failed');
+  }
+
+  return results
+    .filter(result => result.document)
+    .map(result => ({
+      token: getField(result.document, 'token'),
+      documentName: result.document.name
+    }))
+    .filter(device => typeof device.token === 'string' && device.token.length > 0);
+}
+
+function diagnosticsAuthorizationError(request, env) {
+  const expectedToken = env.PUSH_DIAGNOSTICS_TOKEN;
+  if (!expectedToken) return jsonResponse({ error: 'push_diagnostics_not_configured' }, 503);
+  if (request.headers.get('authorization') !== `Bearer ${expectedToken}`) {
+    return jsonResponse({ error: 'unauthorized' }, 401);
+  }
+  return null;
+}
+
+async function pushStatus(request, env) {
+  if (request.method !== 'GET') return jsonResponse({ error: 'method_not_allowed' }, 405);
+  const authError = diagnosticsAuthorizationError(request, env);
+  if (authError) return authError;
+
+  const projectId = env.FIREBASE_PROJECT_ID || 'ladolceordering';
+  const status = {
+    hasProjectId: Boolean(projectId),
+    hasClientEmail: Boolean(env.FIREBASE_CLIENT_EMAIL?.trim()),
+    hasPrivateKey: Boolean(env.FIREBASE_PRIVATE_KEY?.trim()),
+    oauthOk: false,
+    activeDevicesCount: null,
+    error: null
+  };
+
+  try {
+    const accessToken = await getGoogleAccessToken(env);
+    status.oauthOk = true;
+    status.activeDevicesCount = (await listActiveStaffDevices(projectId, accessToken)).length;
+  } catch (error) {
+    status.error = error.message === 'staff_device_lookup_failed'
+      ? 'staff_device_lookup_failed'
+      : 'firebase_authentication_failed';
+  }
+  return jsonResponse(status);
+}
+
+async function testPush(request, env) {
+  if (request.method !== 'POST') return jsonResponse({ error: 'method_not_allowed' }, 405);
+  const authError = diagnosticsAuthorizationError(request, env);
+  if (authError) return authError;
+
+  const projectId = env.FIREBASE_PROJECT_ID || 'ladolceordering';
+  try {
+    const accessToken = await getGoogleAccessToken(env);
+    const devices = await listActiveStaffDevices(projectId, accessToken);
+    const results = await Promise.all(devices.map(async device => {
+      try {
+        const result = await sendNotification(projectId, accessToken, device, {
+          title: 'LA DOLCE Staff notification test',
+          body: 'Push notifications are working.',
+          data: { test: 'true' }
+        });
+        return {
+          deviceId: device.documentName.split('/').pop(),
+          sent: result.sent,
+          invalid: result.invalid || false,
+          httpStatus: result.httpStatus,
+          fcmResponse: result.fcmResponse
+        };
+      } catch (error) {
+        console.error('FCM test notification failed:', error.message);
+        return {
+          deviceId: device.documentName.split('/').pop(),
+          sent: false,
+          error: 'fcm_request_failed'
+        };
+      }
+    }));
+    return jsonResponse({
+      ok: results.every(result => result.sent),
+      activeDevicesCount: devices.length,
+      sent: results.filter(result => result.sent).length,
+      results
+    });
+  } catch (error) {
+    console.error('Staff push test failed:', error.message);
+    return jsonResponse({ error: error.message === 'staff_device_lookup_failed'
+      ? 'staff_device_lookup_failed'
+      : 'firebase_authentication_failed' }, 502);
+  }
 }
 
 async function notifyStaff(request, env) {
@@ -225,41 +356,12 @@ async function notifyStaff(request, env) {
       return jsonResponse({ ok: true, sent: 0, skipped: true });
     }
 
-    const devicesResponse = await fetch(
-      firestoreRunQueryUrl(projectId),
-      {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${accessToken}`,
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify({
-          structuredQuery: {
-            from: [{ collectionId: 'staff_devices' }],
-            where: {
-              fieldFilter: {
-                field: { fieldPath: 'active' },
-                op: 'EQUAL',
-                value: { booleanValue: true }
-              }
-            }
-          }
-        })
-      }
-    );
-    const deviceResults = await devicesResponse.json();
-    if (!devicesResponse.ok) {
-      console.error('Firestore staff-device query failed:', devicesResponse.status);
+    let devices;
+    try {
+      devices = await listActiveStaffDevices(projectId, accessToken);
+    } catch {
       return jsonResponse({ error: 'staff_device_lookup_failed' }, 502);
     }
-
-    const devices = deviceResults
-      .filter(result => result.document)
-      .map(result => ({
-        token: getField(result.document, 'token'),
-        documentName: result.document.name
-      }))
-      .filter(device => typeof device.token === 'string' && device.token.length > 0);
     if (devices.length === 0) return jsonResponse({ ok: true, sent: 0 });
 
     let claimedUpdateTime;
@@ -316,6 +418,12 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === '/api/notify-staff') {
       return notifyStaff(request, env);
+    }
+    if (url.pathname === '/api/push-status') {
+      return pushStatus(request, env);
+    }
+    if (url.pathname === '/api/test-push') {
+      return testPush(request, env);
     }
     if (url.pathname.startsWith('/api/')) {
       return jsonResponse({ error: 'not_found' }, 404);

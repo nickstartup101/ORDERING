@@ -80,7 +80,7 @@ async function installStaffPushListeners(plugin) {
   staffPushListenersInstalled = true;
 }
 
-async function initializeStaffPush() {
+async function initStaffPushNotifications() {
   if (!isStaffNativePlatform() || !isStaffPushUser()) return false;
   if (staffPushInitialization) return staffPushInitialization;
 
@@ -95,7 +95,7 @@ async function initializeStaffPush() {
       visibility: 1,
       lights: true,
       vibration: true,
-      sound: 'order_alert.wav'
+      sound: 'order_alert'
     });
     await installStaffPushListeners(plugin);
 
@@ -149,11 +149,11 @@ window.enableStaffNotifications = async function() {
   }
 
   if (typeof unlockAllAudio === 'function') unlockAllAudio();
-  await initializeStaffPush();
+  await initStaffPushNotifications();
   if (typeof playStaffPulseTone === 'function') playStaffPulseTone();
   if (typeof updateStaffNotifyBadge === 'function') updateStaffNotifyBadge();
 };
 
-window.initializeStaffPush = initializeStaffPush;
+window.initStaffPushNotifications = initStaffPushNotifications;
 window.deactivateStaffPushToken = deactivateStaffPushToken;
 window.flushPendingStaffPushOrderReview = flushPendingStaffPushOrderReview;
